@@ -1,0 +1,196 @@
+:root {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: #1a1a1a;
+  background: #f7f7f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+h1, h2, h3 {
+  margin: 0 0 0.5rem;
+}
+
+.tela-auth {
+  max-width: 380px;
+  margin: 4rem auto;
+  padding: 2rem;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.tela-auth form,
+.onboarding form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+input, textarea, select {
+  font: inherit;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+button {
+  font: inherit;
+  padding: 0.6rem 1rem;
+  border: none;
+  border-radius: 6px;
+  background: #2f6f4f;
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.link-remover {
+  background: none;
+  color: #b33;
+  padding: 0;
+  align-self: flex-start;
+}
+
+.erro {
+  color: #b33;
+}
+
+.sucesso {
+  color: #2f6f4f;
+}
+
+.ajuda {
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.onboarding {
+  max-width: 640px;
+  margin: 2rem auto;
+  padding: 0 1rem 3rem;
+}
+
+.onboarding section {
+  background: #fff;
+  padding: 1.2rem;
+  border-radius: 8px;
+  margin-bottom: 1.2rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.cartao-experiencia {
+  border: 1px solid #e2e2e2;
+  border-radius: 6px;
+  padding: 0.8rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.linha-dupla {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.linha-dupla input {
+  flex: 1;
+}
+
+.botao-principal {
+  align-self: flex-start;
+}
+
+.dashboard {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.topo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.topo nav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.topo button {
+  background: #999;
+}
+
+.lista-vagas {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.vaga {
+  background: #fff;
+  border-radius: 8px;
+  padding: 1rem;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border-left: 4px solid #ccc;
+}
+
+.vaga.status-notificada {
+  border-left-color: #2f6f4f;
+}
+
+.vaga.status-erro {
+  border-left-color: #b33;
+}
+
+.vaga-cabecalho {
+  display: flex;
+  justify-content: space-between;
+}
+
+.vaga-empresa {
+  color: #555;
+  margin: 0.2rem 0 0.5rem;
+}
+
+.vaga-rodape {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.badge {
+  background: #eee;
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+}
+
+.carregando {
+  text-align: center;
+  color: #666;
+  margin-top: 3rem;
+}
