@@ -16,14 +16,17 @@ SaaS multi-tenant derivado do projeto pessoal `automacao-vagas`: monitora vagas,
 
 ## Fases propostas
 
-### Fase 1 — Fundação multi-tenant
+### Fase 1 — Fundação multi-tenant ✅ concluída
 - Supabase Auth (login/cadastro)
 - Schema com `user_id` em todas as tabelas + RLS real
 - Tela de onboarding: cadastro de currículo-base (formulário estruturado, não upload livre — mais fácil de validar e gerar CV depois) + cargos-alvo + regiões + link do Telegram
+- Testado ponta a ponta com Supabase real
 
-### Fase 2 — Pipeline multi-usuário
-- Worker que itera por usuário ativo (fila simples: tabela `usuarios` + cron que processa em lote, ou migrar pra plataforma com jobs de verdade — Supabase Edge Functions + `pg_cron`, ou Railway/Render com worker dedicado)
-- Reaproveita lógica de busca/score/geração de currículo/notificação já validada no projeto pessoal
+### Fase 2 — Pipeline multi-usuário ✅ concluída (worker construído, falta configurar secrets + testar em produção)
+- `worker/` — reaproveita a lógica de `automacao-vagas` (busca Adzuna+JSearch, score, Gemini, docx+pdf, Telegram com feedback), adaptada pra iterar por usuário ativo (`preferencias.ativo = true` + `telegram_chat_id` vinculado)
+- 1 bot Telegram serve todos os usuários — roteamento por `chat_id` salvo no perfil de cada um
+- GitHub Actions (`worker.yml`, cron 2h) roda o worker usando a **service_role key** (ignora RLS, único jeito de escrever em nome de todo mundo)
+- Falta: cadastrar secrets no GitHub (mesmas do automacao-vagas + `SUPABASE_SERVICE_ROLE_KEY` do projeto VagaMatch), criar bot Telegram dedicado (ou reusar), rodar teste real com usuário de teste
 
 ### Fase 3 — Painel web
 - Dashboard: vagas encontradas, histórico, status de candidatura, editar currículo-base e preferências
