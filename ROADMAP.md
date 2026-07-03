@@ -26,11 +26,13 @@ SaaS multi-tenant derivado do projeto pessoal `automacao-vagas`: monitora vagas,
 - `worker/` — reaproveita a lógica de `automacao-vagas` (busca Adzuna+JSearch, score, Gemini, docx+pdf, Telegram com feedback), adaptada pra iterar por usuário ativo (`preferencias.ativo = true` + `telegram_chat_id` vinculado)
 - 1 bot Telegram serve todos os usuários — roteamento por `chat_id` salvo no perfil de cada um
 - GitHub Actions (`worker.yml`, cron 2h) roda o worker usando a **service_role key** (ignora RLS, único jeito de escrever em nome de todo mundo)
-- Falta: cadastrar secrets no GitHub (mesmas do automacao-vagas + `SUPABASE_SERVICE_ROLE_KEY` do projeto VagaMatch), criar bot Telegram dedicado (ou reusar), rodar teste real com usuário de teste
+- Secrets configurados, bot @Taioque_bot reusado (trocar por bot dedicado quando tiver branding), testado local e na nuvem ✅
 
-### Fase 3 — Painel web
-- Dashboard: vagas encontradas, histórico, status de candidatura, editar currículo-base e preferências
-- React + Vite (stack que você já usa nos outros projetos)
+### Fase 3 — Painel web ✅ concluída
+- Dashboard completo: stats (encontradas/notificadas/candidatadas/descartadas), filtros por status, ações "Me candidatei"/"Descartar" direto no painel, toggle pausar/retomar busca automática
+- Edição de currículo-base e preferências já coberta pelo onboarding (acessível via "Meu perfil")
+- Testado com dados reais (vaga notificada pelo worker) — status/toggle persistem via RLS
+- Falta (fora do escopo da fase): deploy do frontend (Vercel) pra acesso público
 
 ### Fase 4 — Billing / limites
 - Definir: grátis com limite (ex: 1 busca/dia, N vagas/mês) + plano pago sem limite, ou só pago

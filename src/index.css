@@ -142,6 +142,76 @@ button:disabled {
   background: #999;
 }
 
+.painel-busca {
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.cartoes-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.stat {
+  background: #fff;
+  border-radius: 8px;
+  padding: 0.8rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.stat-numero {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2f6f4f;
+}
+
+.stat-label {
+  font-size: 0.78rem;
+  color: #666;
+}
+
+.filtros {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.filtro {
+  background: #e8e8e4;
+  color: #444;
+  padding: 0.35rem 0.9rem;
+}
+
+.filtro.ativo {
+  background: #2f6f4f;
+  color: #fff;
+}
+
+.acao {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.8rem;
+}
+
+.acao.secundaria {
+  background: #b33;
+}
+
+.espaco {
+  flex: 1;
+}
+
 .lista-vagas {
   list-style: none;
   padding: 0;
@@ -164,6 +234,14 @@ button:disabled {
 
 .vaga.status-erro {
   border-left-color: #b33;
+}
+
+.vaga.status-candidatado {
+  border-left-color: #2b6cb0;
+}
+
+.vaga.status-descartada {
+  opacity: 0.6;
 }
 
 .vaga-cabecalho {
