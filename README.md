@@ -2,7 +2,9 @@
 
 SaaS multi-tenant derivado de `automacao-vagas` (projeto pessoal). Cada usuário se cadastra, configura o próprio currículo-base e preferências, e recebe vagas relevantes com currículo ajustado — sistema nunca aplica automaticamente, só notifica.
 
-Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas. **Fase 1 e Fase 2 concluídas** (falta configurar secrets de produção e testar o worker de ponta a ponta).
+Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) pro racional visual
+da landing page. **Fases 1, 2 e 3 concluídas** (falta configurar secrets de produção, testar o
+worker de ponta a ponta em produção, e decidir/implementar billing real).
 
 ## Stack
 
@@ -12,24 +14,36 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas. **Fase 1 e Fase 2 concluí
 ## O que já existe
 
 **Fase 1 — Fundação multi-tenant:**
-- Schema (`supabase/migrations/001_schema.sql` + `002_app_state.sql`): `profiles`, `curriculos`, `preferencias`, `vagas_vistas`, `app_state` — tudo isolado por `user_id` via RLS
+- Schema (`supabase/migrations/`): `profiles`, `curriculos`, `preferencias`, `vagas_vistas`, `app_state` — tudo isolado por `user_id` via RLS
 - Cadastro/login (Supabase Auth)
 - Onboarding: formulário estruturado de currículo + preferências + vínculo do Telegram
 - Dashboard: lista de vagas por usuário, com score/status/feedback
 
 **Fase 2 — Pipeline multi-usuário (`worker/`):**
 - Busca (Adzuna + JSearch opcional) usando os cargos-alvo/regiões de cada usuário ativo
+- **Cache de busca compartilhado por cargo+região+raio entre usuários** — evita 1 request por
+  pessoa na Adzuna/JSearch, crítico pra escalar volume (ver `worker/index.js`)
+- Modo de região por usuário: raio ao redor da própria região, ou Brasil todo (`preferencias.modo_regiao`)
+- Modo de disparo manual via bot (`/buscar`) além do automático a cada ciclo do cron
+- Bot Telegram com comandos `/menu`, `/buscar`, `/regiao` e botões inline
 - Score + dedup por usuário
-- Currículo ajustado via Gemini, construído a partir do currículo estruturado salvo no onboarding (não mais um arquivo fixo)
+- Currículo ajustado via Gemini (resumo profissional forçado a 5 linhas), construído a partir do
+  currículo estruturado salvo no onboarding
 - Notificação por Telegram (docx + pdf, botões de feedback 👍/👎) — **1 bot só, roteado por `telegram_chat_id`** de cada perfil
 - Digest quando há mais de uma vaga nova por usuário
 - Alerta de erro por usuário (e opcionalmente um chat de admin pra falhas fatais)
 
+**Fase 3 — Painel web e landing page:**
+- Landing page pública em `/` (ver [DESIGN.md](./DESIGN.md) e [LANDING_PROMPT.md](./LANDING_PROMPT.md))
+- Dashboard do usuário em `/dashboard`
+- Painel `/admin` (métricas de usuários/assinatura/saúde do sistema) restrito a `profiles.role = 'admin'`
+
 ## O que falta (próximas fases)
 
 - Testar o worker em produção com usuário real (secrets ainda não configurados no GitHub)
-- Painel web mais completo (Fase 3)
-- Billing/limites de uso (Fase 4)
+- Billing real (Stripe/Mercado Pago) — hoje `profiles.assinatura_status` é atualizado manualmente
+  (Fase 4)
+- Definir preço final dos planos (hoje são valores ilustrativos em `src/lib/planos.js`)
 
 ## Setup local — Frontend
 
@@ -39,6 +53,8 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas. **Fase 1 e Fase 2 concluí
 4. Em **Authentication → Sign In / Providers**, decidir se exige confirmação de e-mail (desligar facilita testar)
 5. Copiar `.env.example` → `.env`, preencher `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (a **publishable/anon**, não a secret)
 6. `npm run dev`
+7. Pra acessar `/admin`: depois de criar sua conta normalmente, rode no SQL Editor do Supabase
+   `update public.profiles set role = 'admin' where id = '<seu-user-id>';`
 
 ## Setup local — Worker
 

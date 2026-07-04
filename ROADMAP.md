@@ -32,6 +32,10 @@ SaaS multi-tenant derivado do projeto pessoal `automacao-vagas`: monitora vagas,
 - Dashboard completo: stats (encontradas/notificadas/candidatadas/descartadas), filtros por status, ações "Me candidatei"/"Descartar" direto no painel, toggle pausar/retomar busca automática
 - Edição de currículo-base e preferências já coberta pelo onboarding (acessível via "Meu perfil")
 - Testado com dados reais (vaga notificada pelo worker) — status/toggle persistem via RLS
+- Landing page pública em `/` (design em [DESIGN.md](./DESIGN.md) e [LANDING_PROMPT.md](./LANDING_PROMPT.md))
+- Painel `/admin` — métricas de usuários/assinatura/saúde do sistema, restrito a `role = 'admin'`
+- Busca por região com raio configurável (ou Brasil todo) e disparo manual via bot, ambos
+  configuráveis por botões no Telegram (`/regiao`, `/buscar`)
 - Falta (fora do escopo da fase): deploy do frontend (Vercel) pra acesso público
 
 ### Fase 4 — Billing / limites
@@ -40,4 +44,11 @@ SaaS multi-tenant derivado do projeto pessoal `automacao-vagas`: monitora vagas,
 
 ## Decisão pendente
 
-Por onde começar? Recomendo Fase 1 primeiro (schema + auth) — é a base que trava tudo depois. Sem isolamento de dados via RLS, não dá pra abrir pra ninguém com segurança.
+Fases 1-3 concluídas. Falta decidir, pra iniciar a Fase 4:
+- Gateway de pagamento (Stripe cobre cartão internacional; Mercado Pago é mais familiar pro
+  público BR e aceita Pix/boleto — considerar o método de pagamento que o público de baixa
+  renda mais usa)
+- Preço final dos planos (hoje ilustrativo em `src/lib/planos.js` — ver [DESIGN.md](./DESIGN.md))
+- Deploy do frontend (Vercel) pra acesso público, e migração do worker do GitHub Actions pra
+  um cron dedicado (Railway/Render) quando a base de usuários crescer — ver conversa sobre
+  escala em memória do projeto
