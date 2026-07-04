@@ -14,7 +14,7 @@ export const PLANO_FEATURES = [
 ];
 
 export const PLANO_PLUS_FEATURES = [
-  "Tudo do plano Vaga Certa",
+  "Tudo do plano Match",
   "Mais fontes de vaga cruzadas",
   "Entrega em tempo real, o dia todo",
   "Prioridade em vagas recém-publicadas",

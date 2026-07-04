@@ -3,21 +3,49 @@ import { Link } from "react-router-dom";
 import { PRECOS, PLANO_FEATURES, PLANO_PLUS_FEATURES } from "../lib/planos.js";
 
 const STEPS = [
-  { num: "01", title: "Assine", desc: "Escolhe o plano, ativa em dois minutos. Sem contrato, sem carência." },
+  {
+    num: "01",
+    title: "Assine",
+    desc: "Escolhe o plano, ativa em dois minutos. Sem contrato, sem carência.",
+    accent: "#2e7d5b",
+  },
   {
     num: "02",
     title: "Envie seu currículo",
-    desc: "Manda o PDF ou cola o texto no Telegram. É a única informação que o sistema precisa de você.",
+    desc: "Manda o PDF ou cola o texto no Telegram. É tudo que o sistema precisa de você.",
+    accent: "#2e7d5b",
   },
   {
     num: "03",
     title: "O sistema cruza com as vagas",
     desc: "Região onde você mora + vagas remotas de todo o Brasil, atualizadas o dia inteiro.",
+    accent: "rgba(33,31,28,0.15)",
   },
   {
     num: "04",
     title: "Você recebe pronto pra aplicar",
-    desc: "Currículo formatado pra vaga específica e mensagem de abordagem já escrita, direto no seu Telegram.",
+    desc: "Currículo formatado pra vaga específica e mensagem de abordagem já escrita, no seu Telegram.",
+    accent: "rgba(33,31,28,0.15)",
+  },
+];
+
+const BENEFITS = [
+  {
+    title: "Currículo reformatado por vaga",
+    desc: "Cada envio chega ajustado ao que a vaga pede — palavras-chave, ordem de experiências, ênfase certa.",
+    size: "grande",
+  },
+  {
+    title: "Filtro por região + Brasil todo",
+    desc: "Vagas perto de você e remotas do país inteiro, sem duplicar esforço em cinco sites diferentes.",
+  },
+  {
+    title: "Mensagem de abordagem pronta",
+    desc: "Texto de contato já escrito pra cada vaga. Copiou, colou, aplicou.",
+  },
+  {
+    title: "Tudo no Telegram",
+    desc: "Sem dashboard pra abrir, sem senha pra lembrar. A vaga chega onde você já está.",
   },
 ];
 
@@ -48,6 +76,18 @@ const FAQS = [
   },
 ];
 
+// Ilustrativo — troca por vaga real assim que o worker tiver dado suficiente em produção.
+const TICKER_BASE = [
+  "Analista de Dados · SP",
+  "Dev Front-end Jr · Remoto",
+  "Auxiliar Administrativo · BH",
+  "Designer de Produto · Remoto",
+  "Vendedor Interno · POA",
+  "Analista de RH · Curitiba",
+  "Suporte Técnico · Remoto",
+  "Assistente Financeiro · Recife",
+];
+
 function useReveal() {
   const ref = useRef(null);
   const [revelado, setRevelado] = useState(false);
@@ -59,7 +99,7 @@ function useReveal() {
       ([entry]) => {
         if (entry.isIntersecting) setRevelado(true);
       },
-      { threshold: 0.15 }
+      { threshold: 0.12 }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -84,6 +124,7 @@ export function Landing() {
 
   const preco = billing === "monthly" ? PRECOS.monthlyPrice : PRECOS.annualMonthlyEquivalent;
   const precoPlus = billing === "monthly" ? PRECOS.monthlyPricePlus : PRECOS.annualMonthlyEquivalentPlus;
+  const tickerItems = [...TICKER_BASE, ...TICKER_BASE];
 
   const revelar = (revelado) => ({
     opacity: revelado ? 1 : 0,
@@ -92,118 +133,124 @@ export function Landing() {
 
   return (
     <div className="lp">
-      <nav className="lp-nav">
-        <div className="lp-logo">
-          <span className="lp-logo-marca" />
-          VagaMatch
-        </div>
-        <a href="#planos" className="lp-botao-escuro">
-          Ativar minhas vagas
-        </a>
-      </nav>
+      <div className="lp-hero-bloco">
+        <nav className="lp-nav">
+          <div className="lp-logo">
+            <span className="lp-logo-marca" />
+            VagaMatch
+          </div>
+          <a href="#planos" className="lp-botao-claro">
+            Ativar minhas vagas
+          </a>
+        </nav>
 
-      <section className="lp-hero">
-        <div className="lp-hero-texto">
+        <section className="lp-hero">
           <div className="lp-status">
             <span className="lp-status-ponto" />
             <span>rodando agora para quem já assinou</span>
           </div>
           <h1 className="lp-titulo">
-            As vagas encontram você.
-            <br />
-            Não o contrário.
+            Procurar emprego
+            <br />é trabalho de robô.
           </h1>
-          <p className="lp-subtitulo">
-            Você assina, manda o currículo, e passa a receber vagas da sua região e do Brasil todo direto no
-            Telegram — já com currículo formatado e mensagem de abordagem pronta. Sem abrir site, sem
-            preencher formulário.
-          </p>
-          <div className="lp-hero-cta">
-            <a href="#planos" className="lp-botao-escuro">
-              Ativar minhas vagas
-            </a>
-            <span className="lp-hero-nota">cancele quando quiser, sem burocracia</span>
-          </div>
-        </div>
-
-        <div className="lp-hero-visual">
-          <div className="lp-chat">
-            <div className="lp-chat-topo">
-              <div className="lp-chat-avatar">MV</div>
-              <div>
-                <div className="lp-chat-nome">VagaMatch bot</div>
-                <div className="lp-chat-status">online</div>
+          <div className="lp-hero-inferior">
+            <div>
+              <p className="lp-subtitulo">
+                Assine, mande o currículo, e receba no Telegram vagas da sua região e do Brasil todo — com
+                currículo já formatado e mensagem de abordagem pronta pra cada uma.
+              </p>
+              <div className="lp-hero-cta">
+                <a href="#planos" className="lp-botao-verde">
+                  Ativar minhas vagas
+                </a>
+                <span className="lp-hero-nota">cancele quando quiser</span>
               </div>
             </div>
-            <div className="lp-chat-corpo">
-              <div className="lp-chat-bolha-enviada">currículo recebido ✓</div>
-              <div className="lp-chat-vaga">
-                <div className="lp-chat-vaga-tag">NOVA VAGA · SÃO PAULO, SP</div>
-                <div className="lp-chat-vaga-titulo">Analista de Dados Pleno</div>
-                <div className="lp-chat-vaga-info">Vaga híbrida · publicada há 40min</div>
-                <div className="lp-chat-anexo">📎 currículo_ajustado.pdf</div>
-                <div className="lp-chat-abordagem">
-                  "Vi a vaga de Analista de Dados e quero me candidatar — trago experiência direta com SQL e
-                  dashboards que se encaixa no que vocês pedem."
+
+            <div className="lp-hero-visual">
+              <div className="lp-chat">
+                <div className="lp-chat-topo">
+                  <div className="lp-chat-avatar">VM</div>
+                  <div>
+                    <div className="lp-chat-nome">VagaMatch bot</div>
+                    <div className="lp-chat-status">online</div>
+                  </div>
+                </div>
+                <div className="lp-chat-corpo">
+                  <div className="lp-chat-bolha-enviada">currículo recebido ✓</div>
+                  <div className="lp-chat-vaga">
+                    <div className="lp-chat-vaga-tag">NOVA VAGA · SÃO PAULO, SP</div>
+                    <div className="lp-chat-vaga-titulo">Analista de Dados Pleno</div>
+                    <div className="lp-chat-vaga-info">Híbrida · publicada há 40min</div>
+                    <div className="lp-chat-anexo">📎 currículo_ajustado.pdf</div>
+                    <div className="lp-chat-abordagem">
+                      "Vi a vaga de Analista de Dados e quero me candidatar — trago experiência direta com
+                      SQL e dashboards."
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
+        </section>
+
+        <div className="lp-ticker-faixa">
+          <div className="lp-ticker">
+            {tickerItems.map((t, i) => (
+              <span key={i}>
+                <span className="lp-ticker-ponto">●</span>&nbsp; {t}
+              </span>
+            ))}
+          </div>
         </div>
-      </section>
+      </div>
 
       <section ref={stepsRef} style={revelar(stepsRevelado)} className="lp-secao lp-transicao">
         <div className="lp-secao-cabecalho">
           <div className="lp-etiqueta">COMO FUNCIONA</div>
-          <h2 className="lp-h2">Quatro passos. Depois disso, é o sistema que trabalha.</h2>
+          <h2 className="lp-h2">Você faz duas coisas. O sistema faz o resto.</h2>
         </div>
-        <div className="lp-passos">
-          {STEPS.map((step) => (
-            <div className="lp-passo" key={step.num}>
-              <div className="lp-passo-num">{step.num}</div>
-              <div>
-                <div className="lp-passo-titulo">{step.title}</div>
-                <div className="lp-passo-desc">{step.desc}</div>
+        <div className="lp-passos-zig">
+          {STEPS.map((step, i) => (
+            <div
+              className={i % 2 === 0 ? "lp-passo-linha esquerda" : "lp-passo-linha direita"}
+              key={step.num}
+            >
+              <div className="lp-passo-zig" style={{ borderLeftColor: step.accent }}>
+                <div className="lp-passo-num">{step.num}</div>
+                <div>
+                  <div className="lp-passo-titulo">{step.title}</div>
+                  <div className="lp-passo-desc">{step.desc}</div>
+                </div>
               </div>
             </div>
           ))}
         </div>
       </section>
 
-      <section ref={benefitsRef} style={revelar(benefitsRevelado)} className="lp-secao lp-transicao">
-        <div className="lp-secao-cabecalho">
-          <div className="lp-etiqueta">O QUE VOCÊ RECEBE</div>
-          <h2 className="lp-h2">Não é só uma lista de vagas.</h2>
-        </div>
-        <div className="lp-beneficios">
-          <div className="lp-beneficio-grande">
-            <div className="lp-beneficio-grande-titulo">
-              Currículo reformatado automaticamente para cada vaga.
-            </div>
-            <div className="lp-beneficio-grande-texto">
-              Nada de um currículo genérico pra tudo. Cada envio chega ajustado ao que a vaga pede —
-              palavras-chave, ordem de experiências, ênfase certa.
-            </div>
+      <section ref={benefitsRef} style={revelar(benefitsRevelado)} className="lp-secao lp-transicao lp-beneficios-secao">
+        <div className="lp-beneficios-grid">
+          <div className="lp-beneficios-titulo-col">
+            <div className="lp-etiqueta">O QUE VOCÊ RECEBE</div>
+            <h2 className="lp-h2 lp-beneficios-titulo">Não é lista de vagas. É a candidatura pronta.</h2>
           </div>
-          <div className="lp-beneficios-pequenos">
-            <div className="lp-beneficio-card">
-              <div className="lp-beneficio-card-titulo">Filtro por região + Brasil todo</div>
-              <div className="lp-beneficio-card-texto">
-                Vagas perto de você e remotas do país inteiro, sem duplicar esforço em cinco sites diferentes.
+          <div className="lp-beneficios-lista">
+            {BENEFITS.map((b) => (
+              <div className="lp-beneficio-item" key={b.title}>
+                <div className={b.size === "grande" ? "lp-beneficio-item-titulo grande" : "lp-beneficio-item-titulo"}>
+                  {b.title}
+                </div>
+                <div className="lp-beneficio-item-desc">{b.desc}</div>
               </div>
-            </div>
-            <div className="lp-beneficio-card">
-              <div className="lp-beneficio-card-titulo">Mensagem de abordagem pronta</div>
-              <div className="lp-beneficio-card-texto">Texto de contato já escrito pra cada vaga. Copiou, colou, aplicou.</div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       <section ref={proofRef} style={revelar(proofRevelado)} className="lp-secao lp-transicao lp-prova">
         <div className="lp-prova-conteudo">
-          <div className="lp-etiqueta">O SISTEMA EM NÚMEROS</div>
-          <div className="lp-stats">
+          <div className="lp-etiqueta lp-etiqueta-clara">O SISTEMA EM NÚMEROS</div>
+          <div className="lp-stats-grid">
             {STATS.map((stat) => (
               <div className="lp-stat" key={stat.label}>
                 <div className="lp-stat-valor">{stat.value}</div>
@@ -216,8 +263,10 @@ export function Landing() {
 
       <section id="planos" ref={pricingRef} style={revelar(pricingRevelado)} className="lp-secao lp-transicao">
         <div className="lp-pricing-cabecalho">
-          <div className="lp-etiqueta">PLANOS</div>
-          <h2 className="lp-h2">Um valor. Sem letra miúda.</h2>
+          <div>
+            <div className="lp-etiqueta">PLANOS</div>
+            <h2 className="lp-h2">Um valor. Sem letra miúda.</h2>
+          </div>
           <div className="lp-toggle">
             <button
               className={billing === "monthly" ? "lp-toggle-opcao ativo" : "lp-toggle-opcao"}
@@ -236,7 +285,7 @@ export function Landing() {
 
         <div className="lp-planos">
           <div className="lp-plano">
-            <div className="lp-plano-nome">Vaga Certa</div>
+            <div className="lp-plano-nome">Match</div>
             <div className="lp-plano-subtitulo">pra quem quer testar sem compromisso</div>
             <div className="lp-plano-preco">
               <span className="lp-plano-preco-valor">{fmt(preco)}</span>
@@ -257,16 +306,16 @@ export function Landing() {
 
           <div className="lp-plano lp-plano-destaque">
             <div className="lp-plano-selo">RECOMENDADO PRA QUEM ESTÁ NA BUSCA ATIVA</div>
-            <div className="lp-plano-nome">Vaga Certa Plus</div>
-            <div className="lp-plano-subtitulo">mais fontes de vaga, mais rápido</div>
+            <div className="lp-plano-nome lp-plano-nome-clara">Match Plus</div>
+            <div className="lp-plano-subtitulo lp-plano-subtitulo-clara">mais fontes de vaga, mais rápido</div>
             <div className="lp-plano-preco">
-              <span className="lp-plano-preco-valor">{fmt(precoPlus)}</span>
-              <span className="lp-plano-preco-periodo">/mês</span>
+              <span className="lp-plano-preco-valor lp-plano-preco-valor-clara">{fmt(precoPlus)}</span>
+              <span className="lp-plano-preco-periodo lp-plano-preco-periodo-clara">/mês</span>
             </div>
             <div className="lp-plano-features">
               {PLANO_PLUS_FEATURES.map((f) => (
-                <div className="lp-plano-feature" key={f}>
-                  <span>—</span>
+                <div className="lp-plano-feature lp-plano-feature-clara" key={f}>
+                  <span className="lp-plano-feature-marca-clara">—</span>
                   {f}
                 </div>
               ))}
@@ -304,16 +353,22 @@ export function Landing() {
 
       <section className="lp-cta-final">
         <div>
-          <h2 className="lp-cta-final-titulo">Pare de procurar. Deixe a vaga te achar.</h2>
-          <a href="#planos" className="lp-cta-final-botao">
+          <h2 className="lp-cta-final-titulo">
+            Pare de procurar.
+            <br />
+            <span className="lp-cta-final-destaque">Deixe a vaga te achar.</span>
+          </h2>
+          <a href="#planos" className="lp-botao-claro">
             Ativar minhas vagas
           </a>
         </div>
       </section>
 
       <footer className="lp-footer">
-        <div className="lp-footer-marca">VagaMatch</div>
-        <div className="lp-footer-nota">© 2026 VagaMatch. Sem spam, sem rodeio.</div>
+        <div className="lp-footer-conteudo">
+          <div className="lp-footer-marca">VagaMatch</div>
+          <div className="lp-footer-nota">© 2026 VagaMatch. Sem spam, sem rodeio.</div>
+        </div>
       </footer>
     </div>
   );

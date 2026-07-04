@@ -1,60 +1,71 @@
 # VagaMatch — Descritivo visual (Landing Page + Admin)
 
-Documento pra avaliação antes de virar visual final. Cobre decisão de cor, hierarquia,
-copy e o "porquê" de cada escolha — pensado pra conversão (usuário virar assinante).
+A landing foi desenhada no claude.ai/design (2 iterações) e portada pra React aqui no
+projeto. Este documento registra a versão final implementada e o porquê de cada escolha.
 
 ## Público-alvo e tom
 
 Pessoa de baixa renda buscando emprego, que não tem paciência/tempo pra ficar
-navegando em painel. Tom: direto, sem jargão corporativo, foco no benefício
-concreto ("vaga chega pronta no seu Telegram"), não no "recurso técnico".
+navegando em painel. Tom: direto, sem jargão corporativo, leve humor seco, foco no
+benefício concreto ("vaga chega pronta no seu Telegram"), não no "recurso técnico".
 
 ## Paleta
 
 | Cor | Hex | Uso |
 |---|---|---|
-| Verde escuro | `#1f4a37` | fundo do hero (gradiente), títulos de seção |
-| Verde principal | `#2f6f4f` | CTA secundário, cards, números, botões (já usado no dashboard existente) |
-| Amarelo/dourado | `#ffb703` | **botão principal "Criar conta grátis"** — única cor quente da página, contraste alto de propósito pra puxar o olho direto pro CTA |
-| Fundo geral | `#f7f7f5` / `#f0efe9` | neutro, deixa os cards brancos "flutuarem" |
-| Vermelho | `#b33` | só erro/alerta (admin, formulários) |
+| Grafite quase-preto | `#1a1815` | hero, faixa de números, cartão de plano em destaque, CTA final, footer |
+| Verde-sinal | `#2e7d5b` | cor de destaque única — CTA, bordas de foco, ícones |
+| Verde claro (sobre fundo escuro) | `#4fa87e` | mesma função do verde-sinal, ajustado de contraste quando o fundo é escuro |
+| Bege quente (fundo geral) | `#f6f3ee` | fundo das seções claras |
+| Bege escuro | `#efe9de` | fundo da seção de benefícios (rompe a monotonia entre dois blocos claros) |
 
-Por que amarelo no botão principal: é a única cor quente em toda a paleta verde/neutra —
-o olho vai direto nele. Verde sozinho (botão secundário) não compete por atenção.
+Só uma cor de destaque saturada (verde) em cima de uma escala grafite/bege — sem
+gradiente roxo/azul, sem paleta "SaaS genérica". O contraste alto entre blocos escuros
+e claros a cada seção é o que dá o ritmo "editorial" em vez de "página achatada".
 
 ## Landing page — estrutura e porquê
 
-1. **Hero (fundo verde gradiente escuro→claro, tela cheia)**
-   - Título direto no benefício: "Vaga certa, direto no seu Telegram." (não fala de
-     "plataforma", "sistema" — fala do resultado)
-   - Subtítulo mata 3 objeções em uma frase: não precisa acessar site / currículo
-     ajustado automaticamente / chega no Telegram
-   - Dois CTAs: primário (amarelo, "Criar conta grátis") e secundário (contorno
-     transparente, "Já tenho conta") — não empurra os dois com o mesmo peso visual
+1. **Hero escuro (nav + hero + faixa de vagas rolando, tudo em `#1a1815`)**
+   - Headline: "Procurar emprego é trabalho de robô." — frase de efeito, não fala de
+     "revolucione sua carreira"; humor seco batendo com o tom pedido
+   - Mockup de conversa real no Telegram ao lado — vende a promessa mais que qualquer
+     ilustração abstrata
+   - Faixa de vagas rolando (marquee) embaixo do hero passa sensação de "sistema vivo,
+     rodando agora" — **conteúdo ilustrativo**, trocar por vaga real do worker assim
+     que tiver volume em produção
 
-2. **Como funciona (3 passos numerados)**
-   - Números em círculo verde — reduz ansiedade de "vai ser complicado configurar"
-   - 3 passos só, cada um uma frase — nada de explicação técnica de RLS/worker/etc
+2. **Como funciona — passos em zigue-zague**
+   - Alternando esquerda/direita a cada passo (não é lista vertical reta) — foge do
+     "card idêntico repetido"; números grandes e finos (estilo editorial)
 
-3. **Por que usar (grid de 4 benefícios)**
-   - Cada item com borda esquerda verde (recorrente com resto do site) — reforça
-     confiança ("nunca candidata sozinho" ataca o medo #1 de quem já usou bot ruim)
+3. **O que você recebe — lista editorial**
+   - Título fixo (sticky) do lado esquerdo, itens à direita com tamanho de fonte
+     variado (primeiro maior) — hierarquia real, não ícone+título+parágrafo repetido
 
-4. **Footer CTA**
-   - Repete o call-to-action no fim — quem leu tudo e ainda não converteu, essa é
-     a segunda chance
+4. **Prova em números — fundo escuro**
+   - Rompe o padrão claro→claro criando ritmo de alternância; números grandes como
+     elemento de design, não card de estatística genérico
+   - **Conteúdo ilustrativo** (11.400+ vagas, 60+ fontes) — mesma ressalva do marquee
+
+5. **Planos — "Match" / "Match Plus"**
+   - Nomes curtos, ligados ao nome do produto (em vez de "Vaga Certa")
+   - Cartão recomendado com fundo escuro (não a badge "MAIS POPULAR" clichê) — o
+     próprio contraste de cor já comunica destaque
+   - **Preço ilustrativo** — ver `src/lib/planos.js`, billing real ainda não integrado
+
+6. **CTA final em duas cores**
+   - "Pare de procurar." (branco) + "Deixe a vaga te achar." (verde) — reforça a
+     promessa central uma última vez antes do footer
 
 ## O que falta decidir (não é técnico, é decisão de negócio/copy)
 
-- **Prova social**: sem depoimento/número de vagas encontradas ainda (não temos
-  dado real de produção pra colocar "+500 vagas encontradas" sem mentir).
-  Quando tiver 1-2 casos reais, adiciono seção de depoimento — converte muito
-  mais que qualquer benefício listado.
-- **Preço**: hoje não aparece nenhum valor na landing (plano grátis x pago ainda
-  não está definido — Fase 4 do ROADMAP). Quando decidir o modelo de cobrança,
-  a landing precisa de uma seção de planos.
+- **Prova social real**: números da seção 4 e vagas do marquee (seção 1) são
+  ilustrativos. Quando tiver dado real de produção, troca os dois — depoimento de
+  usuário real converte mais que qualquer número ilustrativo.
+- **Preço final**: hoje é valor de exemplo em `src/lib/planos.js` (billing real é
+  Fase 4 do ROADMAP).
 - **Vídeo/gif do fluxo real** (bot mandando vaga+currículo no Telegram) converte
-  mais que texto — sugiro gravar uma vez que o worker estiver rodando em produção.
+  mais que o mockup estático do hero — gravar assim que o worker rodar em produção.
 
 ## Admin — estrutura e porquê
 
@@ -68,7 +79,8 @@ o olho vai direto nele. Verde sozinho (botão secundário) não compete por aten
 
 ## Arquivos
 
-- `src/pages/Landing.jsx` + `.landing*` em `src/index.css`
+- `src/pages/Landing.jsx` + classes `.lp-*` em `src/index.css`
+- `src/lib/planos.js` — preços e features dos planos, isolados do componente
 - `src/pages/Admin.jsx` + `.admin`/`.card*` em `src/index.css`
 - Rotas: `/` (landing, pública), `/dashboard` (usuário, protegida), `/admin`
   (só role=admin, protegida por `RotaAdmin.jsx`)
