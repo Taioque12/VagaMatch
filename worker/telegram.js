@@ -139,6 +139,10 @@ export async function enviarMenu(chatId) {
   });
 }
 
+export async function enviarMensagem(chatId, texto) {
+  await chamarApi("sendMessage", { chat_id: chatId, text: texto });
+}
+
 export async function enviarMenuRegiao(chatId) {
   await chamarApi("sendMessage", {
     chat_id: chatId,

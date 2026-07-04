@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
+import { ENV } from "../lib/env.js";
 
 const linhas = (texto) =>
   texto
@@ -42,7 +43,9 @@ export function Onboarding() {
   // Perfil
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [localizacao, setLocalizacao] = useState("");
-  const [telegramChatId, setTelegramChatId] = useState("");
+  const [telegramVinculado, setTelegramVinculado] = useState(false);
+  const [conectando, setConectando] = useState(false);
+  const [erroTelegram, setErroTelegram] = useState(null);
 
   useEffect(() => {
     if (!session) return;
@@ -57,7 +60,7 @@ export function Onboarding() {
       if (perfil) {
         setNomeCompleto(perfil.nome_completo ?? "");
         setLocalizacao(perfil.localizacao ?? "");
-        setTelegramChatId(perfil.telegram_chat_id ?? "");
+        setTelegramVinculado(Boolean(perfil.telegram_chat_id));
       }
       if (curriculo) {
         setResumoProfissional(curriculo.resumo_profissional ?? "");
@@ -101,6 +104,36 @@ export function Onboarding() {
     setExperiencias((prev) => prev.filter((_, i) => i !== idx));
   }
 
+  async function conectarTelegram() {
+    setConectando(true);
+    setErroTelegram(null);
+    try {
+      // Token gerado server-side (security definer) — o cliente nunca escolhe o valor.
+      const { data: token, error } = await supabase.rpc("gerar_token_telegram");
+      if (error) throw error;
+      window.open(
+        `https://t.me/${ENV.telegramBotUsername}?start=${token}`,
+        "_blank",
+        "noopener"
+      );
+    } catch (e) {
+      setErroTelegram("Não foi possível gerar o link de conexão. Tente de novo.");
+    } finally {
+      setConectando(false);
+    }
+  }
+
+  async function verificarVinculo() {
+    const { data } = await supabase
+      .from("profiles")
+      .select("telegram_chat_id")
+      .eq("id", session.user.id)
+      .maybeSingle();
+    const ok = Boolean(data?.telegram_chat_id);
+    setTelegramVinculado(ok);
+    if (!ok) setErroTelegram("Ainda não recebemos a conexão. Toque em Iniciar na conversa com o bot e verifique de novo.");
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSalvando(true);
@@ -111,11 +144,11 @@ export function Onboarding() {
     try {
       const { error: e1 } = await supabase
         .from("profiles")
+        // A migration 006 restringe o grant de update a estas duas colunas — incluir
+        // updated_at aqui faria o update falhar por falta de privilégio na coluna.
         .update({
           nome_completo: nomeCompleto,
           localizacao,
-          telegram_chat_id: telegramChatId || null,
-          updated_at: new Date().toISOString(),
         })
         .eq("id", userId);
       if (e1) throw e1;
@@ -185,14 +218,27 @@ export function Onboarding() {
               placeholder="Cidade, UF"
             />
           </label>
-          <label>
-            Telegram Chat ID
-            <input
-              value={telegramChatId}
-              onChange={(e) => setTelegramChatId(e.target.value)}
-              placeholder="Fale com @userinfobot no Telegram pra pegar o seu"
-            />
-          </label>
+          <div className="campo">
+            <label>Telegram</label>
+            {telegramVinculado ? (
+              <p className="nota nota-ok">✅ Telegram conectado — suas vagas chegam lá.</p>
+            ) : (
+              <>
+                <p className="nota">
+                  Suas vagas e currículos chegam pelo Telegram. Um clique conecta:
+                </p>
+                <div className="acoes-inline">
+                  <button type="button" onClick={conectarTelegram} disabled={conectando}>
+                    {conectando ? "Gerando link..." : "Conectar Telegram"}
+                  </button>
+                  <button type="button" className="secundario" onClick={verificarVinculo}>
+                    Já conectei — verificar
+                  </button>
+                </div>
+                {erroTelegram && <p className="erro">{erroTelegram}</p>}
+              </>
+            )}
+          </div>
         </section>
 
         <section>

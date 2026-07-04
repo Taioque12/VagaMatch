@@ -18,7 +18,6 @@ import { gerarCurriculo } from "./curriculo.js";
 import { gerarDocx } from "./docx.js";
 import { gerarPdf } from "./pdf.js";
 import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
-import { processarFeedback } from "./feedback.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(here, "output");
@@ -142,12 +141,6 @@ async function main() {
   ]);
 
   mkdirSync(OUT_DIR, { recursive: true });
-
-  try {
-    await processarFeedback();
-  } catch (e) {
-    console.error(`Falha ao processar feedback: ${e.message}`);
-  }
 
   const usuarios = await listarUsuariosAtivos();
   console.log(`Usuários ativos com Telegram vinculado: ${usuarios.length}`);
