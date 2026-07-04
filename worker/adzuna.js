@@ -1,12 +1,15 @@
 import { env } from "./config.js";
 
 // Busca vagas na Adzuna (país: BR). Docs: https://developer.adzuna.com/docs/search
-export async function buscarVagas({ termo, regiao }) {
+export async function buscarVagas({ termo, regiao, raioKm }) {
   const url = new URL("https://api.adzuna.com/v1/api/jobs/br/search/1");
   url.searchParams.set("app_id", env.adzunaAppId);
   url.searchParams.set("app_key", env.adzunaAppKey);
   url.searchParams.set("what", termo);
-  if (regiao) url.searchParams.set("where", regiao);
+  if (regiao) {
+    url.searchParams.set("where", regiao);
+    if (raioKm) url.searchParams.set("distance", String(raioKm));
+  }
   url.searchParams.set("results_per_page", "20");
   url.searchParams.set("content-type", "application/json");
 

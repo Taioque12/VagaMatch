@@ -122,6 +122,33 @@ export async function buscarAtualizacoes(offset) {
   return chamarApi("getUpdates", {
     offset: offset ? Number(offset) + 1 : undefined,
     timeout: 0,
-    allowed_updates: ["callback_query"],
+    allowed_updates: ["callback_query", "message"],
+  });
+}
+
+export async function enviarMenu(chatId) {
+  await chamarApi("sendMessage", {
+    chat_id: chatId,
+    text: "O que você quer fazer?",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🔍 Buscar vagas agora", callback_data: "busca:agora" }],
+        [{ text: "📍 Configurar região", callback_data: "menu:regiao" }],
+      ],
+    },
+  });
+}
+
+export async function enviarMenuRegiao(chatId) {
+  await chamarApi("sendMessage", {
+    chat_id: chatId,
+    text: "Buscar vaga onde?",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "📍 Minha região (raio 50km)", callback_data: "modo:regiao:50" }],
+        [{ text: "📍 Minha região (raio 100km)", callback_data: "modo:regiao:100" }],
+        [{ text: "🌎 Brasil todo", callback_data: "modo:brasil:0" }],
+      ],
+    },
   });
 }
