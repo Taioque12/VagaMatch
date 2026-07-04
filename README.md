@@ -38,12 +38,21 @@ worker de ponta a ponta em produção, e decidir/implementar billing real).
 - Dashboard do usuário em `/dashboard`
 - Painel `/admin` (métricas de usuários/assinatura/saúde do sistema) restrito a `profiles.role = 'admin'`
 
-## O que falta (próximas fases)
+## Próximos passos (em ordem sugerida)
 
-- Testar o worker em produção com usuário real (secrets ainda não configurados no GitHub)
-- Billing real (Stripe/Mercado Pago) — hoje `profiles.assinatura_status` é atualizado manualmente
-  (Fase 4)
-- Definir preço final dos planos (hoje são valores ilustrativos em `src/lib/planos.js`)
+1. **Configurar secrets de produção no GitHub** (Settings → Secrets and variables → Actions) e
+   testar o worker de ponta a ponta com um usuário real — hoje só foi validado local
+2. **Deploy do frontend** (Vercel) pra landing/cadastro ficarem acessíveis publicamente
+3. **Decidir gateway de pagamento** — Stripe (cartão internacional) vs Mercado Pago (Pix/boleto,
+   mais familiar pro público de baixa renda) — ver Fase 4 do [ROADMAP.md](./ROADMAP.md)
+4. **Definir preço final dos planos** (hoje ilustrativo em `src/lib/planos.js`) e implementar o
+   billing real — `profiles.assinatura_status` hoje é atualizado manualmente no Supabase
+5. **Trocar conteúdo ilustrativo da landing por dado real**: números da seção "sistema em
+   números" e a faixa de vagas rolando no hero (marquee) — ver ressalvas em [DESIGN.md](./DESIGN.md)
+6. **Migrar o worker do GitHub Actions** pra um cron dedicado (Railway/Render) quando a base de
+   usuários crescer — código já é "migration-ready", só troca o gatilho do cron
+7. Gravar vídeo/gif do fluxo real (bot mandando vaga+currículo no Telegram) pra landing, quando
+   tiver o worker rodando em produção
 
 ## Setup local — Frontend
 
