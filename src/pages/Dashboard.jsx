@@ -25,6 +25,7 @@ export function Dashboard() {
   const [filtro, setFiltro] = useState("todas");
   const [buscaAtiva, setBuscaAtiva] = useState(null);
   const [salvandoAtivo, setSalvandoAtivo] = useState(false);
+  const [ehAdmin, setEhAdmin] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -47,6 +48,13 @@ export function Dashboard() {
       .eq("user_id", userId)
       .maybeSingle()
       .then(({ data }) => setBuscaAtiva(data?.ativo ?? true));
+
+    supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", userId)
+      .maybeSingle()
+      .then(({ data }) => setEhAdmin(data?.role === "admin"));
   }, [session]);
 
   const stats = useMemo(() => {
@@ -102,6 +110,7 @@ export function Dashboard() {
         <h1>VagaMatch</h1>
         <nav>
           <Link to="/onboarding">Meu perfil</Link>
+          {ehAdmin && <Link to="/admin">Painel admin</Link>}
           <button onClick={sair}>Sair</button>
         </nav>
       </header>
