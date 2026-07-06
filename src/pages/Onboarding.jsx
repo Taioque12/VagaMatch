@@ -5,18 +5,7 @@ import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 import { extrairDadosCurriculo } from "../lib/gemini.js";
-
-const linhas = (texto) =>
-  texto
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-const csv = (texto) =>
-  texto
-    .split(",")
-    .map((l) => l.trim())
-    .filter(Boolean);
+import { linhas, csv } from "../lib/parsing.js";
 
 const vazioExperiencia = () => ({ cargo: "", empresa: "", periodo: "", bullets: "" });
 
