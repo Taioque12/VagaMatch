@@ -152,16 +152,16 @@ async function main() {
   }
 
   const TAMANHO_LOTE = 50;
-  const cursorAtual = Number(await getState("worker_user_offset")) || 0;
-  console.log(`Buscando usuários a partir do offset: ${cursorAtual}`);
+  const cursorAtual = (await getState("worker_user_cursor")) || null;
+  console.log(`Buscando usuários a partir do cursor: ${cursorAtual ?? "(início)"}`);
 
   const usuarios = await listarUsuariosAtivos(TAMANHO_LOTE, cursorAtual);
   console.log(`Lote atual: ${usuarios.length} usuário(s) encontrados com Telegram vinculado.`);
 
   if (usuarios.length === 0) {
     // Chegou no fim da lista (ou não tem ninguém). Reseta para a próxima rodada!
-    console.log("Fim da lista de usuários. Resetando cursor para 0.");
-    await setState("worker_user_offset", 0);
+    console.log("Fim da lista de usuários. Resetando cursor para o início.");
+    await setState("worker_user_cursor", "");
     return;
   }
 
@@ -192,10 +192,12 @@ async function main() {
   }
 
   console.log(`Lote processado. ${totalProcessadas} vaga(s) notificada(s), ${totalFalhas} falha(s) no total.`);
-  
-  // Avança o cursor para o próximo lote (daqui a 10 min, por exemplo)
-  await setState("worker_user_offset", cursorAtual + TAMANHO_LOTE);
-  console.log(`Próximo offset definido para: ${cursorAtual + TAMANHO_LOTE}`);
+
+  // Avança o cursor pro último user_id deste lote (não pelo tamanho do lote — ver comentário
+  // em listarUsuariosAtivos sobre por que offset numérico não é seguro aqui).
+  const ultimoUserId = usuarios[usuarios.length - 1].pref.user_id;
+  await setState("worker_user_cursor", ultimoUserId);
+  console.log(`Próximo cursor definido para: ${ultimoUserId}`);
 }
 
 main().catch(async (e) => {
