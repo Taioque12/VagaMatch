@@ -105,18 +105,22 @@ export function Dashboard() {
   }
 
   return (
-    <div className="dashboard">
-      <header className="topo">
-        <h1>VagaMatch</h1>
-        <nav>
+    <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <nav className="lp-nav">
+        <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
+          <span className="lp-logo-marca" />
+          VagaMatch
+        </Link>
+        <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
           <div className="user-info">
             <span className="user-email">{session?.user?.email}</span>
           </div>
-          <Link to="/onboarding">Meu perfil</Link>
-          {ehAdmin && <Link to="/admin">Painel admin</Link>}
+          <Link to="/onboarding" className="lp-botao-claro">Meu perfil</Link>
+          {ehAdmin && <Link to="/admin" className="lp-botao-claro">Painel admin</Link>}
           <button className="btn-sair" onClick={sair}>Sair</button>
-        </nav>
-      </header>
+        </div>
+      </nav>
+      <div className="dashboard">
 
       <div className="painel-busca">
         <div>
@@ -209,6 +213,7 @@ export function Dashboard() {
           </li>
         ))}
       </ul>
+      </div>
     </div>
   );
 }
