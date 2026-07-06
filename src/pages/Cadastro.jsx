@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 export function Cadastro() {
   const [email, setEmail] = useState("");
@@ -31,11 +32,12 @@ export function Cadastro() {
   if (sucesso) {
     return (
       <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        <nav className="lp-nav" style={{ justifyContent: 'center', padding: '32px' }}>
+        <nav className="lp-nav" style={{ justifyContent: 'space-between', padding: '32px' }}>
           <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
             <span className="lp-logo-marca" />
             VagaMatch
           </Link>
+          <ThemeToggle />
         </nav>
         <div className="tela-auth" style={{ textAlign: "center" }}>
           <h1 style={{ marginBottom: "1rem" }}>Confirme seu e-mail</h1>
@@ -47,11 +49,12 @@ export function Cadastro() {
 
   return (
     <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav className="lp-nav" style={{ justifyContent: 'center', padding: '32px' }}>
+      <nav className="lp-nav" style={{ justifyContent: 'space-between', padding: '32px' }}>
         <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
+        <ThemeToggle />
       </nav>
       <div className="tela-auth">
         <h1 style={{ textAlign: "center", marginBottom: "1.5rem" }}>Criar conta</h1>

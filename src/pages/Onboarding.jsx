@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
+import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 import { extrairDadosCurriculo } from "../lib/gemini.js";
 
@@ -220,6 +221,7 @@ export function Onboarding() {
           VagaMatch
         </Link>
         <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+          <ThemeToggle />
           <Link to="/dashboard" className="lp-botao-claro">
             Ir para Vagas
           </Link>

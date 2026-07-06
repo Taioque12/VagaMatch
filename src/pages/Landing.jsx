@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { PRECOS, PLANO_FEATURES, PLANO_PLUS_FEATURES } from "../lib/planos.js";
 
 const STEPS = [
@@ -135,12 +136,13 @@ export function Landing() {
     <div className="lp">
       <div className="lp-hero-bloco">
         <nav className="lp-nav">
-          <div className="lp-logo">
+          <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
             <span className="lp-logo-marca" />
             VagaMatch
-          </div>
+          </Link>
           <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-            <Link to="/login" style={{ color: "#fff", textDecoration: "none", fontSize: "0.9rem", fontWeight: "500" }}>
+            <ThemeToggle />
+            <Link to="/login" style={{ color: "var(--text-main)", textDecoration: "none", fontSize: "0.9rem", fontWeight: "500" }}>
               Entrar
             </Link>
             <a href="#planos" className="lp-botao-claro">

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
+import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 const STATUS_LABEL = {
   descoberta: "Descoberta",
@@ -112,6 +113,7 @@ export function Dashboard() {
           VagaMatch
         </Link>
         <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
+          <ThemeToggle />
           <div className="user-info">
             <span className="user-email">{session?.user?.email}</span>
           </div>

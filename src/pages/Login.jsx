@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 export function Login() {
   const [email, setEmail] = useState("");
@@ -24,11 +24,12 @@ export function Login() {
 
   return (
     <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav className="lp-nav" style={{ justifyContent: 'center', padding: '32px' }}>
+      <nav className="lp-nav" style={{ justifyContent: 'space-between', padding: '32px' }}>
         <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
+        <ThemeToggle />
       </nav>
       <div className="tela-auth">
         <h1 style={{ textAlign: "center", marginBottom: "1.5rem" }}>Entrar de volta</h1>

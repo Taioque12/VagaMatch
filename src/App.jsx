@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./lib/AuthContext.jsx";
+import { ThemeProvider } from "./lib/ThemeContext.jsx";
 import { RotaProtegida } from "./components/RotaProtegida.jsx";
 import { RotaAdmin } from "./components/RotaAdmin.jsx";
 import { Landing } from "./pages/Landing.jsx";
@@ -12,8 +13,9 @@ import { Gerador } from "./pages/Gerador.jsx";
 
 export function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
@@ -53,5 +55,6 @@ export function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </ThemeProvider>
   );
 }
