@@ -17,6 +17,13 @@ async function chamarApi(metodo, body) {
   return data.result;
 }
 
+// Escape do Markdown legado do Telegram (parse_mode: "Markdown"): _ * ` [ desbalanceados
+// em conteúdo dinâmico (título/empresa vindos da API de vagas) derrubam a mensagem inteira
+// com 400 "can't parse entities". Aplicar em TODO campo interpolado, nunca na moldura fixa.
+export function escapeMd(texto) {
+  return String(texto ?? "").replace(/([_*`\[])/g, "\\$1");
+}
+
 function botoesFeedback(callbackId) {
   return {
     inline_keyboard: [
@@ -28,14 +35,14 @@ function botoesFeedback(callbackId) {
   };
 }
 
-function legendaVaga(vaga, palavrasCobertas) {
+export function legendaVaga(vaga, palavrasCobertas) {
   return [
-    `💼 *${vaga.titulo}*`,
-    `🏢 ${vaga.empresa} — ${vaga.local}`,
+    `💼 *${escapeMd(vaga.titulo)}*`,
+    `🏢 ${escapeMd(vaga.empresa)} — ${escapeMd(vaga.local)}`,
     vaga.salario_min ? `💰 R$ ${Math.round(vaga.salario_min)}–${Math.round(vaga.salario_max)}` : null,
     `⭐ Score: ${vaga.score ?? 0}`,
-    `🔑 ${palavrasCobertas.join(", ")}`,
-    `🔗 ${vaga.url}`,
+    `🔑 ${escapeMd(palavrasCobertas.join(", "))}`,
+    `🔗 ${escapeMd(vaga.url)}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -86,7 +93,7 @@ export async function enviarResumoDiario(chatId, vagas) {
   const linhas = vagas
     .slice()
     .sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
-    .map((v, i) => `${i + 1}. ${v.titulo} — ${v.empresa} (score ${v.score ?? 0})`);
+    .map((v, i) => `${i + 1}. ${escapeMd(v.titulo)} — ${escapeMd(v.empresa)} (score ${v.score ?? 0})`);
 
   const texto = [`📋 *${vagas.length} vagas novas encontradas nesta rodada:*`, "", ...linhas].join("\n");
   await chamarApi("sendMessage", { chat_id: chatId, text: texto, parse_mode: "Markdown" });
@@ -98,7 +105,7 @@ export async function alertarErro(chatId, mensagem) {
   try {
     await chamarApi("sendMessage", {
       chat_id: chatId,
-      text: `⚠️ *Erro no worker do VagaMatch:*\n${mensagem}`,
+      text: `⚠️ *Erro no worker do VagaMatch:*\n${escapeMd(mensagem)}`,
       parse_mode: "Markdown",
     });
   } catch (e) {
