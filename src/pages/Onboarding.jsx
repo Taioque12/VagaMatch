@@ -189,13 +189,13 @@ export function Onboarding() {
                 cargo: e.cargo || "",
                 empresa: e.empresa || "",
                 periodo: e.periodo || "",
-                bullets: (e.bullets || []).join("\\n")
+                bullets: (e.bullets || []).join("\n")
               }))
             );
           }
-          if (dados.formacao) setFormacao(dados.formacao.join("\\n"));
-          if (dados.cursos) setCursos(dados.cursos.join("\\n"));
-          if (dados.projetos) setProjetos(dados.projetos.join("\\n"));
+          if (dados.formacao) setFormacao(dados.formacao.join("\n"));
+          if (dados.cursos) setCursos(dados.cursos.join("\n"));
+          if (dados.projetos) setProjetos(dados.projetos.join("\n"));
           
         } catch (err) {
           setErro(err.message);
