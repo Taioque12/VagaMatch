@@ -164,3 +164,36 @@ export async function setState(key, value) {
     .upsert({ key, value: String(value), updated_at: new Date().toISOString() });
   if (error) throw new Error(`Supabase upsert (app_state): ${error.message}`);
 }
+
+// Vincula um chat do Telegram ao dono do token (chamado só pelo webhook, via service_role).
+// Retorna { ok: true } ou { ok: false, motivo } — o chamador traduz o motivo em mensagem.
+export async function vincularTelegramPorToken(token, chatId) {
+  const { data: registro, error } = await supabase
+    .from("telegram_link_tokens")
+    .select("user_id, expires_at")
+    .eq("token", token)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase select (telegram_link_tokens): ${error.message}`);
+
+  if (!registro) return { ok: false, motivo: "token_invalido" };
+  if (new Date(registro.expires_at) < new Date()) return { ok: false, motivo: "token_expirado" };
+
+  const { error: e2 } = await supabase
+    .from("profiles")
+    .update({ telegram_chat_id: String(chatId) })
+    .eq("id", registro.user_id);
+  if (e2) {
+    // 23505 = índice único profiles_telegram_chat_id_unico: chat já pertence a outro perfil.
+    if (e2.code === "23505") return { ok: false, motivo: "chat_em_uso" };
+    throw new Error(`Supabase update (telegram_chat_id): ${e2.message}`);
+  }
+
+  // Uso único: token consumido é apagado.
+  const { error: e3 } = await supabase
+    .from("telegram_link_tokens")
+    .delete()
+    .eq("user_id", registro.user_id);
+  if (e3) console.error(`Falha ao apagar token consumido: ${e3.message}`);
+
+  return { ok: true };
+}

@@ -82,6 +82,33 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.nota {
+  color: #666;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.nota-ok {
+  color: #2f6f4f;
+}
+
+.acoes-inline {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.secundario {
+  background: #eee;
+  color: #1a1a1a;
+}
+
 .onboarding {
   max-width: 640px;
   margin: 2rem auto;
