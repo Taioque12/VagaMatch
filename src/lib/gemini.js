@@ -78,13 +78,8 @@ Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents: [
-        {
-          role: 'user',
-          parts: [
-            { inlineData: { data: base64Data, mimeType } },
-            { text: prompt }
-          ]
-        }
+        { inlineData: { data: base64Data, mimeType } },
+        prompt
       ],
       config: {
         responseMimeType: "application/json"
