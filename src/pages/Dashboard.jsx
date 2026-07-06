@@ -192,6 +192,9 @@ export function Dashboard() {
                 </a>
               )}
               <span className="espaco" />
+              <Link to={`/gerador/${v.id}`} className="acao">
+                Gerar CV/Carta
+              </Link>
               {v.status !== "candidatado" && (
                 <button className="acao" onClick={() => mudarStatus(v, "candidatado")}>
                   Me candidatei

@@ -8,6 +8,7 @@ import { Cadastro } from "./pages/Cadastro.jsx";
 import { Onboarding } from "./pages/Onboarding.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { Admin } from "./pages/Admin.jsx";
+import { Gerador } from "./pages/Gerador.jsx";
 
 export function App() {
   return (
@@ -39,6 +40,14 @@ export function App() {
               <RotaAdmin>
                 <Admin />
               </RotaAdmin>
+            }
+          />
+          <Route
+            path="/gerador/:id"
+            element={
+              <RotaProtegida>
+                <Gerador />
+              </RotaProtegida>
             }
           />
         </Routes>
