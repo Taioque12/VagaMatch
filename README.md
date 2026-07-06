@@ -62,6 +62,20 @@ A plataforma está oficialmente configurada e hospedada. O sistema completo de p
 7. Pra acessar `/admin`: depois de criar sua conta normalmente, rode no SQL Editor do Supabase
    `update public.profiles set role = 'admin' where id = '<seu-user-id>';`
 
+## Edge Function do Gemini (geração de CV/carta e leitura de PDF no onboarding)
+
+A chave do Gemini usada pelo **frontend** (gerador de CV/carta em `/gerador/:id` e importação de
+currículo em PDF no onboarding) não fica mais no bundle do cliente — ela vive só como secret da
+Edge Function `gemini` (`supabase/functions/gemini/`), chamada via `supabase.functions.invoke`.
+
+1. `supabase functions deploy gemini --project-ref <seu-project-ref>`
+2. `supabase secrets set GEMINI_API_KEY=<sua-chave> --project-ref <seu-project-ref>`
+3. Não é necessário nenhum `VITE_GEMINI_API_KEY` no `.env` do frontend.
+
+**Importante para quem já tem o beta em produção**: antes de fazer merge/deploy desta mudança,
+rode os dois passos acima contra o projeto Supabase de produção — sem a function deployada e o
+secret configurado, o gerador de CV/carta e a importação de PDF param de funcionar.
+
 ## Setup local — Worker
 
 1. No mesmo `.env`, preencher: `ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `RAPIDAPI_KEY` (opcional), `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (a **secret**, não a publishable), `GEMINI_API_KEY`, `TELEGRAM_BOT_TOKEN`
