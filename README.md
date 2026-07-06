@@ -38,21 +38,18 @@ worker de ponta a ponta em produção, e decidir/implementar billing real).
 - Dashboard do usuário em `/dashboard`
 - Painel `/admin` (métricas de usuários/assinatura/saúde do sistema) restrito a `profiles.role = 'admin'`
 
+## Status Atual
+
+**🎉 BETA GRATUITO NO AR!**
+A plataforma está oficialmente configurada e hospedada. O sistema completo de ponta-a-ponta (Site -> Banco de Dados -> Worker -> Telegram) está operante em Produção.
+
 ## Próximos passos (em ordem sugerida)
 
-1. **Configurar secrets de produção no GitHub** (Settings → Secrets and variables → Actions) e
-   testar o worker de ponta a ponta com um usuário real — hoje só foi validado local
-2. **Deploy do frontend** (Vercel) pra landing/cadastro ficarem acessíveis publicamente
-3. **Decidir gateway de pagamento** — Stripe (cartão internacional) vs Mercado Pago (Pix/boleto,
-   mais familiar pro público de baixa renda) — ver Fase 4 do [ROADMAP.md](./ROADMAP.md)
-4. **Definir preço final dos planos** (hoje ilustrativo em `src/lib/planos.js`) e implementar o
-   billing real — `profiles.assinatura_status` hoje é atualizado manualmente no Supabase
-5. **Trocar conteúdo ilustrativo da landing por dado real**: números da seção "sistema em
-   números" e a faixa de vagas rolando no hero (marquee) — ver ressalvas em [DESIGN.md](./DESIGN.md)
-6. **Migrar o worker do GitHub Actions** pra um cron dedicado (Railway/Render) quando a base de
-   usuários crescer — código já é "migration-ready", só troca o gatilho do cron
-7. Gravar vídeo/gif do fluxo real (bot mandando vaga+currículo no Telegram) pra landing, quando
-   tiver o worker rodando em produção
+1. **Testar com usuários reais (Beta Fechado)**: Distribuir o link da Vercel para uma base controlada de usuários testadores para validar o onboarding, a qualidade do currículo gerado e a experiência de receber vagas pelo Telegram.
+2. **Decidir gateway de pagamento (Fase 5)**: Integrar Checkout e Webhooks (Mercado Pago, Stripe ou Kiwify) para travar a plataforma apenas para assinantes pagantes.
+3. **Definir preço final dos planos** (hoje ilustrativo em `src/lib/planos.js`) e implementar o billing real — `profiles.assinatura_status` hoje é atualizado manualmente no Supabase.
+4. **Trocar conteúdo ilustrativo da landing por dado real**: Gravar um vídeo ou gif do fluxo real (bot mandando vaga+currículo no Telegram) e atualizar as métricas visuais da página inicial.
+5. **Migrar o worker do GitHub Actions** para um cron dedicado (Railway/Render) caso a base de usuários cresça a ponto de o free-tier do GitHub Actions ser insuficiente.
 
 ## Setup local — Frontend
 
