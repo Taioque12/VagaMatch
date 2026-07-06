@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 
@@ -114,18 +114,19 @@ export function Onboarding() {
     try {
       const { error: e1 } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: userId,
           nome_completo: nomeCompleto,
           localizacao,
           telegram_chat_id: telegramChatId || null,
           updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
+        });
       if (e1) throw e1;
 
       const { error: e2 } = await supabase
         .from("curriculos")
-        .update({
+        .upsert({
+          user_id: userId,
           resumo_profissional: resumoProfissional,
           habilidades: csv(habilidades),
           experiencias: experiencias
@@ -140,19 +141,19 @@ export function Onboarding() {
           cursos: linhas(cursos),
           projetos: linhas(projetos),
           updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId);
+        }, { onConflict: 'user_id' });
       if (e2) throw e2;
 
       const { error: e3 } = await supabase
         .from("preferencias")
-        .update({
+        .upsert({
+          user_id: userId,
+          ativo: true,
           cargos_alvo: linhas(cargosAlvo),
           palavras_chave: csv(palavrasChave),
           regioes: csv(regioes),
           updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId);
+        }, { onConflict: 'user_id' });
       if (e3) throw e3;
 
       setSalvo(true);
@@ -212,12 +213,24 @@ export function Onboarding() {
   if (carregando) return <p className="carregando">Carregando...</p>;
 
   return (
-    <div className="onboarding">
-      <h1>Configure seu perfil</h1>
-      <p className="ajuda">
-        Isso é a fonte fixa de verdade usada para gerar seus currículos — o sistema nunca inventa
-        experiência além do que você preencher aqui.
-      </p>
+    <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <nav className="lp-nav">
+        <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
+          <span className="lp-logo-marca" />
+          VagaMatch
+        </Link>
+        <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+          <Link to="/dashboard" className="lp-botao-claro">
+            Ir para Vagas
+          </Link>
+        </div>
+      </nav>
+      <div className="onboarding">
+        <h1 style={{ textAlign: "center", marginBottom: "0.5rem" }}>Configure seu perfil</h1>
+        <p className="ajuda" style={{ textAlign: "center" }}>
+          Isso é a fonte fixa de verdade usada para gerar seus currículos — o sistema nunca inventa
+          experiência além do que você preencher aqui.
+        </p>
 
       <form onSubmit={handleSubmit}>
         <section>
@@ -349,6 +362,7 @@ export function Onboarding() {
           {salvando ? "Salvando..." : "Salvar"}
         </button>
       </form>
+      </div>
     </div>
   );
 }

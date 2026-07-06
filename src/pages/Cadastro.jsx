@@ -30,39 +30,55 @@ export function Cadastro() {
 
   if (sucesso) {
     return (
-      <div className="tela-auth">
-        <h1>Confirme seu e-mail</h1>
-        <p>Enviamos um link de confirmação para {email}. Clique nele para ativar sua conta.</p>
+      <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        <nav className="lp-nav" style={{ justifyContent: 'center', padding: '32px' }}>
+          <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
+            <span className="lp-logo-marca" />
+            VagaMatch
+          </Link>
+        </nav>
+        <div className="tela-auth" style={{ textAlign: "center" }}>
+          <h1 style={{ marginBottom: "1rem" }}>Confirme seu e-mail</h1>
+          <p style={{ color: "#a19c8e" }}>Enviamos um link de confirmação para <strong>{email}</strong>. Clique nele para ativar sua conta.</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="tela-auth">
-      <h1>Criar conta no VagaMatch</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          E-mail
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label>
-          Senha
-          <input
-            type="password"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            minLength={6}
-            required
-          />
-        </label>
-        {erro && <p className="erro">{erro}</p>}
-        <button type="submit" disabled={carregando}>
-          {carregando ? "Criando..." : "Criar conta"}
-        </button>
-      </form>
-      <p>
-        Já tem conta? <Link to="/login">Entrar</Link>
-      </p>
+    <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <nav className="lp-nav" style={{ justifyContent: 'center', padding: '32px' }}>
+        <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
+          <span className="lp-logo-marca" />
+          VagaMatch
+        </Link>
+      </nav>
+      <div className="tela-auth">
+        <h1 style={{ textAlign: "center", marginBottom: "1.5rem" }}>Criar conta</h1>
+        <form onSubmit={handleSubmit}>
+          <label>
+            E-mail
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </label>
+          <label>
+            Senha
+            <input
+              type="password"
+              value={senha}
+              onChange={(e) => setSenha(e.target.value)}
+              minLength={6}
+              required
+            />
+          </label>
+          {erro && <p className="erro">{erro}</p>}
+          <button type="submit" disabled={carregando}>
+            {carregando ? "Criando..." : "Criar conta"}
+          </button>
+        </form>
+        <p style={{ textAlign: "center", marginTop: "1.5rem" }}>
+          Já tem conta? <Link to="/login" style={{ color: "#4fa87e", fontWeight: "bold" }}>Entrar</Link>
+        </p>
+      </div>
     </div>
   );
 }

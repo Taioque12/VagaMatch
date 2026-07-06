@@ -23,25 +23,33 @@ export function Login() {
   }
 
   return (
-    <div className="tela-auth">
-      <h1>Entrar no VagaMatch</h1>
-      <form onSubmit={handleSubmit}>
-        <label>
-          E-mail
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label>
-          Senha
-          <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required />
-        </label>
-        {erro && <p className="erro">{erro}</p>}
-        <button type="submit" disabled={carregando}>
-          {carregando ? "Entrando..." : "Entrar"}
-        </button>
-      </form>
-      <p>
-        Não tem conta? <Link to="/cadastro">Criar conta</Link>
-      </p>
+    <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <nav className="lp-nav" style={{ justifyContent: 'center', padding: '32px' }}>
+        <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
+          <span className="lp-logo-marca" />
+          VagaMatch
+        </Link>
+      </nav>
+      <div className="tela-auth">
+        <h1 style={{ textAlign: "center", marginBottom: "1.5rem" }}>Entrar de volta</h1>
+        <form onSubmit={handleSubmit}>
+          <label>
+            E-mail
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          </label>
+          <label>
+            Senha
+            <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required />
+          </label>
+          {erro && <p className="erro">{erro}</p>}
+          <button type="submit" disabled={carregando}>
+            {carregando ? "Entrando..." : "Entrar"}
+          </button>
+        </form>
+        <p style={{ textAlign: "center", marginTop: "1.5rem" }}>
+          Não tem conta? <Link to="/cadastro" style={{ color: "#4fa87e", fontWeight: "bold" }}>Criar conta</Link>
+        </p>
+      </div>
     </div>
   );
 }
