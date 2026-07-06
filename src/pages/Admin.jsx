@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 export function Admin() {
   const [carregando, setCarregando] = useState(true);
@@ -69,62 +71,64 @@ export function Admin() {
   const m = metricas;
 
   return (
-    <div className="admin">
-      <h1>Painel do administrador</h1>
-      <p className="subtitulo">Saúde geral do VagaMatch — dados em tempo real via Supabase.</p>
+    <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <nav className="lp-nav" style={{ justifyContent: 'space-between', padding: '32px' }}>
+        <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
+          <span className="lp-logo-marca" />
+          VagaMatch (Admin)
+        </Link>
+        <ThemeToggle />
+      </nav>
 
-      <section className="cards">
-        <div className="card">
-          <span className="card-numero">{m.totalUsuarios}</span>
-          <span className="card-label">Usuários cadastrados</span>
-        </div>
-        <div className="card">
-          <span className="card-numero">{m.buscaAtiva}</span>
-          <span className="card-label">Com busca ativa</span>
-        </div>
-        <div className="card">
-          <span className="card-numero">{m.disparoManual}</span>
-          <span className="card-label">Em modo disparo manual</span>
-        </div>
-        <div className="card">
-          <span className="card-numero">{m.cadastrosUltimos7Dias}</span>
-          <span className="card-label">Cadastros (últimos 7 dias)</span>
-        </div>
-        <div className="card">
-          <span className="card-numero">{m.vagasNotificadas7Dias}</span>
-          <span className="card-label">Vagas notificadas (7 dias)</span>
-        </div>
-        <div className="card card-alerta">
-          <span className="card-numero">{m.vagasComErro}</span>
-          <span className="card-label">Vagas com erro (total)</span>
-        </div>
-      </section>
+      <div className="dashboard">
+        <h1 style={{ fontFamily: "Manrope", fontWeight: 800, fontSize: "36px", marginBottom: "8px" }}>Painel do Administrador</h1>
+        <p className="subtitulo" style={{ marginBottom: "2rem", color: "var(--text-muted)" }}>Saúde geral do VagaMatch — dados em tempo real via Supabase.</p>
 
-      <section>
-        <h2>Assinaturas</h2>
-        <ul className="lista-metricas">
-          {Object.entries(m.porAssinatura).map(([status, qtd]) => (
-            <li key={status}>
-              <strong>{status}</strong>: {qtd}
-            </li>
-          ))}
-        </ul>
-        <p className="nota">
-          Billing ainda é manual (sem gateway integrado). Atualize <code>assinatura_status</code> direto no
-          Supabase até integrar Stripe/Mercado Pago.
-        </p>
-      </section>
+        <section className="cartoes-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+          <div className="stat">
+            <span className="stat-numero">{m.totalUsuarios}</span>
+            <span className="stat-label">Usuários Cadastrados</span>
+          </div>
+          <div className="stat">
+            <span className="stat-numero">{m.buscaAtiva}</span>
+            <span className="stat-label">Com Busca Ativa</span>
+          </div>
+          <div className="stat">
+            <span className="stat-numero">{m.cadastrosUltimos7Dias}</span>
+            <span className="stat-label">Cadastros (7 dias)</span>
+          </div>
+          <div className="stat">
+            <span className="stat-numero">{m.vagasNotificadas7Dias}</span>
+            <span className="stat-label">Vagas Notificadas (7 dias)</span>
+          </div>
+        </section>
 
-      <section>
-        <h2>Recorrência</h2>
-        <ul className="lista-metricas">
-          {Object.entries(m.porRecorrencia).map(([tipo, qtd]) => (
-            <li key={tipo}>
-              <strong>{tipo}</strong>: {qtd}
-            </li>
-          ))}
-        </ul>
-      </section>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+          <section className="vaga">
+            <h2 style={{ fontFamily: "Manrope", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px", marginBottom: "16px" }}>Assinaturas</h2>
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {Object.entries(m.porAssinatura).map(([status, qtd]) => (
+                <li key={status} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-glass)", display: "flex", justifyContent: "space-between" }}>
+                  <strong style={{ color: "var(--primary)" }}>{status || "Grátis"}</strong>
+                  <span>{qtd} usuário(s)</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="vaga">
+            <h2 style={{ fontFamily: "Manrope", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px", marginBottom: "16px" }}>Recorrência</h2>
+            <ul style={{ listStyle: "none", padding: 0 }}>
+              {Object.entries(m.porRecorrencia).map(([tipo, qtd]) => (
+                <li key={tipo} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-glass)", display: "flex", justifyContent: "space-between" }}>
+                  <strong style={{ color: "var(--text-main)" }}>{tipo === "sem_recorrencia" ? "Sem Assinatura" : tipo}</strong>
+                  <span>{qtd} usuário(s)</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
