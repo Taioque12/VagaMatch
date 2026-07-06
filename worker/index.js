@@ -12,6 +12,8 @@ import {
   marcarStatus,
   salvarMessageId,
   limparBuscaSolicitada,
+  getState,
+  setState,
   supabase,
 } from "./db.js";
 import { gerarCurriculo } from "./curriculo.js";
@@ -149,8 +151,19 @@ async function main() {
     console.error(`Falha ao processar feedback: ${e.message}`);
   }
 
-  const usuarios = await listarUsuariosAtivos();
-  console.log(`Usuários ativos com Telegram vinculado: ${usuarios.length}`);
+  const TAMANHO_LOTE = 50;
+  const cursorAtual = Number(await getState("worker_user_offset")) || 0;
+  console.log(`Buscando usuários a partir do offset: ${cursorAtual}`);
+
+  const usuarios = await listarUsuariosAtivos(TAMANHO_LOTE, cursorAtual);
+  console.log(`Lote atual: ${usuarios.length} usuário(s) encontrados com Telegram vinculado.`);
+
+  if (usuarios.length === 0) {
+    // Chegou no fim da lista (ou não tem ninguém). Reseta para a próxima rodada!
+    console.log("Fim da lista de usuários. Resetando cursor para 0.");
+    await setState("worker_user_offset", 0);
+    return;
+  }
 
   let totalProcessadas = 0;
   let totalFalhas = 0;
@@ -178,7 +191,11 @@ async function main() {
     }
   }
 
-  console.log(`Concluído. ${totalProcessadas} vaga(s) notificada(s), ${totalFalhas} falha(s) no total.`);
+  console.log(`Lote processado. ${totalProcessadas} vaga(s) notificada(s), ${totalFalhas} falha(s) no total.`);
+  
+  // Avança o cursor para o próximo lote (daqui a 10 min, por exemplo)
+  await setState("worker_user_offset", cursorAtual + TAMANHO_LOTE);
+  console.log(`Próximo offset definido para: ${cursorAtual + TAMANHO_LOTE}`);
 }
 
 main().catch(async (e) => {

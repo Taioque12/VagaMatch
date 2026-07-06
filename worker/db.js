@@ -5,19 +5,20 @@ import { env } from "./config.js";
 export const supabase = createClient(env.supabaseUrl, env.supabaseServiceKey);
 
 // Usuários com busca ativa e Telegram vinculado (pré-requisitos pra rodar o pipeline).
-export async function listarUsuariosAtivos() {
+// Processa em lotes usando limit e offset para escalar infinitamente.
+export async function listarUsuariosAtivos(limite = 50, offset = 0) {
   const { data: prefs, error } = await supabase
     .from("preferencias")
     .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada")
-    .eq("ativo", true);
+    .eq("ativo", true)
+    .or("disparo_manual.eq.false,busca_solicitada.eq.true")
+    .order("user_id", { ascending: true })
+    .range(offset, offset + limite - 1);
+
   if (error) throw new Error(`Supabase select (preferencias): ${error.message}`);
   if (!prefs?.length) return [];
 
-  // Modo automático roda todo ciclo; modo manual só quando o usuário pediu via /buscar no bot.
-  const prefsElegiveis = prefs.filter((p) => !p.disparo_manual || p.busca_solicitada);
-  if (!prefsElegiveis.length) return [];
-
-  const userIds = prefsElegiveis.map((p) => p.user_id);
+  const userIds = prefs.map((p) => p.user_id);
 
   const [{ data: perfis, error: e2 }, { data: curriculos, error: e3 }] = await Promise.all([
     supabase.from("profiles").select("id, nome_completo, localizacao, telegram_chat_id").in("id", userIds),
@@ -29,7 +30,7 @@ export async function listarUsuariosAtivos() {
   const perfilPorId = new Map((perfis ?? []).map((p) => [p.id, p]));
   const curriculoPorId = new Map((curriculos ?? []).map((c) => [c.user_id, c]));
 
-  return prefsElegiveis
+  return prefs
     .map((pref) => {
       const perfil = perfilPorId.get(pref.user_id);
       const curriculo = curriculoPorId.get(pref.user_id);

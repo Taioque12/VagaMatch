@@ -2,7 +2,7 @@ name: Worker VagaMatch
 
 on:
   schedule:
-    - cron: "0 */2 * * *" # a cada 2h
+    - cron: "*/10 * * * *" # a cada 10 min
   workflow_dispatch: {} # permite rodar manualmente pelo GitHub
 
 jobs:
