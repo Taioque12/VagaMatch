@@ -19,7 +19,7 @@ export function Login() {
       setErro(error.message);
       return;
     }
-    navigate("/");
+    navigate("/dashboard");
   }
 
   return (

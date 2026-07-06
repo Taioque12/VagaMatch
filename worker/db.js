@@ -8,12 +8,16 @@ export const supabase = createClient(env.supabaseUrl, env.supabaseServiceKey);
 export async function listarUsuariosAtivos() {
   const { data: prefs, error } = await supabase
     .from("preferencias")
-    .select("user_id, cargos_alvo, palavras_chave, regioes")
+    .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada")
     .eq("ativo", true);
   if (error) throw new Error(`Supabase select (preferencias): ${error.message}`);
   if (!prefs?.length) return [];
 
-  const userIds = prefs.map((p) => p.user_id);
+  // Modo automático roda todo ciclo; modo manual só quando o usuário pediu via /buscar no bot.
+  const prefsElegiveis = prefs.filter((p) => !p.disparo_manual || p.busca_solicitada);
+  if (!prefsElegiveis.length) return [];
+
+  const userIds = prefsElegiveis.map((p) => p.user_id);
 
   const [{ data: perfis, error: e2 }, { data: curriculos, error: e3 }] = await Promise.all([
     supabase.from("profiles").select("id, nome_completo, localizacao, telegram_chat_id").in("id", userIds),
@@ -25,13 +29,48 @@ export async function listarUsuariosAtivos() {
   const perfilPorId = new Map((perfis ?? []).map((p) => [p.id, p]));
   const curriculoPorId = new Map((curriculos ?? []).map((c) => [c.user_id, c]));
 
-  return prefs
+  return prefsElegiveis
     .map((pref) => {
       const perfil = perfilPorId.get(pref.user_id);
       const curriculo = curriculoPorId.get(pref.user_id);
       return { pref, perfil, curriculo };
     })
     .filter(({ perfil }) => perfil?.telegram_chat_id); // sem Telegram vinculado, pula
+}
+
+// Zera o pedido de busca manual depois que o worker processou o usuário.
+export async function limparBuscaSolicitada(userId) {
+  const { error } = await supabase
+    .from("preferencias")
+    .update({ busca_solicitada: false })
+    .eq("user_id", userId);
+  if (error) throw new Error(`Supabase update (busca_solicitada): ${error.message}`);
+}
+
+// Usado pelos comandos do bot (/buscar, /regiao) — acha o dono do chat_id que escreveu.
+export async function buscarPerfilPorChatId(chatId) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, nome_completo, telegram_chat_id")
+    .eq("telegram_chat_id", String(chatId))
+    .maybeSingle();
+  if (error) throw new Error(`Supabase select (profile por chat_id): ${error.message}`);
+  return data;
+}
+
+export async function solicitarBuscaManual(userId) {
+  const { error } = await supabase
+    .from("preferencias")
+    .update({ busca_solicitada: true })
+    .eq("user_id", userId);
+  if (error) throw new Error(`Supabase update (busca_solicitada): ${error.message}`);
+}
+
+export async function definirModoRegiao(userId, modoRegiao, raioKm) {
+  const patch = { modo_regiao: modoRegiao };
+  if (raioKm != null) patch.raio_km = raioKm;
+  const { error } = await supabase.from("preferencias").update(patch).eq("user_id", userId);
+  if (error) throw new Error(`Supabase update (modo_regiao): ${error.message}`);
 }
 
 // Retorna só as vagas ainda não vistas por ESSE usuário e registra as novas.

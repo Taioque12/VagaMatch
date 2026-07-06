@@ -11,6 +11,7 @@ import {
   deduplicarParaUsuario,
   marcarStatus,
   salvarMessageId,
+  limparBuscaSolicitada,
   supabase,
 } from "./db.js";
 import { gerarCurriculo } from "./curriculo.js";
@@ -35,10 +36,41 @@ async function buscarEmail(userId) {
   return data.user?.email ?? null;
 }
 
-async function rodarPipelineDoUsuario({ pref, perfil, curriculo }) {
+// Chave única por combinação de busca (cargo + região + raio) — usada pra cachear
+// resultado entre usuários diferentes que buscam a mesma coisa, evitando 1 request por pessoa.
+function chaveBusca(cargo, regiao, raioKm) {
+  return `${cargo.toLowerCase()}|${(regiao || "").toLowerCase()}|${raioKm ?? ""}`;
+}
+
+async function buscarComCache(cache, cargo, regiao, raioKm) {
+  const chave = chaveBusca(cargo, regiao, raioKm);
+  if (cache.has(chave)) return cache.get(chave);
+
+  const vagas = new Map();
+  try {
+    const vagasAdzuna = await buscarVagas({ termo: cargo, regiao, raioKm });
+    for (const v of vagasAdzuna) vagas.set(v.job_id, v);
+  } catch (e) {
+    console.error(`Busca Adzuna falhou (${cargo} / ${regiao} / ${raioKm}km): ${e.message}`);
+  }
+  try {
+    const vagasJSearch = await buscarVagasJSearch({ termo: cargo, regiao });
+    for (const v of vagasJSearch) vagas.set(v.job_id, v);
+  } catch (e) {
+    console.error(`Busca JSearch falhou (${cargo} / ${regiao}): ${e.message}`);
+  }
+
+  const resultado = [...vagas.values()];
+  cache.set(chave, resultado);
+  return resultado;
+}
+
+async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
   const cargosAlvo = pref.cargos_alvo ?? [];
   const palavrasChave = pref.palavras_chave ?? [];
-  const regioes = pref.regioes?.length ? pref.regioes : [""];
+  const brasilTodo = pref.modo_regiao === "brasil";
+  const regioes = brasilTodo ? [""] : pref.regioes?.length ? pref.regioes : [""];
+  const raioKm = brasilTodo ? null : pref.raio_km;
 
   if (!cargosAlvo.length || !palavrasChave.length) {
     console.log(`Usuário ${perfil.id}: sem cargos-alvo ou palavras-chave configuradas, pulando.`);
@@ -48,18 +80,8 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }) {
   const acumulado = new Map();
   for (const cargo of cargosAlvo) {
     for (const regiao of regioes) {
-      try {
-        const vagas = await buscarVagas({ termo: cargo, regiao });
-        for (const v of vagas) acumulado.set(v.job_id, v);
-      } catch (e) {
-        console.error(`Busca Adzuna falhou (${perfil.id} / ${cargo} / ${regiao}): ${e.message}`);
-      }
-      try {
-        const vagasJSearch = await buscarVagasJSearch({ termo: cargo, regiao });
-        for (const v of vagasJSearch) acumulado.set(v.job_id, v);
-      } catch (e) {
-        console.error(`Busca JSearch falhou (${perfil.id} / ${cargo} / ${regiao}): ${e.message}`);
-      }
+      const vagas = await buscarComCache(cacheBusca, cargo, regiao, raioKm);
+      for (const v of vagas) acumulado.set(v.job_id, v);
     }
   }
 
@@ -132,10 +154,13 @@ async function main() {
 
   let totalProcessadas = 0;
   let totalFalhas = 0;
+  // Cache por rodada: cargo+região+raio iguais entre usuários diferentes = 1 request só,
+  // não 1 por pessoa. Crítico pra escalar (ver ROADMAP: 1000+ usuários estourariam o free tier da Adzuna).
+  const cacheBusca = new Map();
 
   for (const usuario of usuarios) {
     try {
-      const { processadas, falhas } = await rodarPipelineDoUsuario(usuario);
+      const { processadas, falhas } = await rodarPipelineDoUsuario(usuario, cacheBusca);
       totalProcessadas += processadas;
       totalFalhas += falhas;
     } catch (e) {
@@ -144,6 +169,12 @@ async function main() {
       await alertarErro(usuario.perfil.telegram_chat_id, `Falha ao processar suas vagas: ${e.message}`).catch(
         () => {}
       );
+    } finally {
+      if (usuario.pref.disparo_manual) {
+        await limparBuscaSolicitada(usuario.pref.user_id).catch((e) =>
+          console.error(`Falha ao limpar busca_solicitada (${usuario.perfil.id}): ${e.message}`)
+        );
+      }
     }
   }
 

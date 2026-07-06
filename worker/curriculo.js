@@ -86,6 +86,8 @@ REGRAS INEGOCIÁVEIS:
 - Você pode: reordenar bullets, reescrever o resumo profissional destacando o que a vaga pede, selecionar/priorizar cursos mais relevantes, incorporar palavras-chave da vaga QUANDO correspondem a experiência real.
 - Mantenha datas, empresas e cargos exatamente como estão.
 - Escreva em português do Brasil.
+- "resumo_profissional" é a frase de apresentação do candidato: EXATAMENTE 5 linhas, tom direto,
+  resumindo quem é, principais competências e o que busca — alinhado à vaga, sem inventar nada.
 
 CURRÍCULO-BASE:
 ${curriculoBase}`;

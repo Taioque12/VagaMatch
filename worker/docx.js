@@ -8,12 +8,20 @@ const h = (texto) =>
     children: [new TextRun({ text: texto, bold: true })],
   });
 
-const p = (texto, opts = {}) =>
-  new Paragraph({
+// TextRun não quebra "\n" sozinho — precisa de um run por linha com "break" entre eles.
+// Necessário pro resumo_profissional (5 linhas) do currículo gerado pelo Gemini.
+const p = (texto, opts = {}) => {
+  const linhas = texto.split("\n");
+  const children = linhas.flatMap((linha, i) => {
+    const run = new TextRun({ text: linha, bold: opts.bold ?? false, break: i > 0 ? 1 : 0 });
+    return [run];
+  });
+  return new Paragraph({
     spacing: { after: 80 },
     bullet: opts.bullet ? { level: 0 } : undefined,
-    children: [new TextRun({ text: texto, bold: opts.bold ?? false })],
+    children,
   });
+};
 
 export async function gerarDocx(cv, perfil, caminho) {
   const subtitulo = [perfil.localizacao, perfil.email].filter(Boolean).join(" · ");
