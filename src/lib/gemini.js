@@ -59,3 +59,46 @@ Retorne apenas o texto da carta de apresentação formatada, sem introduções o
     throw new Error("Falha ao gerar o documento com IA.");
   }
 }
+
+export async function extrairDadosCurriculo(base64Data, mimeType = "application/pdf") {
+  if (!ai) throw new Error("Chave de API do Gemini não configurada.");
+
+  const prompt = `Você é um extrator de dados de currículos. Extraia todas as informações deste documento e retorne ESTRITAMENTE em formato JSON.
+As chaves do JSON devem ser exatamente estas:
+- resumo_profissional (string)
+- habilidades (array de strings)
+- experiencias (array de objetos contendo: cargo (string), empresa (string), periodo (string), bullets (array de strings))
+- formacao (array de strings)
+- cursos (array de strings)
+- projetos (array de strings)
+
+Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            { inlineData: { data: base64Data, mimeType } },
+            { text: prompt }
+          ]
+        }
+      ],
+      config: {
+        responseMimeType: "application/json"
+      }
+    });
+    
+    let text = response.text;
+    // Tenta remover crases de markdown se o modelo ignorar a instrução
+    if (text.startsWith("\`\`\`json")) {
+        text = text.replace(/^\`\`\`json\n/, "").replace(/\n\`\`\`$/, "");
+    }
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Erro ao extrair dados do currículo:", error);
+    throw new Error("Falha ao ler o PDF com IA. Tente preencher manualmente.");
+  }
+}

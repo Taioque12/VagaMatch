@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 
+import { extrairDadosCurriculo } from "../lib/gemini.js";
+
 const linhas = (texto) =>
   texto
     .split("\n")
@@ -25,6 +27,7 @@ export function Onboarding() {
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState(null);
   const [salvo, setSalvo] = useState(false);
+  const [analisandoPdf, setAnalisandoPdf] = useState(false);
 
   // Currículo
   const [resumoProfissional, setResumoProfissional] = useState("");
@@ -160,6 +163,52 @@ export function Onboarding() {
     }
   }
 
+  async function handleUploadPdf(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAnalisandoPdf(true);
+    setErro(null);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const result = evt.target.result;
+          const base64 = result.split(",")[1];
+          
+          const dados = await extrairDadosCurriculo(base64, file.type);
+          
+          if (dados.resumo_profissional) setResumoProfissional(dados.resumo_profissional);
+          if (dados.habilidades) setHabilidades(dados.habilidades.join(", "));
+          if (dados.experiencias && dados.experiencias.length) {
+            setExperiencias(
+              dados.experiencias.map(e => ({
+                cargo: e.cargo || "",
+                empresa: e.empresa || "",
+                periodo: e.periodo || "",
+                bullets: (e.bullets || []).join("\\n")
+              }))
+            );
+          }
+          if (dados.formacao) setFormacao(dados.formacao.join("\\n"));
+          if (dados.cursos) setCursos(dados.cursos.join("\\n"));
+          if (dados.projetos) setProjetos(dados.projetos.join("\\n"));
+          
+        } catch (err) {
+          setErro(err.message);
+        } finally {
+          setAnalisandoPdf(false);
+          e.target.value = null; // reseta o input
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setErro(err.message);
+      setAnalisandoPdf(false);
+    }
+  }
+
   if (carregando) return <p className="carregando">Carregando...</p>;
 
   return (
@@ -197,7 +246,23 @@ export function Onboarding() {
 
         <section>
           <h2>Currículo</h2>
-          <label>
+          
+          <div className="cartao-importacao">
+            <p><strong>Tem um currículo em PDF?</strong> Deixe a IA preencher tudo para você!</p>
+            <input 
+              type="file" 
+              accept="application/pdf" 
+              onChange={handleUploadPdf} 
+              disabled={analisandoPdf}
+              id="upload-cv"
+              style={{ display: "none" }}
+            />
+            <label htmlFor="upload-cv" className="botao-secundario" style={{ display: "inline-block", cursor: "pointer", marginTop: "10px", padding: "10px 16px", background: "#34495e", color: "white", borderRadius: "8px", fontWeight: "bold" }}>
+              {analisandoPdf ? "Analisando PDF... ⏳" : "📄 Importar currículo em PDF"}
+            </label>
+          </div>
+
+          <label style={{ marginTop: "20px", display: "block" }}>
             Resumo profissional
             <textarea
               rows={4}
