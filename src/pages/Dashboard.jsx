@@ -101,8 +101,11 @@ export function Dashboard() {
       <header className="topo">
         <h1>VagaMatch</h1>
         <nav>
+          <div className="user-info">
+            <span className="user-email">{session?.user?.email}</span>
+          </div>
           <Link to="/onboarding">Meu perfil</Link>
-          <button onClick={sair}>Sair</button>
+          <button className="btn-sair" onClick={sair}>Sair</button>
         </nav>
       </header>
 
