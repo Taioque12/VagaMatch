@@ -139,9 +139,14 @@ export function Landing() {
             <span className="lp-logo-marca" />
             VagaMatch
           </div>
-          <a href="#planos" className="lp-botao-claro">
-            Ativar minhas vagas
-          </a>
+          <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+            <Link to="/login" style={{ color: "#fff", textDecoration: "none", fontSize: "0.9rem", fontWeight: "500" }}>
+              Entrar
+            </Link>
+            <a href="#planos" className="lp-botao-claro">
+              Ativar minhas vagas
+            </a>
+          </div>
         </nav>
 
         <section className="lp-hero">
