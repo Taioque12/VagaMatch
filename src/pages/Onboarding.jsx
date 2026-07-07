@@ -5,7 +5,7 @@ import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 import { extrairDadosCurriculo } from "../lib/gemini.js";
-import { linhas, csv } from "../lib/parsing.js";
+import { linhas, csv, validarTamanhoPdf } from "../lib/parsing.js";
 
 const vazioExperiencia = () => ({ cargo: "", empresa: "", periodo: "", bullets: "" });
 
@@ -158,6 +158,14 @@ export function Onboarding() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    try {
+      validarTamanhoPdf(file.size);
+    } catch (err) {
+      setErro(err.message);
+      e.target.value = null;
+      return;
+    }
+
     setAnalisandoPdf(true);
     setErro(null);
 
@@ -252,7 +260,7 @@ export function Onboarding() {
           <h2>Currículo</h2>
           
           <div className="cartao-importacao">
-            <p><strong>Tem um currículo em PDF?</strong> Deixe a IA preencher tudo para você!</p>
+            <p><strong>Tem um currículo em PDF?</strong> Deixe a IA preencher tudo para você! (máx. 4MB)</p>
             <input 
               type="file" 
               accept="application/pdf" 
