@@ -7,6 +7,10 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+// Limite diário de gerações de IA por usuário (gerador de CV/carta + extração de PDF somados).
+// Configurável via secret pra ajustar sem novo deploy; 15/dia cobre o uso legítimo (uma pessoa
+// não aplica pra 15+ vagas diferentes por dia) sem abrir margem grande pra abuso de custo.
+const LIMITE_DIARIO = Number(Deno.env.get("GEMINI_LIMITE_DIARIO")) || 15;
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -124,6 +128,18 @@ Deno.serve(async (req) => {
     });
     const { data: userData, error: userError } = await supabase.auth.getUser();
     if (userError || !userData?.user) throw new Error("Sessão inválida.");
+
+    // Check-and-incrementa atômico (via RPC security definer) — evita que requisições
+    // concorrentes furem o limite lendo a mesma contagem "antiga" antes de escrever.
+    const { data: podeUsar, error: limiteError } = await supabase.rpc("registrar_uso_gemini", {
+      p_limite: LIMITE_DIARIO,
+    });
+    if (limiteError) throw new Error(limiteError.message);
+    if (!podeUsar) {
+      throw new Error(
+        `Limite diário de ${LIMITE_DIARIO} gerações de IA atingido. Tente novamente amanhã.`
+      );
+    }
 
     const body = await req.json();
     const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });

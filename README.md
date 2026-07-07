@@ -71,6 +71,9 @@ Edge Function `gemini` (`supabase/functions/gemini/`), chamada via `supabase.fun
 1. `supabase functions deploy gemini --project-ref <seu-project-ref>`
 2. `supabase secrets set GEMINI_API_KEY=<sua-chave> --project-ref <seu-project-ref>`
 3. Não é necessário nenhum `VITE_GEMINI_API_KEY` no `.env` do frontend.
+4. Rodar a migration `006_gemini_rate_limit.sql` — limita a 15 gerações/dia por usuário (evita
+   custo ilimitado de um usuário chamando a function em loop). Ajustável sem novo deploy via
+   `supabase secrets set GEMINI_LIMITE_DIARIO=<numero> --project-ref <seu-project-ref>`.
 
 **Importante para quem já tem o beta em produção**: antes de fazer merge/deploy desta mudança,
 rode os dois passos acima contra o projeto Supabase de produção — sem a function deployada e o
