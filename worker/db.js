@@ -102,6 +102,7 @@ export async function deduplicarParaUsuario(userId, vagas) {
         url: v.url,
         status: "descoberta",
         score: v.score ?? 0,
+        motivo_ia: v.motivo_ia ?? null,
       }))
     )
     .select();
@@ -164,4 +165,12 @@ export async function setState(key, value) {
     .from("app_state")
     .upsert({ key, value: String(value), updated_at: new Date().toISOString() });
   if (error) throw new Error(`Supabase upsert (app_state): ${error.message}`);
+}
+
+export async function atualizarScoreIA(id, scoreIA, motivoIA) {
+  const { error } = await supabase
+    .from("vagas_vistas")
+    .update({ score: scoreIA, motivo_ia: motivoIA })
+    .eq("id", id);
+  if (error) throw new Error(`Supabase update (score_ia): ${error.message}`);
 }

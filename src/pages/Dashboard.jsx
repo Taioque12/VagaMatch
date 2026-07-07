@@ -122,99 +122,124 @@ export function Dashboard() {
           <button className="btn-sair" onClick={sair}>Sair</button>
         </div>
       </nav>
-      <div className="dashboard">
-
-      <div className="painel-busca">
-        <div>
-          <strong>Busca automática:</strong>{" "}
-          {buscaAtiva === null ? "..." : buscaAtiva ? "✅ ativa" : "⏸️ pausada"}
-        </div>
-        <button onClick={alternarBusca} disabled={salvandoAtivo || buscaAtiva === null}>
-          {buscaAtiva ? "Pausar busca" : "Retomar busca"}
-        </button>
-      </div>
-
-      {stats && (
-        <div className="cartoes-stats">
-          <div className="stat">
-            <span className="stat-numero">{stats.total}</span>
-            <span className="stat-label">Encontradas</span>
-          </div>
-          <div className="stat">
-            <span className="stat-numero">{stats.notificadas}</span>
-            <span className="stat-label">Notificadas</span>
-          </div>
-          <div className="stat">
-            <span className="stat-numero">{stats.candidatadas}</span>
-            <span className="stat-label">Candidatadas</span>
-          </div>
-          <div className="stat">
-            <span className="stat-numero">{stats.descartadas}</span>
-            <span className="stat-label">Descartadas</span>
-          </div>
-        </div>
-      )}
-
-      <div className="filtros">
-        {FILTROS.map((f) => (
-          <button
-            key={f.valor}
-            className={filtro === f.valor ? "filtro ativo" : "filtro"}
-            onClick={() => setFiltro(f.valor)}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-
-      {erro && <p className="erro">{erro}</p>}
-      {vagasFiltradas === null && !erro && <p className="carregando">Carregando...</p>}
-      {vagasFiltradas?.length === 0 && (
-        <p className="ajuda">
-          Nenhuma vaga aqui ainda. Confira se seu perfil está completo em{" "}
-          <Link to="/onboarding">Meu perfil</Link> e se a busca está ativa.
-        </p>
-      )}
-
-      <ul className="lista-vagas">
-        {vagasFiltradas?.map((v) => (
-          <li key={v.id} className={`vaga status-${v.status}`}>
-            <div className="vaga-cabecalho">
-              <strong>{v.titulo}</strong>
-              <span className="score">⭐ {v.score}</span>
+      <div className="dashboard-container">
+        {/* Sidebar Esquerda: Controles e Stats */}
+        <aside className="dashboard-sidebar">
+          <div className="painel-busca">
+            <div>
+              <strong style={{display: 'block', marginBottom: '0.3rem'}}>Busca automática</strong>
+              <span className={`status-busca ${buscaAtiva ? 'ativo' : 'pausado'}`}>
+                {buscaAtiva === null ? "..." : buscaAtiva ? "Em andamento" : "Pausada"}
+              </span>
             </div>
-            <p className="vaga-empresa">
-              {v.empresa} — {v.fonte} ·{" "}
-              {new Date(v.data_encontrada).toLocaleDateString("pt-BR")}
-            </p>
-            <div className="vaga-rodape">
-              <span className="badge">{STATUS_LABEL[v.status] ?? v.status}</span>
-              {v.feedback && (
-                <span className="badge">{v.feedback === "positivo" ? "👍" : "👎"}</span>
-              )}
-              {v.url && (
-                <a href={v.url} target="_blank" rel="noreferrer">
-                  Ver vaga
-                </a>
-              )}
-              <span className="espaco" />
-              <Link to={`/gerador/${v.id}`} className="acao">
-                Gerar CV/Carta
-              </Link>
-              {v.status !== "candidatado" && (
-                <button className="acao" onClick={() => mudarStatus(v, "candidatado")}>
-                  Me candidatei
-                </button>
-              )}
-              {v.status !== "descartada" && (
-                <button className="acao secundaria" onClick={() => mudarStatus(v, "descartada")}>
-                  Descartar
-                </button>
-              )}
+            <button className="acao" onClick={alternarBusca} disabled={salvandoAtivo || buscaAtiva === null}>
+              {buscaAtiva ? "Pausar" : "Retomar"}
+            </button>
+          </div>
+
+          <h3 className="sidebar-titulo">Resumo</h3>
+          {stats && (
+            <div className="cartoes-stats-vertical">
+              <div className="stat">
+                <span className="stat-numero">{stats.total}</span>
+                <span className="stat-label">Encontradas</span>
+              </div>
+              <div className="stat">
+                <span className="stat-numero">{stats.notificadas}</span>
+                <span className="stat-label">Notificadas</span>
+              </div>
+              <div className="stat">
+                <span className="stat-numero">{stats.candidatadas}</span>
+                <span className="stat-label">Candidatadas</span>
+              </div>
+              <div className="stat">
+                <span className="stat-numero">{stats.descartadas}</span>
+                <span className="stat-label">Descartadas</span>
+              </div>
             </div>
-          </li>
-        ))}
-      </ul>
+          )}
+
+          <h3 className="sidebar-titulo">Filtros</h3>
+          <div className="filtros-vertical">
+            {FILTROS.map((f) => (
+              <button
+                key={f.valor}
+                className={filtro === f.valor ? "filtro ativo" : "filtro"}
+                onClick={() => setFiltro(f.valor)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        {/* Área Principal: Lista de Vagas */}
+        <main className="dashboard-main">
+          {erro && <p className="erro">{erro}</p>}
+          {vagasFiltradas === null && !erro && <p className="carregando">Carregando vagas com match...</p>}
+          {vagasFiltradas?.length === 0 && (
+            <div className="estado-vazio">
+              <div className="estado-vazio-icone">🔍</div>
+              <p>Nenhuma vaga aqui ainda.</p>
+              <span>Confira se seu <Link to="/onboarding">perfil está completo</Link> e se a busca está ativa.</span>
+            </div>
+          )}
+
+          <div className="grid-vagas">
+            {vagasFiltradas?.map((v) => (
+              <div key={v.id} className={`vaga-card status-${v.status}`}>
+                <div className="vaga-card-score">
+                  <div className="score-circle">
+                    <span className="score-number">{v.score}</span>
+                    <span className="score-label">Match</span>
+                  </div>
+                </div>
+                
+                <div className="vaga-card-content">
+                  <div className="vaga-cabecalho">
+                    <strong>{v.titulo}</strong>
+                  </div>
+                  <p className="vaga-empresa">
+                    {v.empresa} — {v.fonte} · {new Date(v.data_encontrada).toLocaleDateString("pt-BR")}
+                  </p>
+                  
+                  {v.motivo_ia && (
+                    <div className="vaga-motivo">
+                      <span className="motivo-icon">💡</span>
+                      <p>{v.motivo_ia}</p>
+                    </div>
+                  )}
+
+                  <div className="vaga-rodape">
+                    <span className="badge">{STATUS_LABEL[v.status] ?? v.status}</span>
+                    {v.feedback && (
+                      <span className="badge">{v.feedback === "positivo" ? "👍" : "👎"}</span>
+                    )}
+                    {v.url && (
+                      <a href={v.url} target="_blank" rel="noreferrer" className="link-vaga">
+                        Ver vaga
+                      </a>
+                    )}
+                    <span className="espaco" />
+                    <Link to={`/gerador/${v.id}`} className="acao">
+                      Gerar CV/Carta
+                    </Link>
+                    {v.status !== "candidatado" && (
+                      <button className="acao" onClick={() => mudarStatus(v, "candidatado")}>
+                        Me candidatei
+                      </button>
+                    )}
+                    {v.status !== "descartada" && (
+                      <button className="acao secundaria" onClick={() => mudarStatus(v, "descartada")}>
+                        Descartar
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </main>
       </div>
     </div>
   );

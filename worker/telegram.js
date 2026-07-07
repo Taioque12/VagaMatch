@@ -33,8 +33,8 @@ function legendaVaga(vaga, palavrasCobertas) {
     `💼 *${vaga.titulo}*`,
     `🏢 ${vaga.empresa} — ${vaga.local}`,
     vaga.salario_min ? `💰 R$ ${Math.round(vaga.salario_min)}–${Math.round(vaga.salario_max)}` : null,
-    `⭐ Score: ${vaga.score ?? 0}`,
-    `🔑 ${palavrasCobertas.join(", ")}`,
+    `⭐ Score IA: ${vaga.score ?? 0}/100`,
+    vaga.motivo_ia ? `\n💡 *Por que essa vaga é pra você:*\n${vaga.motivo_ia}\n` : null,
     `🔗 ${vaga.url}`,
   ]
     .filter(Boolean)
@@ -137,6 +137,10 @@ export async function enviarMenu(chatId) {
       ],
     },
   });
+}
+
+export async function enviarMensagemSimples(chatId, texto) {
+  await chamarApi("sendMessage", { chat_id: chatId, text: texto, parse_mode: "Markdown" });
 }
 
 export async function enviarMenuRegiao(chatId) {

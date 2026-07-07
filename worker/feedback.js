@@ -6,6 +6,7 @@ import {
   buscarPerfilPorChatId,
   solicitarBuscaManual,
   definirModoRegiao,
+  supabase,
 } from "./db.js";
 import {
   buscarAtualizacoes,
@@ -13,6 +14,7 @@ import {
   removerBotoes,
   enviarMenu,
   enviarMenuRegiao,
+  enviarMensagemSimples,
 } from "./telegram.js";
 
 const TIPOS = { pos: "positivo", neg: "negativo" };
@@ -80,6 +82,16 @@ async function tratarMensagem(msg) {
     const perfil = await buscarPerfilPorChatId(msg.chat.id);
     if (!perfil) return;
     await solicitarBuscaManual(perfil.id);
+    return;
+  }
+  if (texto === "/status") {
+    const perfil = await buscarPerfilPorChatId(msg.chat.id);
+    if (!perfil) return;
+    const { data: pref } = await supabase.from('preferencias').select('cargos_alvo, palavras_chave, modo_regiao, raio_km').eq('user_id', perfil.id).single();
+    if (pref) {
+      const textoStatus = `👤 *Seu Status de Busca*\n\n🎯 *Cargos-alvo:*\n${(pref.cargos_alvo || []).join(', ')}\n\n🔑 *Palavras-chave:*\n${(pref.palavras_chave || []).join(', ')}\n\n📍 *Região:*\n${pref.modo_regiao === 'brasil' ? 'Brasil Todo' : 'Minha Região (' + (pref.raio_km || 50) + 'km)'}`;
+      await enviarMensagemSimples(msg.chat.id, textoStatus);
+    }
     return;
   }
   if (texto === "/regiao") {

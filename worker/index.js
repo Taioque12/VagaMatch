@@ -15,7 +15,9 @@ import {
   getState,
   setState,
   supabase,
+  atualizarScoreIA,
 } from "./db.js";
+import { avaliarMatchComIA } from "./ai_filter.js";
 import { gerarCurriculo } from "./curriculo.js";
 import { gerarDocx } from "./docx.js";
 import { gerarPdf } from "./pdf.js";
@@ -111,6 +113,19 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
   for (const vaga of novas) {
     if (processadas >= LIMITE) break;
     try {
+      // 1. Avalia o Match Real com IA
+      const { score_ia, motivo_ia } = await avaliarMatchComIA(vaga, curriculo, palavrasChave);
+      vaga.score = score_ia; // Substitui o score ingênuo pelo score da IA
+      vaga.motivo_ia = motivo_ia;
+      await atualizarScoreIA(vaga.id, score_ia, motivo_ia);
+
+      // Pula vagas que a IA considerou ruins (ex: score < 40)
+      if (score_ia < 40) {
+        console.log(`Vaga ${vaga.job_id} ignorada pela IA (Score: ${score_ia})`);
+        await marcarStatus(vaga.id, "descartada");
+        continue;
+      }
+
       const cv = await gerarCurriculo(vaga, curriculo, perfilCV.nomeCompleto);
       const base = `CV_${nomeSeguro(perfil.id)}_${nomeSeguro(vaga.job_id)}`;
       const docxPath = await gerarDocx(cv, perfilCV, join(OUT_DIR, `${base}.docx`));
