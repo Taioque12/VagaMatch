@@ -16,22 +16,16 @@ worker de ponta a ponta em produção, e decidir/implementar billing real).
 **Fase 1 — Fundação multi-tenant:**
 - Schema (`supabase/migrations/`): `profiles`, `curriculos`, `preferencias`, `vagas_vistas`, `app_state` — tudo isolado por `user_id` via RLS
 - Cadastro/login (Supabase Auth)
-- Onboarding: formulário estruturado de currículo + preferências + vínculo do Telegram
-- Dashboard: lista de vagas por usuário, com score/status/feedback
+- Onboarding **(Smart Extraction)**: Usuário faz upload de PDF e a IA (Gemini) preenche automaticamente dados, experiências, cargos-alvo e palavras-chave.
+- Dashboard Premium: Interface com Glassmorphism, grid de vagas, filtros rápidos e exibição do **Score da IA** e motivo.
 
 **Fase 2 — Pipeline multi-usuário (`worker/`):**
-- Busca (Adzuna + JSearch opcional) usando os cargos-alvo/regiões de cada usuário ativo
-- **Cache de busca compartilhado por cargo+região+raio entre usuários** — evita 1 request por
-  pessoa na Adzuna/JSearch, crítico pra escalar volume (ver `worker/index.js`)
-- Modo de região por usuário: raio ao redor da própria região, ou Brasil todo (`preferencias.modo_regiao`)
-- Modo de disparo manual via bot (`/buscar`) além do automático a cada ciclo do cron
-- Bot Telegram com comandos `/menu`, `/buscar`, `/regiao` e botões inline
-- Score + dedup por usuário
-- Currículo ajustado via Gemini (resumo profissional forçado a 5 linhas), construído a partir do
-  currículo estruturado salvo no onboarding
-- Notificação por Telegram (docx + pdf, botões de feedback 👍/👎) — **1 bot só, roteado por `telegram_chat_id`** de cada perfil
-- Digest quando há mais de uma vaga nova por usuário
-- Alerta de erro por usuário (e opcionalmente um chat de admin pra falhas fatais)
+- Busca (Adzuna + JSearch opcional) usando os cargos-alvo/regiões de cada usuário (raio default de 500km).
+- **Cache de busca compartilhado** entre usuários pra mesma região/cargo.
+- **Filtro Híbrido + IA (Novo):** Varredura de palavras-chave simples seguida de análise profunda usando o **Gemini 2.5 Flash**. A IA lê a descrição da vaga e o currículo, e gera um Score (0 a 100) e uma justificativa (`motivo_ia`).
+- Descarte automático de vagas com Score IA < 40.
+- Modo de disparo manual via bot (`/buscar`) além do automático a cada ciclo do cron.
+- Bot Telegram com comandos `/menu`, `/buscar`, `/status`, `/regiao` e botões inline. Notificações trazem o arquivo DOCX/PDF gerado, o Score e a Justificativa da IA.
 
 **Fase 3 — Painel web e landing page:**
 - Landing page pública em `/` (ver [DESIGN.md](./DESIGN.md) e [LANDING_PROMPT.md](./LANDING_PROMPT.md))
@@ -40,15 +34,16 @@ worker de ponta a ponta em produção, e decidir/implementar billing real).
 
 ## Status Atual
 
-**🎉 BETA GRATUITO NO AR — v2 com Dark Mode + CV Generator!**
+**🎉 BETA GRATUITO NO AR — v2 com IA Completa + Glassmorphism UI!**
 
 Infraestrutura:
-- ✅ Supabase: projeto `wrdxvhhmyptizlpdeaue`, schema (profiles/curriculos/preferencias/vagas_vistas) rodado
+- ✅ Supabase: projeto `wrdxvhhmyptizlpdeaue`, schema com RLS e coluna `motivo_ia` migrada
 - ✅ Vercel: frontend deployado em https://vaga-match-coral.vercel.app/
-- ✅ Email confirmation: desabilitado (signup imediato)
+- ✅ Onboarding IA: O usuário não precisa mais digitar nada, envia o PDF e a IA extrai tudo (cargo, skill, resumo)
+- ✅ Dashboard Premium: Redesign com Glassmorphism, Score IA com cores, e grid moderno
+- ✅ Filtro de IA do Worker: Avaliação 0-100 via Gemini Flash para cada vaga encontrada, cortando spam
+- ✅ Telegram Aprimorado: Mostra o `Score` e o "Porque essa vaga é pra você" direto no celular
 - ✅ Theme toggle: dark/light mode com CSS variables
-- ✅ CV Generator: Gerador.jsx com Gemini pra reformatar currículo por vaga
-- ✅ Admin panel: redesign com glassmorphism
 - ✅ Landing page: completa com features + pricing + ticker de vagas
 
 ## Próximos passos (em ordem sugerida)
@@ -78,7 +73,7 @@ Infraestrutura:
 
 ## Produção (GitHub Actions)
 
-`.github/workflows/worker.yml` roda o worker a cada 2h. Cadastrar os secrets do worker em **Settings → Secrets and variables → Actions** do repo (mesmos nomes do `.env.example`, seção worker).
+`.github/workflows/worker.yml` roda o worker a cada 10 min. Cadastrar os secrets do worker em **Settings → Secrets and variables → Actions** do repo (`ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`).
 
 ## Regras herdadas do projeto pessoal
 
