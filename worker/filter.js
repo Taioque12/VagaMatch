@@ -4,7 +4,7 @@ const normalizar = (s) =>
   s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 
 // Relevante se título+descrição contêm >= minMatches palavras-chave (do usuário) distintas.
-export function filtrarRelevantes(vagas, palavrasChave, minMatches = 2) {
+export function filtrarRelevantes(vagas, palavrasChave, minMatches = 1) {
   const chavesNorm = palavrasChave.map(normalizar);
   return vagas
     .map((v) => {
