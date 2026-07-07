@@ -13,49 +13,11 @@ export function Admin() {
       setCarregando(true);
       setErro(null);
       try {
-        const [{ data: perfis, error: e1 }, { data: prefs, error: e2 }, { data: vagas, error: e3 }] =
-          await Promise.all([
-            supabase.from("profiles").select("id, plano, role, assinatura_status, assinatura_recorrencia, created_at"),
-            supabase.from("preferencias").select("user_id, ativo, disparo_manual"),
-            supabase.from("vagas_vistas").select("status, data_encontrada"),
-          ]);
-        if (e1) throw e1;
-        if (e2) throw e2;
-        if (e3) throw e3;
-
-        const totalUsuarios = perfis.length;
-        const buscaAtiva = prefs.filter((p) => p.ativo).length;
-        const disparoManual = prefs.filter((p) => p.disparo_manual).length;
-
-        const porAssinatura = perfis.reduce((acc, p) => {
-          acc[p.assinatura_status] = (acc[p.assinatura_status] ?? 0) + 1;
-          return acc;
-        }, {});
-
-        const porRecorrencia = perfis.reduce((acc, p) => {
-          const chave = p.assinatura_recorrencia ?? "sem_recorrencia";
-          acc[chave] = (acc[chave] ?? 0) + 1;
-          return acc;
-        }, {});
-
-        const seteDiasAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const cadastrosUltimos7Dias = perfis.filter((p) => p.created_at >= seteDiasAtras).length;
-
-        const vagasNotificadas7Dias = vagas.filter(
-          (v) => v.status === "notificada" && v.data_encontrada >= seteDiasAtras
-        ).length;
-        const vagasComErro = vagas.filter((v) => v.status === "erro").length;
-
-        setMetricas({
-          totalUsuarios,
-          buscaAtiva,
-          disparoManual,
-          porAssinatura,
-          porRecorrencia,
-          cadastrosUltimos7Dias,
-          vagasNotificadas7Dias,
-          vagasComErro,
-        });
+        // Agregação inteira roda no Postgres (admin_metricas(), migration 007) — antes isso
+        // baixava toda linha de profiles/preferencias/vagas_vistas pro navegador só pra contar.
+        const { data, error } = await supabase.rpc("admin_metricas");
+        if (error) throw error;
+        setMetricas(data);
       } catch (e) {
         setErro(e.message);
       } finally {
