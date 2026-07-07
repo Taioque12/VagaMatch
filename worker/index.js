@@ -74,7 +74,8 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
   const palavrasChave = pref.palavras_chave ?? [];
   const brasilTodo = pref.modo_regiao === "brasil";
   const regioes = brasilTodo ? [""] : pref.regioes?.length ? pref.regioes : [""];
-  const raioKm = brasilTodo ? null : pref.raio_km;
+  // Define o raio como 500km se não estiver preenchido
+  const raioKm = brasilTodo ? null : (pref.raio_km || 500);
 
   if (!cargosAlvo.length || !palavrasChave.length) {
     console.log(`Usuário ${perfil.id}: sem cargos-alvo ou palavras-chave configuradas, pulando.`);
