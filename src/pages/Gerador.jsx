@@ -99,11 +99,11 @@ export function Gerador() {
         </div>
       )}
 
-      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
-        <button onClick={() => handleGerar("cv")} disabled={gerando} className="botao-principal">
+      <div style={{ marginTop: "20px", display: "flex", flexWrap: "wrap", gap: "10px" }}>
+        <button onClick={() => handleGerar("cv")} disabled={gerando} className="botao-principal" style={{ width: "auto", flex: "1 1 200px" }}>
           {gerando ? "Gerando..." : "Gerar Currículo"}
         </button>
-        <button onClick={() => handleGerar("carta")} disabled={gerando} className="botao-principal" style={{ backgroundColor: "#10b981" }}>
+        <button onClick={() => handleGerar("carta")} disabled={gerando} className="botao-principal" style={{ width: "auto", flex: "1 1 200px", backgroundColor: "#10b981" }}>
           {gerando ? "Gerando..." : "Gerar Carta de Apresentação"}
         </button>
       </div>
