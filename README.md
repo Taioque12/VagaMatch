@@ -40,16 +40,24 @@ worker de ponta a ponta em produção, e decidir/implementar billing real).
 
 ## Status Atual
 
-**🎉 BETA GRATUITO NO AR!**
-A plataforma está oficialmente configurada e hospedada. O sistema completo de ponta-a-ponta (Site -> Banco de Dados -> Worker -> Telegram) está operante em Produção.
+**🎉 BETA GRATUITO NO AR — v2 com Dark Mode + CV Generator!**
+
+Infraestrutura:
+- ✅ Supabase: projeto `wrdxvhhmyptizlpdeaue`, schema (profiles/curriculos/preferencias/vagas_vistas) rodado
+- ✅ Vercel: frontend deployado em https://vaga-match-coral.vercel.app/
+- ✅ Email confirmation: desabilitado (signup imediato)
+- ✅ Theme toggle: dark/light mode com CSS variables
+- ✅ CV Generator: Gerador.jsx com Gemini pra reformatar currículo por vaga
+- ✅ Admin panel: redesign com glassmorphism
+- ✅ Landing page: completa com features + pricing + ticker de vagas
 
 ## Próximos passos (em ordem sugerida)
 
-1. **Testar com usuários reais (Beta Fechado)**: Distribuir o link da Vercel para uma base controlada de usuários testadores para validar o onboarding, a qualidade do currículo gerado e a experiência de receber vagas pelo Telegram.
-2. **Decidir gateway de pagamento (Fase 5)**: Integrar Checkout e Webhooks (Mercado Pago, Stripe ou Kiwify) para travar a plataforma apenas para assinantes pagantes.
-3. **Definir preço final dos planos** (hoje ilustrativo em `src/lib/planos.js`) e implementar o billing real — `profiles.assinatura_status` hoje é atualizado manualmente no Supabase.
-4. **Trocar conteúdo ilustrativo da landing por dado real**: Gravar um vídeo ou gif do fluxo real (bot mandando vaga+currículo no Telegram) e atualizar as métricas visuais da página inicial.
-5. **Migrar o worker do GitHub Actions** para um cron dedicado (Railway/Render) caso a base de usuários cresça a ponto de o free-tier do GitHub Actions ser insuficiente.
+1. **Rodar worker fim-a-fim**: Usuário preenche onboarding (currículo + preferências + telegram_chat_id), aguarda próximo cron (2h) ou dispara manual via GitHub Actions, valida se vaga chega no Telegram com CV ajustado.
+2. **Beta Fechado com 5-10 testers**: Link Vercel distribuído, feedback em onboarding/CV quality/Telegram UX.
+3. **Decidir gateway de pagamento (Fase 5)**: Integrar Checkout e Webhooks (Mercado Pago, Stripe ou Kiwify).
+4. **Definir preço final dos planos** (hoje ilustrativo em `src/lib/planos.js`) e implementar o billing real — `profiles.assinatura_status` hoje é atualizado manualmente no Supabase.
+5. **Trocar conteúdo ilustrativo da landing por dado real**: Vídeo/gif do fluxo real (bot mandando vaga+currículo no Telegram) e atualizar métricas.
 
 ## Setup local — Frontend
 
