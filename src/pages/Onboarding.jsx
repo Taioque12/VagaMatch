@@ -6,20 +6,6 @@ import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 import { extrairDadosCurriculo } from "../lib/gemini.js";
 
-const linhas = (texto) =>
-  texto
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-const csv = (texto) =>
-  texto
-    .split(",")
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-const vazioExperiencia = () => ({ cargo: "", empresa: "", periodo: "", bullets: "" });
-
 export function Onboarding() {
   const { session } = useAuth();
   const navigate = useNavigate();
@@ -29,24 +15,10 @@ export function Onboarding() {
   const [erro, setErro] = useState(null);
   const [salvo, setSalvo] = useState(false);
   const [analisandoPdf, setAnalisandoPdf] = useState(false);
+  const [nomeArquivo, setNomeArquivo] = useState(null);
 
-  // Currículo
-  const [resumoProfissional, setResumoProfissional] = useState("");
-  const [habilidades, setHabilidades] = useState("");
-  const [experiencias, setExperiencias] = useState([vazioExperiencia()]);
-  const [formacao, setFormacao] = useState("");
-  const [cursos, setCursos] = useState("");
-  const [projetos, setProjetos] = useState("");
-
-  // Preferências
-  const [cargosAlvo, setCargosAlvo] = useState("");
-  const [palavrasChave, setPalavrasChave] = useState("");
-  const [regioes, setRegioes] = useState("");
-
-  // Perfil
-  const [nomeCompleto, setNomeCompleto] = useState("");
-  const [localizacao, setLocalizacao] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
+  const [dadosExtraidos, setDadosExtraidos] = useState(null);
 
   useEffect(() => {
     if (!session) return;
@@ -58,33 +30,24 @@ export function Onboarding() {
         supabase.from("preferencias").select("*").eq("user_id", userId).maybeSingle(),
       ]);
 
-      if (perfil) {
-        setNomeCompleto(perfil.nome_completo ?? "");
-        setLocalizacao(perfil.localizacao ?? "");
-        setTelegramChatId(perfil.telegram_chat_id ?? "");
+      if (perfil) setTelegramChatId(perfil.telegram_chat_id ?? "");
+
+      if (perfil?.nome_completo || curriculo) {
+        setDadosExtraidos({
+          nome_completo: perfil?.nome_completo ?? "",
+          localizacao: perfil?.localizacao ?? "",
+          resumo_profissional: curriculo?.resumo_profissional ?? "",
+          habilidades: curriculo?.habilidades ?? [],
+          experiencias: curriculo?.experiencias ?? [],
+          formacao: curriculo?.formacao ?? [],
+          cursos: curriculo?.cursos ?? [],
+          projetos: curriculo?.projetos ?? [],
+          cargos_alvo: prefs?.cargos_alvo ?? [],
+          palavras_chave: prefs?.palavras_chave ?? [],
+          regioes: prefs?.regioes ?? [],
+        });
       }
-      if (curriculo) {
-        setResumoProfissional(curriculo.resumo_profissional ?? "");
-        setHabilidades((curriculo.habilidades ?? []).join(", "));
-        setExperiencias(
-          (curriculo.experiencias ?? []).length
-            ? curriculo.experiencias.map((e) => ({
-                cargo: e.cargo ?? "",
-                empresa: e.empresa ?? "",
-                periodo: e.periodo ?? "",
-                bullets: (e.bullets ?? []).join("\n"),
-              }))
-            : [vazioExperiencia()]
-        );
-        setFormacao((curriculo.formacao ?? []).join("\n"));
-        setCursos((curriculo.cursos ?? []).join("\n"));
-        setProjetos((curriculo.projetos ?? []).join("\n"));
-      }
-      if (prefs) {
-        setCargosAlvo((prefs.cargos_alvo ?? []).join("\n"));
-        setPalavrasChave((prefs.palavras_chave ?? []).join(", "));
-        setRegioes((prefs.regioes ?? []).join(", "));
-      }
+
       setCarregando(false);
     }
     carregar().catch((e) => {
@@ -93,68 +56,81 @@ export function Onboarding() {
     });
   }, [session]);
 
-  function atualizarExperiencia(idx, campo, valor) {
-    setExperiencias((prev) => prev.map((e, i) => (i === idx ? { ...e, [campo]: valor } : e)));
+  async function handleUploadPdf(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setAnalisandoPdf(true);
+    setErro(null);
+    setSalvo(false);
+    setNomeArquivo(file.name);
+
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const base64 = evt.target.result.split(",")[1];
+          const dados = await extrairDadosCurriculo(base64, file.type);
+          setDadosExtraidos(dados);
+        } catch (err) {
+          setErro(err.message);
+          setNomeArquivo(null);
+        } finally {
+          setAnalisandoPdf(false);
+          e.target.value = null;
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (err) {
+      setErro(err.message);
+      setAnalisandoPdf(false);
+      setNomeArquivo(null);
+    }
   }
 
-  function adicionarExperiencia() {
-    setExperiencias((prev) => [...prev, vazioExperiencia()]);
-  }
-
-  function removerExperiencia(idx) {
-    setExperiencias((prev) => prev.filter((_, i) => i !== idx));
-  }
-
-  async function handleSubmit(e) {
-    e.preventDefault();
+  async function handleSalvar() {
     setSalvando(true);
     setErro(null);
     setSalvo(false);
     const userId = session.user.id;
+    const d = dadosExtraidos;
 
     try {
-      const { error: e1 } = await supabase
-        .from("profiles")
-        .upsert({
-          id: userId,
-          nome_completo: nomeCompleto,
-          localizacao,
-          telegram_chat_id: telegramChatId || null,
-          updated_at: new Date().toISOString(),
-        });
+      const { error: e1 } = await supabase.from("profiles").upsert({
+        id: userId,
+        nome_completo: d.nome_completo || "",
+        localizacao: d.localizacao || "",
+        telegram_chat_id: telegramChatId || null,
+        updated_at: new Date().toISOString(),
+      });
       if (e1) throw e1;
 
-      const { error: e2 } = await supabase
-        .from("curriculos")
-        .upsert({
+      const { error: e2 } = await supabase.from("curriculos").upsert(
+        {
           user_id: userId,
-          resumo_profissional: resumoProfissional,
-          habilidades: csv(habilidades),
-          experiencias: experiencias
-            .filter((exp) => exp.cargo || exp.empresa)
-            .map((exp) => ({
-              cargo: exp.cargo,
-              empresa: exp.empresa,
-              periodo: exp.periodo,
-              bullets: linhas(exp.bullets),
-            })),
-          formacao: linhas(formacao),
-          cursos: linhas(cursos),
-          projetos: linhas(projetos),
+          resumo_profissional: d.resumo_profissional || "",
+          habilidades: d.habilidades || [],
+          experiencias: d.experiencias || [],
+          formacao: d.formacao || [],
+          cursos: d.cursos || [],
+          projetos: d.projetos || [],
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+        },
+        { onConflict: "user_id" }
+      );
       if (e2) throw e2;
 
-      const { error: e3 } = await supabase
-        .from("preferencias")
-        .upsert({
+      const { error: e3 } = await supabase.from("preferencias").upsert(
+        {
           user_id: userId,
           ativo: true,
-          cargos_alvo: linhas(cargosAlvo),
-          palavras_chave: csv(palavrasChave),
-          regioes: csv(regioes),
+          cargos_alvo: d.cargos_alvo || [],
+          palavras_chave: d.palavras_chave || [],
+          regioes: d.regioes || [],
           updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' });
+        },
+        { onConflict: "user_id" }
+      );
       if (e3) throw e3;
 
       setSalvo(true);
@@ -165,58 +141,14 @@ export function Onboarding() {
     }
   }
 
-  async function handleUploadPdf(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setAnalisandoPdf(true);
-    setErro(null);
-
-    try {
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const result = evt.target.result;
-          const base64 = result.split(",")[1];
-          
-          const dados = await extrairDadosCurriculo(base64, file.type);
-          
-          if (dados.resumo_profissional) setResumoProfissional(dados.resumo_profissional);
-          if (dados.habilidades) setHabilidades(dados.habilidades.join(", "));
-          if (dados.experiencias && dados.experiencias.length) {
-            setExperiencias(
-              dados.experiencias.map(e => ({
-                cargo: e.cargo || "",
-                empresa: e.empresa || "",
-                periodo: e.periodo || "",
-                bullets: (e.bullets || []).join("\\n")
-              }))
-            );
-          }
-          if (dados.formacao) setFormacao(dados.formacao.join("\\n"));
-          if (dados.cursos) setCursos(dados.cursos.join("\\n"));
-          if (dados.projetos) setProjetos(dados.projetos.join("\\n"));
-          
-        } catch (err) {
-          setErro(err.message);
-        } finally {
-          setAnalisandoPdf(false);
-          e.target.value = null; // reseta o input
-        }
-      };
-      reader.readAsDataURL(file);
-    } catch (err) {
-      setErro(err.message);
-      setAnalisandoPdf(false);
-    }
-  }
-
   if (carregando) return <p className="carregando">Carregando...</p>;
 
+  const pronto = !!dadosExtraidos;
+
   return (
-    <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="lp lp-hero-bloco" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <nav className="lp-nav">
-        <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
+        <Link to="/" className="lp-logo" style={{ textDecoration: "none" }}>
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
@@ -227,143 +159,91 @@ export function Onboarding() {
           </Link>
         </div>
       </nav>
-      <div className="onboarding">
+
+      <div className="onboarding onboarding-simples">
         <h1 style={{ textAlign: "center", marginBottom: "0.5rem" }}>Configure seu perfil</h1>
-        <p className="ajuda" style={{ textAlign: "center" }}>
-          Isso é a fonte fixa de verdade usada para gerar seus currículos — o sistema nunca inventa
-          experiência além do que você preencher aqui.
+        <p className="ajuda" style={{ textAlign: "center", maxWidth: 520, margin: "0 auto" }}>
+          Envie seu currículo em PDF — a IA lê tudo e preenche seu perfil, currículo-base e
+          preferências de busca sozinha. Sem formulário pra preencher.
         </p>
 
-      <form onSubmit={handleSubmit}>
-        <section>
-          <h2>Dados pessoais</h2>
-          <label>
-            Nome completo
-            <input value={nomeCompleto} onChange={(e) => setNomeCompleto(e.target.value)} required />
+        <section className="zona-upload">
+          <input
+            type="file"
+            accept="application/pdf"
+            onChange={handleUploadPdf}
+            disabled={analisandoPdf}
+            id="upload-cv"
+            style={{ display: "none" }}
+          />
+          <label htmlFor="upload-cv" className="zona-upload-label">
+            <span className="zona-upload-icone">{analisandoPdf ? "⏳" : "📄"}</span>
+            <span className="zona-upload-titulo">
+              {analisandoPdf
+                ? "Lendo seu currículo com IA..."
+                : pronto
+                ? "Trocar currículo em PDF"
+                : "Importar currículo em PDF"}
+            </span>
+            <span className="zona-upload-sub">
+              {nomeArquivo ? nomeArquivo : "Clique para selecionar o arquivo"}
+            </span>
           </label>
-          <label>
-            Localização
-            <input
-              value={localizacao}
-              onChange={(e) => setLocalizacao(e.target.value)}
-              placeholder="Cidade, UF"
-            />
-          </label>
-          <label>
-            Telegram Chat ID
+        </section>
+
+        {pronto && (
+          <section className="cartao-resumo">
+            <div className="cartao-resumo-check">✓ Perfil extraído com sucesso</div>
+            <h2>{dadosExtraidos.nome_completo || "Nome não identificado"}</h2>
+            {dadosExtraidos.localizacao && <p className="ajuda">{dadosExtraidos.localizacao}</p>}
+
+            {!!dadosExtraidos.cargos_alvo?.length && (
+              <div className="tags">
+                {dadosExtraidos.cargos_alvo.map((c, i) => (
+                  <span className="tag" key={i}>
+                    {c}
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {dadosExtraidos.resumo_profissional && (
+              <p className="resumo-preview">{dadosExtraidos.resumo_profissional}</p>
+            )}
+          </section>
+        )}
+
+        {pronto && (
+          <section className="cartao-telegram">
+            <h2>Notificações no Telegram</h2>
+            <p className="ajuda">
+              Fale com{" "}
+              <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer">
+                @userinfobot
+              </a>{" "}
+              no Telegram pra pegar seu Chat ID e receber as vagas compatíveis automaticamente.
+            </p>
             <input
               value={telegramChatId}
               onChange={(e) => setTelegramChatId(e.target.value)}
-              placeholder="Fale com @userinfobot no Telegram pra pegar o seu"
+              placeholder="Cole seu Telegram Chat ID"
             />
-          </label>
-        </section>
+          </section>
+        )}
 
-        <section>
-          <h2>Currículo</h2>
-          
-          <div className="cartao-importacao">
-            <p><strong>Tem um currículo em PDF?</strong> Deixe a IA preencher tudo para você!</p>
-            <input 
-              type="file" 
-              accept="application/pdf" 
-              onChange={handleUploadPdf} 
-              disabled={analisandoPdf}
-              id="upload-cv"
-              style={{ display: "none" }}
-            />
-            <label htmlFor="upload-cv" className="botao-secundario" style={{ display: "inline-block", cursor: "pointer", marginTop: "10px", padding: "10px 16px", background: "#34495e", color: "white", borderRadius: "8px", fontWeight: "bold" }}>
-              {analisandoPdf ? "Analisando PDF... ⏳" : "📄 Importar currículo em PDF"}
-            </label>
-          </div>
+        {erro && <p className="erro" style={{ textAlign: "center" }}>{erro}</p>}
+        {salvo && <p className="sucesso" style={{ textAlign: "center" }}>Salvo com sucesso.</p>}
 
-          <label style={{ marginTop: "20px", display: "block" }}>
-            Resumo profissional
-            <textarea
-              rows={4}
-              value={resumoProfissional}
-              onChange={(e) => setResumoProfissional(e.target.value)}
-            />
-          </label>
-          <label>
-            Habilidades técnicas (separadas por vírgula)
-            <input value={habilidades} onChange={(e) => setHabilidades(e.target.value)} />
-          </label>
-
-          <h3>Experiência profissional</h3>
-          {experiencias.map((exp, idx) => (
-            <div className="cartao-experiencia" key={idx}>
-              <div className="linha-dupla">
-                <input
-                  placeholder="Cargo"
-                  value={exp.cargo}
-                  onChange={(e) => atualizarExperiencia(idx, "cargo", e.target.value)}
-                />
-                <input
-                  placeholder="Empresa"
-                  value={exp.empresa}
-                  onChange={(e) => atualizarExperiencia(idx, "empresa", e.target.value)}
-                />
-              </div>
-              <input
-                placeholder="Período (ex: Jul/2023 – Atual)"
-                value={exp.periodo}
-                onChange={(e) => atualizarExperiencia(idx, "periodo", e.target.value)}
-              />
-              <textarea
-                placeholder="Bullets — um por linha"
-                rows={3}
-                value={exp.bullets}
-                onChange={(e) => atualizarExperiencia(idx, "bullets", e.target.value)}
-              />
-              {experiencias.length > 1 && (
-                <button type="button" className="link-remover" onClick={() => removerExperiencia(idx)}>
-                  Remover
-                </button>
-              )}
-            </div>
-          ))}
-          <button type="button" onClick={adicionarExperiencia}>
-            + Adicionar experiência
+        {pronto && (
+          <button
+            type="button"
+            onClick={handleSalvar}
+            disabled={salvando}
+            className="botao-principal"
+          >
+            {salvando ? "Salvando..." : "Salvar e continuar"}
           </button>
-
-          <label>
-            Formação acadêmica (uma por linha)
-            <textarea rows={3} value={formacao} onChange={(e) => setFormacao(e.target.value)} />
-          </label>
-          <label>
-            Cursos complementares (um por linha)
-            <textarea rows={3} value={cursos} onChange={(e) => setCursos(e.target.value)} />
-          </label>
-          <label>
-            Projetos paralelos (um por linha)
-            <textarea rows={2} value={projetos} onChange={(e) => setProjetos(e.target.value)} />
-          </label>
-        </section>
-
-        <section>
-          <h2>Preferências de busca</h2>
-          <label>
-            Cargos-alvo (um por linha)
-            <textarea rows={3} value={cargosAlvo} onChange={(e) => setCargosAlvo(e.target.value)} />
-          </label>
-          <label>
-            Palavras-chave de relevância (separadas por vírgula)
-            <textarea rows={2} value={palavrasChave} onChange={(e) => setPalavrasChave(e.target.value)} />
-          </label>
-          <label>
-            Regiões de interesse (separadas por vírgula)
-            <input value={regioes} onChange={(e) => setRegioes(e.target.value)} />
-          </label>
-        </section>
-
-        {erro && <p className="erro">{erro}</p>}
-        {salvo && <p className="sucesso">Salvo com sucesso.</p>}
-
-        <button type="submit" disabled={salvando} className="botao-principal">
-          {salvando ? "Salvando..." : "Salvar"}
-        </button>
-      </form>
+        )}
       </div>
     </div>
   );

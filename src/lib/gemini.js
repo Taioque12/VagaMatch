@@ -65,12 +65,17 @@ export async function extrairDadosCurriculo(base64Data, mimeType = "application/
 
   const prompt = `Você é um extrator de dados de currículos. Extraia todas as informações deste documento e retorne ESTRITAMENTE em formato JSON.
 As chaves do JSON devem ser exatamente estas:
+- nome_completo (string)
+- localizacao (string, formato "Cidade, UF")
 - resumo_profissional (string)
 - habilidades (array de strings)
 - experiencias (array de objetos contendo: cargo (string), empresa (string), periodo (string), bullets (array de strings))
 - formacao (array de strings)
 - cursos (array de strings)
 - projetos (array de strings)
+- cargos_alvo (array de strings — 2 a 4 cargos que este candidato deveria buscar em vagas, com base no histórico dele)
+- palavras_chave (array de strings — termos técnicos/skills mais relevantes para buscar vagas alinhadas)
+- regioes (array de strings — a cidade/região extraída de localizacao, ex: ["São Paulo, SP"])
 
 Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
 

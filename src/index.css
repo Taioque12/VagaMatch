@@ -211,6 +211,127 @@ button:disabled {
   color: var(--primary-text);
 }
 
+.onboarding-simples {
+  max-width: 560px;
+  padding-top: 3rem;
+}
+
+.zona-upload {
+  background: var(--primary-light);
+  border: 2px dashed var(--primary-border);
+  border-radius: 16px;
+  margin: 2.5rem 0 1.5rem;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.zona-upload:hover {
+  border-color: var(--primary);
+  background: var(--bg-glass-hover);
+}
+
+.zona-upload-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 3rem 2rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.zona-upload-icone {
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 0.4rem;
+}
+
+.zona-upload-titulo {
+  font-family: "Manrope", sans-serif;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--text-main);
+}
+
+.zona-upload-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.cartao-resumo {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 1.8rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.4);
+}
+
+.cartao-resumo-check {
+  display: inline-block;
+  color: var(--primary-text);
+  background: var(--primary-light);
+  border: 1px solid var(--primary-border);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+}
+
+.cartao-resumo h2 {
+  font-family: "Manrope", sans-serif;
+  font-size: 22px;
+}
+
+.resumo-preview {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 0.8rem;
+  max-height: 4.5em;
+  overflow: hidden;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+}
+
+.tag {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+}
+
+.cartao-telegram {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 1.8rem;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.cartao-telegram h2 {
+  font-family: "Manrope", sans-serif;
+  font-size: 18px;
+}
+
+.cartao-telegram a {
+  color: var(--primary-text);
+}
+
 .dashboard {
   max-width: 960px;
   margin: 1rem auto;
