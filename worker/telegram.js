@@ -89,6 +89,12 @@ export async function notificarVaga(chatId, vaga, docxPath, pdfPath, palavrasCob
   return dataDocx.result.message_id;
 }
 
+// Mensagem de texto simples (sem moldura Markdown) — usada por fluxos que já recebem
+// texto pronto (ex: confirmação de vínculo do Telegram), sem risco de entidade quebrada.
+export async function enviarMensagem(chatId, texto) {
+  await chamarApi("sendMessage", { chat_id: chatId, text: texto });
+}
+
 export async function enviarResumoDiario(chatId, vagas) {
   const linhas = vagas
     .slice()

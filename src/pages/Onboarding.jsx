@@ -36,6 +36,7 @@ export function Onboarding() {
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [localizacao, setLocalizacao] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
+  const [telegramLinkToken, setTelegramLinkToken] = useState("");
 
   useEffect(() => {
     if (!session) return;
@@ -51,6 +52,7 @@ export function Onboarding() {
         setNomeCompleto(perfil.nome_completo ?? "");
         setLocalizacao(perfil.localizacao ?? "");
         setTelegramChatId(perfil.telegram_chat_id ?? "");
+        setTelegramLinkToken(perfil.telegram_link_token ?? "");
       }
       if (curriculo) {
         setResumoProfissional(curriculo.resumo_profissional ?? "");
@@ -80,6 +82,27 @@ export function Onboarding() {
       setErro(e.message);
       setCarregando(false);
     });
+  }, [session]);
+
+  // O vínculo do Telegram via deep link acontece numa aba/app diferente (o bot responde ao
+  // /start lá, não aqui). Ao voltar o foco pra essa aba, refaz o fetch pra não deixar o campo
+  // manual (e o "Salvar") sobrescrever com um telegram_chat_id desatualizado.
+  useEffect(() => {
+    if (!session) return;
+    function reconferirTelegram() {
+      supabase
+        .from("profiles")
+        .select("telegram_chat_id, telegram_link_token")
+        .eq("id", session.user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (!data) return;
+          if (data.telegram_chat_id) setTelegramChatId(data.telegram_chat_id);
+          if (data.telegram_link_token) setTelegramLinkToken(data.telegram_link_token);
+        });
+    }
+    window.addEventListener("focus", reconferirTelegram);
+    return () => window.removeEventListener("focus", reconferirTelegram);
   }, [session]);
 
   function atualizarExperiencia(idx, campo, valor) {
@@ -246,8 +269,35 @@ export function Onboarding() {
               placeholder="Cidade, UF"
             />
           </label>
+          {import.meta.env.VITE_TELEGRAM_BOT_USERNAME && telegramLinkToken && (
+            <div className="cartao-importacao">
+              <p>
+                <strong>Conectar Telegram automaticamente</strong> — clique no botão, o bot
+                confirma o vínculo sozinho.
+              </p>
+              <a
+                href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME}?start=${telegramLinkToken}`}
+                target="_blank"
+                rel="noreferrer"
+                className="botao-secundario"
+                style={{
+                  display: "inline-block",
+                  marginTop: "10px",
+                  padding: "10px 16px",
+                  background: "#34495e",
+                  color: "white",
+                  borderRadius: "8px",
+                  fontWeight: "bold",
+                  textDecoration: "none",
+                }}
+              >
+                🔗 Conectar com Telegram
+              </a>
+              {telegramChatId && <p className="ajuda">✅ Telegram já vinculado.</p>}
+            </div>
+          )}
           <label>
-            Telegram Chat ID
+            Telegram Chat ID (ou cole aqui manualmente)
             <input
               value={telegramChatId}
               onChange={(e) => setTelegramChatId(e.target.value)}

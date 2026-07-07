@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "./config.js";
 
@@ -67,6 +68,27 @@ export async function buscarPerfilPorChatId(chatId) {
     .maybeSingle();
   if (error) throw new Error(`Supabase select (profile por chat_id): ${error.message}`);
   return data;
+}
+
+// Deep link (/start <token>) — achar o perfil dono de um token de vínculo do Telegram.
+export async function buscarPerfilPorTelegramToken(token) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, nome_completo")
+    .eq("telegram_link_token", token)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase select (telegram_link_token): ${error.message}`);
+  return data;
+}
+
+// Vincula o chat_id de quem mandou /start <token> e ROTACIONA o token: o link só funciona
+// uma vez (ver comentário na migration 008 sobre por que isso importa pra segurança).
+export async function vincularTelegramChatId(userId, chatId) {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ telegram_chat_id: String(chatId), telegram_link_token: randomUUID() })
+    .eq("id", userId);
+  if (error) throw new Error(`Supabase update (vincular telegram): ${error.message}`);
 }
 
 export async function solicitarBuscaManual(userId) {

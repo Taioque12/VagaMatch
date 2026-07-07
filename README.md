@@ -58,8 +58,11 @@ A plataforma está oficialmente configurada e hospedada. O sistema completo de p
 3. Rodar as migrations (`supabase/migrations/`, em ordem) no SQL Editor
 4. Em **Authentication → Sign In / Providers**, decidir se exige confirmação de e-mail (desligar facilita testar)
 5. Copiar `.env.example` → `.env`, preencher `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (a **publishable/anon**, não a secret)
-6. `npm run dev`
-7. Pra acessar `/admin`: depois de criar sua conta normalmente, rode no SQL Editor do Supabase
+6. Opcional: `VITE_TELEGRAM_BOT_USERNAME` (o `@username` do bot, sem o `@`) habilita o botão
+   "Conectar com Telegram" no onboarding (deep link `t.me/<bot>?start=<token>`, vínculo
+   automático). Sem essa env, o botão some e sobra só o campo manual de Chat ID — nada quebra.
+7. `npm run dev`
+8. Pra acessar `/admin`: depois de criar sua conta normalmente, rode no SQL Editor do Supabase
    `update public.profiles set role = 'admin' where id = '<seu-user-id>';`
 
 ## Edge Function do Gemini (geração de CV/carta e leitura de PDF no onboarding)
