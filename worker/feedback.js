@@ -2,7 +2,7 @@ import {
   getState,
   setState,
   buscarPorCallbackId,
-  marcarFeedback,
+  marcarStatus,
   buscarPerfilPorChatId,
   solicitarBuscaManual,
   definirModoRegiao,
@@ -17,24 +17,24 @@ import {
   enviarMensagemSimples,
 } from "./telegram.js";
 
-const TIPOS = { pos: "positivo", neg: "negativo" };
-const TEXTOS = { pos: "Marcado como relevante 👍", neg: "Marcado como não relevante 👎" };
+const STATUS_POR_TIPO = { cand: "candidatado", desc: "descartada" };
+const TEXTOS_STATUS = { cand: "Marcado como candidatado ✅", desc: "Vaga descartada 🗑️" };
 
 async function tratarCallback(cq) {
   const data = cq.data ?? "";
 
-  if (data.startsWith("fb:")) {
+  if (data.startsWith("st:")) {
     const [, tipo, callbackId] = data.split(":");
-    const tipoFeedback = TIPOS[tipo];
-    if (!tipoFeedback) return;
+    const status = STATUS_POR_TIPO[tipo];
+    if (!status) return;
 
     const vaga = await buscarPorCallbackId(callbackId);
     if (!vaga) {
       await responderCallback(cq.id, "Vaga não encontrada (registro antigo).");
       return;
     }
-    await marcarFeedback(vaga.id, tipoFeedback);
-    await responderCallback(cq.id, TEXTOS[tipo]);
+    await marcarStatus(vaga.id, status);
+    await responderCallback(cq.id, TEXTOS_STATUS[tipo]);
     if (vaga.telegram_message_id && vaga.telegram_chat_id) {
       await removerBotoes(vaga.telegram_chat_id, vaga.telegram_message_id).catch(() => {});
     }
@@ -66,7 +66,9 @@ async function tratarCallback(cq) {
       return;
     }
     const modoRegiao = modo === "brasil" ? "brasil" : "minha_regiao";
-    await definirModoRegiao(perfil.id, modoRegiao, modoRegiao === "minha_regiao" ? Number(raio) : null);
+    const raioNum = Number(raio);
+    const raioValido = Number.isFinite(raioNum) && raioNum > 0 ? raioNum : 50;
+    await definirModoRegiao(perfil.id, modoRegiao, modoRegiao === "minha_regiao" ? raioValido : null);
     await responderCallback(cq.id, modoRegiao === "brasil" ? "Modo: Brasil todo ✅" : `Modo: minha região (raio ${raio}km) ✅`);
     return;
   }
@@ -87,10 +89,17 @@ async function tratarMensagem(msg) {
   if (texto === "/status") {
     const perfil = await buscarPerfilPorChatId(msg.chat.id);
     if (!perfil) return;
-    const { data: pref } = await supabase.from('preferencias').select('cargos_alvo, palavras_chave, modo_regiao, raio_km').eq('user_id', perfil.id).single();
+    const { data: pref, error } = await supabase.from('preferencias').select('cargos_alvo, palavras_chave, modo_regiao, raio_km').eq('user_id', perfil.id).maybeSingle();
+    if (error) {
+      console.error(`Falha ao buscar preferencias (/status) user ${perfil.id}: ${error.message}`);
+      await enviarMensagemSimples(msg.chat.id, "Erro ao buscar seu status. Tente de novo mais tarde.");
+      return;
+    }
     if (pref) {
       const textoStatus = `👤 *Seu Status de Busca*\n\n🎯 *Cargos-alvo:*\n${(pref.cargos_alvo || []).join(', ')}\n\n🔑 *Palavras-chave:*\n${(pref.palavras_chave || []).join(', ')}\n\n📍 *Região:*\n${pref.modo_regiao === 'brasil' ? 'Brasil Todo' : 'Minha Região (' + (pref.raio_km || 50) + 'km)'}`;
       await enviarMensagemSimples(msg.chat.id, textoStatus);
+    } else {
+      await enviarMensagemSimples(msg.chat.id, "Nenhuma preferência configurada ainda.");
     }
     return;
   }

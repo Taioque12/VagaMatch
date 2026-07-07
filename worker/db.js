@@ -148,11 +148,6 @@ export async function buscarPorCallbackId(callbackId) {
   return { ...vaga, telegram_chat_id: perfil?.telegram_chat_id };
 }
 
-export async function marcarFeedback(id, feedback) {
-  const { error } = await supabase.from("vagas_vistas").update({ feedback }).eq("id", id);
-  if (error) throw new Error(`Supabase update (feedback): ${error.message}`);
-}
-
 // Estado global do worker (ex: offset do getUpdates do bot — 1 bot serve todos os usuários).
 export async function getState(key) {
   const { data, error } = await supabase.from("app_state").select("value").eq("key", key).maybeSingle();

@@ -21,8 +21,8 @@ function botoesFeedback(callbackId) {
   return {
     inline_keyboard: [
       [
-        { text: "👍 Relevante", callback_data: `fb:pos:${callbackId}` },
-        { text: "👎 Não é bem isso", callback_data: `fb:neg:${callbackId}` },
+        { text: "✅ Candidatei-me", callback_data: `st:cand:${callbackId}` },
+        { text: "🗑️ Descartar", callback_data: `st:desc:${callbackId}` },
       ],
     ],
   };

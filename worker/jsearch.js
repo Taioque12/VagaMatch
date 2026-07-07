@@ -18,7 +18,8 @@ export async function buscarVagasJSearch({ termo, regiao }) {
     },
   });
   if (!res.ok) {
-    throw new Error(`JSearch ${res.status}: ${await res.text()}`);
+    const corpo = (await res.text()).slice(0, 200);
+    throw new Error(`JSearch ${res.status}: ${corpo}`);
   }
   const data = await res.json();
   return (data.data ?? []).map((r) => ({

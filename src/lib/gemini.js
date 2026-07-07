@@ -1,18 +1,25 @@
-import { GoogleGenAI } from '@google/genai';
+import { supabase } from './supabase.js';
 
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+// Chama a Edge Function 'gemini-proxy', que guarda a API key do Gemini no servidor
+// e valida o JWT do usuário antes de gastar cota. Nunca falar com a API do Gemini
+// direto do frontend — a key não pode ir pro bundle.
+async function chamarGemini({ contents, config }) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) throw new Error("Você precisa estar logado.");
 
-let ai = null;
-if (apiKey) {
-  ai = new GoogleGenAI({ apiKey });
+  const { data, error } = await supabase.functions.invoke('gemini-proxy', {
+    body: { contents, config },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (error) throw new Error(error.message || "Falha ao chamar o serviço de IA.");
+  if (data?.error) throw new Error(data.error);
+  return data.text;
 }
 
 export async function gerarDocumentoIA(tipo, vaga, perfil) {
-  if (!ai) {
-    throw new Error("Chave de API do Gemini não configurada no ambiente.");
-  }
-
-  const promptCV = `Você é um especialista em recrutamento. 
+  const promptCV = `Você é um especialista em recrutamento.
 Crie um currículo sob medida, em Markdown puro (sem blocos de código usando crases), para a vaga abaixo usando os dados do perfil do candidato. Seja profissional e destaque os pontos do candidato que mais se alinham à vaga.
 
 VAGA:
@@ -29,7 +36,7 @@ Educação/Habilidades: ${perfil.skills || 'Não informado'}
 
 Retorne apenas o texto do currículo formatado, sem introduções ou explicações.`;
 
-  const promptCarta = `Você é um especialista em recrutamento e comunicação. 
+  const promptCarta = `Você é um especialista em recrutamento e comunicação.
 Crie uma carta de apresentação envolvente e profissional, em Markdown puro (sem blocos de código usando crases), para a vaga abaixo usando os dados do perfil do candidato. Mostre entusiasmo e alinhamento com a empresa e a vaga.
 
 VAGA:
@@ -49,20 +56,14 @@ Retorne apenas o texto da carta de apresentação formatada, sem introduções o
   const prompt = tipo === 'cv' ? promptCV : promptCarta;
 
   try {
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt
-    });
-    return response.text;
+    return await chamarGemini({ contents: prompt });
   } catch (error) {
-    console.error("Erro ao gerar conteúdo:", error);
+    console.error("Erro ao gerar conteúdo:", error.message);
     throw new Error("Falha ao gerar o documento com IA.");
   }
 }
 
 export async function extrairDadosCurriculo(base64Data, mimeType = "application/pdf") {
-  if (!ai) throw new Error("Chave de API do Gemini não configurada.");
-
   const prompt = `Você é um extrator de dados de currículos. Extraia todas as informações deste documento e retorne ESTRITAMENTE em formato JSON.
 As chaves do JSON devem ser exatamente estas:
 - nome_completo (string)
@@ -80,25 +81,21 @@ As chaves do JSON devem ser exatamente estas:
 Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+    const text = await chamarGemini({
       contents: [
         { inlineData: { data: base64Data, mimeType } },
-        prompt
+        prompt,
       ],
-      config: {
-        responseMimeType: "application/json"
-      }
+      config: { responseMimeType: "application/json" },
     });
-    
-    let text = response.text;
-    // Tenta remover crases de markdown se o modelo ignorar a instrução
-    if (text.startsWith("\`\`\`json")) {
-        text = text.replace(/^\`\`\`json\n/, "").replace(/\n\`\`\`$/, "");
+
+    let cleaned = text;
+    if (cleaned.startsWith("```json")) {
+      cleaned = cleaned.replace(/^```json\n/, "").replace(/\n```$/, "");
     }
-    return JSON.parse(text);
+    return JSON.parse(cleaned);
   } catch (error) {
-    console.error("Erro ao extrair dados do currículo:", error);
+    console.error("Erro ao extrair dados do currículo:", error.message);
     throw new Error("Falha ao ler o PDF com IA. Tente preencher manualmente.");
   }
 }

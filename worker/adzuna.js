@@ -15,7 +15,8 @@ export async function buscarVagas({ termo, regiao, raioKm }) {
 
   const res = await fetch(url);
   if (!res.ok) {
-    throw new Error(`Adzuna ${res.status}: ${await res.text()}`);
+    const corpo = (await res.text()).slice(0, 200);
+    throw new Error(`Adzuna ${res.status}: ${corpo}`);
   }
   const data = await res.json();
   return (data.results ?? []).map((r) => ({

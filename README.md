@@ -9,7 +9,8 @@ worker de ponta a ponta em produção, e decidir/implementar billing real).
 ## Stack
 
 - **Frontend:** React + Vite + React Router + Supabase Auth (RLS)
-- **Worker:** Node.js (pasta `worker/`), roda via GitHub Actions cron, usa a service_role key (ignora RLS — escreve em nome de todos os usuários)
+- **Worker:** Node.js (pasta `worker/`), roda via GitHub Actions cron a cada 10 min, usa a service_role key (ignora RLS — escreve em nome de todos os usuários)
+- **Edge Function (`supabase/functions/gemini-proxy`):** proxy autenticado pro Gemini — a API key fica só no servidor, nunca no bundle do frontend
 
 ## O que já existe
 
@@ -25,7 +26,7 @@ worker de ponta a ponta em produção, e decidir/implementar billing real).
 - **Filtro Híbrido + IA (Novo):** Varredura de palavras-chave simples seguida de análise profunda usando o **Gemini 2.5 Flash**. A IA lê a descrição da vaga e o currículo, e gera um Score (0 a 100) e uma justificativa (`motivo_ia`).
 - Descarte automático de vagas com Score IA < 40.
 - Modo de disparo manual via bot (`/buscar`) além do automático a cada ciclo do cron.
-- Bot Telegram com comandos `/menu`, `/buscar`, `/status`, `/regiao` e botões inline. Notificações trazem o arquivo DOCX/PDF gerado, o Score e a Justificativa da IA.
+- Bot Telegram com comandos `/menu`, `/buscar`, `/status`, `/regiao` e botões inline (**✅ Candidatei-me** / **🗑️ Descartar**, gravam direto em `vagas_vistas.status`). Notificações trazem o arquivo DOCX/PDF gerado, o Score e a Justificativa da IA.
 
 **Fase 3 — Painel web e landing page:**
 - Landing page pública em `/` (ver [DESIGN.md](./DESIGN.md) e [LANDING_PROMPT.md](./LANDING_PROMPT.md))
@@ -46,9 +47,15 @@ Infraestrutura:
 - ✅ Theme toggle: dark/light mode com CSS variables
 - ✅ Landing page: completa com features + pricing + ticker de vagas
 
+## Segurança
+
+- **RLS reforçado** (`006_fix_privilege_escalation.sql`): triggers bloqueiam usuário comum de alterar colunas privilegiadas (`role`, `plano`, `assinatura_*` em `profiles`; `status`, `score`, etc em `vagas_vistas`) — só `service_role` (worker) pode.
+- **Gemini API key fora do bundle**: chamadas de IA do frontend passam pela Edge Function `gemini-proxy` (autenticada via JWT), a key nunca é exposta no client.
+- Scripts de debug (`worker/update_user.js`) têm guard `NODE_ENV=production` pra não rodar em produção por engano.
+
 ## Próximos passos (em ordem sugerida)
 
-1. **Rodar worker fim-a-fim**: Usuário preenche onboarding (currículo + preferências + telegram_chat_id), aguarda próximo cron (2h) ou dispara manual via GitHub Actions, valida se vaga chega no Telegram com CV ajustado.
+1. **Rodar worker fim-a-fim**: Usuário preenche onboarding (currículo + preferências + telegram_chat_id), aguarda próximo cron (10 min) ou dispara manual via GitHub Actions, valida se vaga chega no Telegram com CV ajustado.
 2. **Beta Fechado com 5-10 testers**: Link Vercel distribuído, feedback em onboarding/CV quality/Telegram UX.
 3. **Decidir gateway de pagamento (Fase 5)**: Integrar Checkout e Webhooks (Mercado Pago, Stripe ou Kiwify).
 4. **Definir preço final dos planos** (hoje ilustrativo em `src/lib/planos.js`) e implementar o billing real — `profiles.assinatura_status` hoje é atualizado manualmente no Supabase.
