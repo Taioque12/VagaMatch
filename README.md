@@ -58,9 +58,29 @@ A plataforma está oficialmente configurada e hospedada. O sistema completo de p
 3. Rodar as migrations (`supabase/migrations/`, em ordem) no SQL Editor
 4. Em **Authentication → Sign In / Providers**, decidir se exige confirmação de e-mail (desligar facilita testar)
 5. Copiar `.env.example` → `.env`, preencher `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` (a **publishable/anon**, não a secret)
-6. `npm run dev`
-7. Pra acessar `/admin`: depois de criar sua conta normalmente, rode no SQL Editor do Supabase
+6. Opcional: `VITE_TELEGRAM_BOT_USERNAME` (o `@username` do bot, sem o `@`) habilita o botão
+   "Conectar com Telegram" no onboarding (deep link `t.me/<bot>?start=<token>`, vínculo
+   automático). Sem essa env, o botão some e sobra só o campo manual de Chat ID — nada quebra.
+7. `npm run dev`
+8. Pra acessar `/admin`: depois de criar sua conta normalmente, rode no SQL Editor do Supabase
    `update public.profiles set role = 'admin' where id = '<seu-user-id>';`
+
+## Edge Function do Gemini (geração de CV/carta e leitura de PDF no onboarding)
+
+A chave do Gemini usada pelo **frontend** (gerador de CV/carta em `/gerador/:id` e importação de
+currículo em PDF no onboarding) não fica mais no bundle do cliente — ela vive só como secret da
+Edge Function `gemini` (`supabase/functions/gemini/`), chamada via `supabase.functions.invoke`.
+
+1. `supabase functions deploy gemini --project-ref <seu-project-ref>`
+2. `supabase secrets set GEMINI_API_KEY=<sua-chave> --project-ref <seu-project-ref>`
+3. Não é necessário nenhum `VITE_GEMINI_API_KEY` no `.env` do frontend.
+4. Rodar a migration `006_gemini_rate_limit.sql` — limita a 15 gerações/dia por usuário (evita
+   custo ilimitado de um usuário chamando a function em loop). Ajustável sem novo deploy via
+   `supabase secrets set GEMINI_LIMITE_DIARIO=<numero> --project-ref <seu-project-ref>`.
+
+**Importante para quem já tem o beta em produção**: antes de fazer merge/deploy desta mudança,
+rode os dois passos acima contra o projeto Supabase de produção — sem a function deployada e o
+secret configurado, o gerador de CV/carta e a importação de PDF param de funcionar.
 
 ## Setup local — Worker
 

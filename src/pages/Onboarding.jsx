@@ -5,18 +5,7 @@ import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 import { extrairDadosCurriculo } from "../lib/gemini.js";
-
-const linhas = (texto) =>
-  texto
-    .split("\n")
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-const csv = (texto) =>
-  texto
-    .split(",")
-    .map((l) => l.trim())
-    .filter(Boolean);
+import { linhas, csv, validarTamanhoPdf } from "../lib/parsing.js";
 
 const vazioExperiencia = () => ({ cargo: "", empresa: "", periodo: "", bullets: "" });
 
@@ -47,6 +36,7 @@ export function Onboarding() {
   const [nomeCompleto, setNomeCompleto] = useState("");
   const [localizacao, setLocalizacao] = useState("");
   const [telegramChatId, setTelegramChatId] = useState("");
+  const [telegramLinkToken, setTelegramLinkToken] = useState("");
 
   useEffect(() => {
     if (!session) return;
@@ -62,6 +52,7 @@ export function Onboarding() {
         setNomeCompleto(perfil.nome_completo ?? "");
         setLocalizacao(perfil.localizacao ?? "");
         setTelegramChatId(perfil.telegram_chat_id ?? "");
+        setTelegramLinkToken(perfil.telegram_link_token ?? "");
       }
       if (curriculo) {
         setResumoProfissional(curriculo.resumo_profissional ?? "");
@@ -91,6 +82,27 @@ export function Onboarding() {
       setErro(e.message);
       setCarregando(false);
     });
+  }, [session]);
+
+  // O vínculo do Telegram via deep link acontece numa aba/app diferente (o bot responde ao
+  // /start lá, não aqui). Ao voltar o foco pra essa aba, refaz o fetch pra não deixar o campo
+  // manual (e o "Salvar") sobrescrever com um telegram_chat_id desatualizado.
+  useEffect(() => {
+    if (!session) return;
+    function reconferirTelegram() {
+      supabase
+        .from("profiles")
+        .select("telegram_chat_id, telegram_link_token")
+        .eq("id", session.user.id)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (!data) return;
+          if (data.telegram_chat_id) setTelegramChatId(data.telegram_chat_id);
+          if (data.telegram_link_token) setTelegramLinkToken(data.telegram_link_token);
+        });
+    }
+    window.addEventListener("focus", reconferirTelegram);
+    return () => window.removeEventListener("focus", reconferirTelegram);
   }, [session]);
 
   function atualizarExperiencia(idx, campo, valor) {
@@ -169,6 +181,14 @@ export function Onboarding() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    try {
+      validarTamanhoPdf(file.size);
+    } catch (err) {
+      setErro(err.message);
+      e.target.value = null;
+      return;
+    }
+
     setAnalisandoPdf(true);
     setErro(null);
 
@@ -189,13 +209,13 @@ export function Onboarding() {
                 cargo: e.cargo || "",
                 empresa: e.empresa || "",
                 periodo: e.periodo || "",
-                bullets: (e.bullets || []).join("\\n")
+                bullets: (e.bullets || []).join("\n")
               }))
             );
           }
-          if (dados.formacao) setFormacao(dados.formacao.join("\\n"));
-          if (dados.cursos) setCursos(dados.cursos.join("\\n"));
-          if (dados.projetos) setProjetos(dados.projetos.join("\\n"));
+          if (dados.formacao) setFormacao(dados.formacao.join("\n"));
+          if (dados.cursos) setCursos(dados.cursos.join("\n"));
+          if (dados.projetos) setProjetos(dados.projetos.join("\n"));
           
         } catch (err) {
           setErro(err.message);
@@ -249,8 +269,35 @@ export function Onboarding() {
               placeholder="Cidade, UF"
             />
           </label>
+          {import.meta.env.VITE_TELEGRAM_BOT_USERNAME && telegramLinkToken && (
+            <div className="cartao-importacao">
+              <p>
+                <strong>Conectar Telegram automaticamente</strong> — clique no botão, o bot
+                confirma o vínculo sozinho.
+              </p>
+              <a
+                href={`https://t.me/${import.meta.env.VITE_TELEGRAM_BOT_USERNAME}?start=${telegramLinkToken}`}
+                target="_blank"
+                rel="noreferrer"
+                className="botao-secundario"
+                style={{
+                  display: "inline-block",
+                  marginTop: "10px",
+                  padding: "10px 16px",
+                  background: "#34495e",
+                  color: "white",
+                  borderRadius: "8px",
+                  fontWeight: "bold",
+                  textDecoration: "none",
+                }}
+              >
+                🔗 Conectar com Telegram
+              </a>
+              {telegramChatId && <p className="ajuda">✅ Telegram já vinculado.</p>}
+            </div>
+          )}
           <label>
-            Telegram Chat ID
+            Telegram Chat ID (ou cole aqui manualmente)
             <input
               value={telegramChatId}
               onChange={(e) => setTelegramChatId(e.target.value)}
@@ -263,7 +310,7 @@ export function Onboarding() {
           <h2>Currículo</h2>
           
           <div className="cartao-importacao">
-            <p><strong>Tem um currículo em PDF?</strong> Deixe a IA preencher tudo para você!</p>
+            <p><strong>Tem um currículo em PDF?</strong> Deixe a IA preencher tudo para você! (máx. 4MB)</p>
             <input 
               type="file" 
               accept="application/pdf" 

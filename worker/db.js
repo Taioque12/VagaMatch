@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { env } from "./config.js";
 
@@ -5,15 +6,25 @@ import { env } from "./config.js";
 export const supabase = createClient(env.supabaseUrl, env.supabaseServiceKey);
 
 // Usuários com busca ativa e Telegram vinculado (pré-requisitos pra rodar o pipeline).
-// Processa em lotes usando limit e offset para escalar infinitamente.
-export async function listarUsuariosAtivos(limite = 50, offset = 0) {
-  const { data: prefs, error } = await supabase
+// Processa em lotes usando um cursor por user_id (não offset numérico): o filtro
+// (disparo_manual/busca_solicitada) muda de estado entre execuções do cron, então uma
+// posição numérica (offset) pode pular ou reprocessar usuários conforme o conjunto filtrado
+// encolhe/cresce. Um cursor "user_id > último processado" avança de forma estável independente
+// disso — nunca revisita quem já ficou pra trás, mesmo que o total de linhas mude no meio do ciclo.
+export async function listarUsuariosAtivos(limite = 50, cursorUserId = null) {
+  let query = supabase
     .from("preferencias")
     .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada")
     .eq("ativo", true)
     .or("disparo_manual.eq.false,busca_solicitada.eq.true")
     .order("user_id", { ascending: true })
-    .range(offset, offset + limite - 1);
+    .limit(limite);
+
+  if (cursorUserId) {
+    query = query.gt("user_id", cursorUserId);
+  }
+
+  const { data: prefs, error } = await query;
 
   if (error) throw new Error(`Supabase select (preferencias): ${error.message}`);
   if (!prefs?.length) return [];
@@ -57,6 +68,27 @@ export async function buscarPerfilPorChatId(chatId) {
     .maybeSingle();
   if (error) throw new Error(`Supabase select (profile por chat_id): ${error.message}`);
   return data;
+}
+
+// Deep link (/start <token>) — achar o perfil dono de um token de vínculo do Telegram.
+export async function buscarPerfilPorTelegramToken(token) {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("id, nome_completo")
+    .eq("telegram_link_token", token)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase select (telegram_link_token): ${error.message}`);
+  return data;
+}
+
+// Vincula o chat_id de quem mandou /start <token> e ROTACIONA o token: o link só funciona
+// uma vez (ver comentário na migration 008 sobre por que isso importa pra segurança).
+export async function vincularTelegramChatId(userId, chatId) {
+  const { error } = await supabase
+    .from("profiles")
+    .update({ telegram_chat_id: String(chatId), telegram_link_token: randomUUID() })
+    .eq("id", userId);
+  if (error) throw new Error(`Supabase update (vincular telegram): ${error.message}`);
 }
 
 export async function solicitarBuscaManual(userId) {

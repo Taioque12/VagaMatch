@@ -4,6 +4,8 @@ import {
   buscarPorCallbackId,
   marcarFeedback,
   buscarPerfilPorChatId,
+  buscarPerfilPorTelegramToken,
+  vincularTelegramChatId,
   solicitarBuscaManual,
   definirModoRegiao,
 } from "./db.js";
@@ -13,6 +15,7 @@ import {
   removerBotoes,
   enviarMenu,
   enviarMenuRegiao,
+  enviarMensagem,
 } from "./telegram.js";
 
 const TIPOS = { pos: "positivo", neg: "negativo" };
@@ -70,8 +73,37 @@ async function tratarCallback(cq) {
   }
 }
 
+// Extrai o token de "/start <token>" (deep link t.me/<bot>?start=<token>). Retorna null se
+// for /start sem payload (link genérico do bot, ou o usuário digitou /start à mão) ou se a
+// mensagem não for um /start — nesses casos o chamador cai no fluxo normal de /menu.
+export function extrairTokenDeStart(texto) {
+  const match = /^\/start\s+(\S+)$/.exec(texto.trim());
+  return match ? match[1] : null;
+}
+
+async function tratarVinculoTelegram(chatId, token) {
+  const perfil = await buscarPerfilPorTelegramToken(token);
+  if (!perfil) {
+    await enviarMensagem(
+      chatId,
+      "Link de vínculo inválido ou já usado. Gere um novo em 'Meu perfil' no site do VagaMatch."
+    );
+    return;
+  }
+  await vincularTelegramChatId(perfil.id, chatId);
+  const saudacao = perfil.nome_completo ? `, ${perfil.nome_completo}` : "";
+  await enviarMensagem(chatId, `✅ Telegram vinculado${saudacao}! A partir de agora você recebe as vagas por aqui.`);
+}
+
 async function tratarMensagem(msg) {
   const texto = (msg.text ?? "").trim();
+
+  const token = extrairTokenDeStart(texto);
+  if (token) {
+    await tratarVinculoTelegram(msg.chat.id, token);
+    return;
+  }
+
   if (texto === "/menu" || texto === "/start") {
     await enviarMenu(msg.chat.id);
     return;
