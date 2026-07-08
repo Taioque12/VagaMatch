@@ -167,7 +167,7 @@ export function Onboarding() {
   return (
     <div className="lp lp-hero-bloco" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <nav className="lp-nav">
-        <Link to="/" className="lp-logo" style={{ textDecoration: "none" }}>
+        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
