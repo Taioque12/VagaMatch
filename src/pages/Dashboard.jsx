@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
-import "./dashboard-premium.css";
+import "../dashboard-premium.css";
 
 const STATUS_LABEL = {
   descoberta: "Descoberta",
