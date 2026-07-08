@@ -6,7 +6,7 @@ export async function buscarVagasJSearch({ termo, regiao }) {
   if (!env.rapidapiKey) return [];
 
   const query = regiao ? `${termo} em ${regiao}, Brasil` : `${termo}, Brasil`;
-  const url = new URL("https://jsearch.p.rapidapi.com/search");
+  const url = new URL("https://jsearch.p.rapidapi.com/search-v2");
   url.searchParams.set("query", query);
   url.searchParams.set("country", "br");
   url.searchParams.set("num_pages", "1");
@@ -22,7 +22,7 @@ export async function buscarVagasJSearch({ termo, regiao }) {
     throw new Error(`JSearch ${res.status}: ${corpo}`);
   }
   const data = await res.json();
-  return (data.data ?? []).map((r) => ({
+  return (data.data?.jobs ?? []).map((r) => ({
     job_id: `jsearch_${r.job_id}`,
     titulo: r.job_title,
     empresa: r.employer_name ?? "Não informada",
