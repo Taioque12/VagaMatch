@@ -5,6 +5,7 @@ import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 import { extrairDadosCurriculo } from "../lib/gemini.js";
+import { gerarCurriculoPdf } from "../lib/curriculoPdf.js";
 
 export function Onboarding() {
   const { session } = useAuth();
@@ -16,6 +17,8 @@ export function Onboarding() {
   const [salvo, setSalvo] = useState(false);
   const [analisandoPdf, setAnalisandoPdf] = useState(false);
   const [nomeArquivo, setNomeArquivo] = useState(null);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [pdfBaixado, setPdfBaixado] = useState(false);
 
   const [telegramChatId, setTelegramChatId] = useState("");
   const [dadosExtraidos, setDadosExtraidos] = useState(null);
@@ -141,6 +144,29 @@ export function Onboarding() {
     }
   }
 
+  async function handleBaixarPdf() {
+    if (!dadosExtraidos) {
+      setErro("Nenhum dado de currículo para baixar. Importe um PDF primeiro.");
+      return;
+    }
+    setBaixandoPdf(true);
+    setErro(null);
+    setPdfBaixado(false);
+    try {
+      await gerarCurriculoPdf(dadosExtraidos, {
+        nomeCompleto: dadosExtraidos.nome_completo,
+        localizacao: dadosExtraidos.localizacao,
+        email: session?.user?.email,
+      });
+      setPdfBaixado(true);
+      setTimeout(() => setPdfBaixado(false), 4000);
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setBaixandoPdf(false);
+    }
+  }
+
   if (carregando) return <p className="carregando">Carregando...</p>;
 
   const pronto = !!dadosExtraidos;
@@ -148,7 +174,7 @@ export function Onboarding() {
   return (
     <div className="lp lp-hero-bloco" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <nav className="lp-nav">
-        <Link to="/" className="lp-logo" style={{ textDecoration: "none" }}>
+        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
@@ -210,6 +236,16 @@ export function Onboarding() {
             {dadosExtraidos.resumo_profissional && (
               <p className="resumo-preview">{dadosExtraidos.resumo_profissional}</p>
             )}
+
+            <button
+              type="button"
+              onClick={handleBaixarPdf}
+              disabled={baixandoPdf}
+              className="acao"
+              style={{ marginTop: "1rem" }}
+            >
+              {baixandoPdf ? "Gerando PDF..." : "Baixar currículo em PDF"}
+            </button>
           </section>
         )}
 
@@ -232,7 +268,8 @@ export function Onboarding() {
         )}
 
         {erro && <p className="erro" style={{ textAlign: "center" }}>{erro}</p>}
-        {salvo && <p className="sucesso" style={{ textAlign: "center" }}>Salvo com sucesso.</p>}
+        {pdfBaixado && <p className="sucesso" style={{ textAlign: "center" }}>✓ PDF baixado com sucesso! Verifique sua pasta de downloads.</p>}
+        {salvo && <p className="sucesso" style={{ textAlign: "center" }}>✓ Salvo com sucesso.</p>}
 
         {pronto && (
           <button

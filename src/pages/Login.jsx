@@ -25,7 +25,7 @@ export function Login() {
 
   return (
     <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav className="lp-nav" style={{ justifyContent: 'space-between', padding: '32px' }}>
+      <nav className="lp-nav" style={{ justifyContent: 'space-between' }}>
         <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
           <span className="lp-logo-marca" />
           VagaMatch

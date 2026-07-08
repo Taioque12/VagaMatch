@@ -11,10 +11,11 @@ export function Gerador() {
   const [vaga, setVaga] = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  
+
   const [textoGerado, setTextoGerado] = useState("");
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [baixouArquivo, setBaixouArquivo] = useState(null);
 
   useEffect(() => {
     if (!session) return;
@@ -78,6 +79,51 @@ export function Gerador() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setBaixouArquivo("txt");
+    setTimeout(() => setBaixouArquivo(null), 3000);
+  }
+
+  async function baixarPdf() {
+    if (!textoGerado) return;
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const margem = 48;
+      const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
+      const alturaPagina = doc.internal.pageSize.getHeight();
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+
+      const linhas = doc.splitTextToSize(textoGerado, larguraUtil);
+      let y = margem;
+      const alturaLinha = 14;
+
+      linhas.forEach((linha) => {
+        if (y > alturaPagina - margem) {
+          doc.addPage();
+          y = margem;
+        }
+        doc.text(linha, margem, y);
+        y += alturaLinha;
+      });
+
+      const fileName = `documento-${vaga?.empresa || "gerado"}.pdf`;
+      const pdfBlob = doc.output("blob");
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setBaixouArquivo("pdf");
+      setTimeout(() => setBaixouArquivo(null), 3000);
+    } catch (err) {
+      setErro(err.message);
+    }
   }
 
   if (carregando) return <p className="carregando">Carregando informações...</p>;
@@ -99,22 +145,26 @@ export function Gerador() {
         </div>
       )}
 
-      <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
-        <button onClick={() => handleGerar("cv")} disabled={gerando} className="botao-principal">
+      <div style={{ marginTop: "20px", display: "flex", flexWrap: "wrap", gap: "10px" }}>
+        <button onClick={() => handleGerar("cv")} disabled={gerando} className="botao-principal" style={{ width: "auto", flex: "1 1 200px" }}>
           {gerando ? "Gerando..." : "Gerar Currículo"}
         </button>
-        <button onClick={() => handleGerar("carta")} disabled={gerando} className="botao-principal" style={{ backgroundColor: "#10b981" }}>
+        <button onClick={() => handleGerar("carta")} disabled={gerando} className="botao-principal" style={{ width: "auto", flex: "1 1 200px", backgroundColor: "#10b981" }}>
           {gerando ? "Gerando..." : "Gerar Carta de Apresentação"}
         </button>
       </div>
 
       {erro && <p className="erro" style={{ marginTop: "20px" }}>{erro}</p>}
+      {baixouArquivo && <p className="sucesso" style={{ marginTop: "20px" }}>✓ {baixouArquivo.toUpperCase()} baixado com sucesso!</p>}
 
       {textoGerado && (
         <div style={{ marginTop: "30px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
             <h2>Documento Gerado:</h2>
-            <button onClick={baixarTxt} className="acao">Baixar como TXT</button>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <button onClick={baixarPdf} className="acao">Baixar como PDF</button>
+              <button onClick={baixarTxt} className="acao">Baixar como TXT</button>
+            </div>
           </div>
           <p className="ajuda">Revise o texto abaixo e copie-o, ou faça pequenos ajustes antes de salvar.</p>
           <textarea 

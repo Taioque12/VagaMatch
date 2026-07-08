@@ -72,16 +72,16 @@ export function Admin() {
 
   return (
     <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav className="lp-nav" style={{ justifyContent: 'space-between', padding: '32px' }}>
-        <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
+      <nav className="lp-nav" style={{ justifyContent: 'space-between' }}>
+        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: 'none' }}>
           <span className="lp-logo-marca" />
           VagaMatch (Admin)
         </Link>
         <ThemeToggle />
       </nav>
 
-      <div className="dashboard">
-        <h1 style={{ fontFamily: "Manrope", fontWeight: 800, fontSize: "36px", marginBottom: "8px" }}>Painel do Administrador</h1>
+      <div className="admin">
+        <h1 style={{ fontFamily: "Manrope", fontWeight: 800, fontSize: "clamp(26px, 6vw, 36px)", marginBottom: "8px" }}>Painel do Administrador</h1>
         <p className="subtitulo" style={{ marginBottom: "2rem", color: "var(--text-muted)" }}>Saúde geral do VagaMatch — dados em tempo real via Supabase.</p>
 
         <section className="cartoes-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
@@ -103,7 +103,7 @@ export function Admin() {
           </div>
         </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '2rem' }}>
           <section className="vaga">
             <h2 style={{ fontFamily: "Manrope", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px", marginBottom: "16px" }}>Assinaturas</h2>
             <ul style={{ listStyle: "none", padding: 0 }}>
