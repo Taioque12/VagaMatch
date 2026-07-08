@@ -1,92 +1,31 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ThemeToggle } from "../components/ThemeToggle.jsx";
+import { Link } from "react-router-dom";
 import { PRECOS, PLANO_FEATURES, PLANO_PLUS_FEATURES } from "../lib/planos.js";
-
-const STEPS = [
-  {
-    num: "01",
-    title: "Assine",
-    desc: "Escolhe o plano, ativa em dois minutos. Sem contrato, sem carência.",
-    accent: "#2e7d5b",
-  },
-  {
-    num: "02",
-    title: "Envie seu currículo",
-    desc: "Manda o PDF ou cola o texto no Telegram. É tudo que o sistema precisa de você.",
-    accent: "#2e7d5b",
-  },
-  {
-    num: "03",
-    title: "O sistema cruza com as vagas",
-    desc: "Região onde você mora + vagas remotas de todo o Brasil, atualizadas o dia inteiro.",
-    accent: "rgba(33,31,28,0.15)",
-  },
-  {
-    num: "04",
-    title: "Você recebe pronto pra aplicar",
-    desc: "Currículo formatado pra vaga específica e mensagem de abordagem já escrita, no seu Telegram.",
-    accent: "rgba(33,31,28,0.15)",
-  },
-];
+import "./landing-premium.css";
 
 const BENEFITS = [
   {
-    title: "Currículo reformatado por vaga",
+    icon: "✨",
+    title: "Currículo Reformatado",
     desc: "Cada envio chega ajustado ao que a vaga pede — palavras-chave, ordem de experiências, ênfase certa.",
-    size: "grande",
+    size: "large"
   },
   {
-    title: "Filtro por região + Brasil todo",
-    desc: "Vagas perto de você e remotas do país inteiro, sem duplicar esforço em cinco sites diferentes.",
+    icon: "🌍",
+    title: "Região + Remoto",
+    desc: "Vagas perto de você e remotas do país inteiro, sem duplicar esforço.",
   },
   {
-    title: "Mensagem de abordagem pronta",
+    icon: "✉️",
+    title: "Abordagem Pronta",
     desc: "Texto de contato já escrito pra cada vaga. Copiou, colou, aplicou.",
   },
   {
+    icon: "🚀",
     title: "Tudo no Telegram",
     desc: "Sem dashboard pra abrir, sem senha pra lembrar. A vaga chega onde você já está.",
-  },
-];
-
-const STATS = [
-  { value: "11.400+", label: "vagas monitoradas por mês" },
-  { value: "60+", label: "fontes de vaga cruzadas automaticamente" },
-  { value: "24/7", label: "monitoramento contínuo, sem pausa" },
-  { value: "3min", label: "tempo médio entre a vaga abrir e chegar até você" },
-];
-
-const FAQS = [
-  {
-    q: "Preciso mandar o currículo toda vez?",
-    a: "Não. Você envia uma vez, o sistema reaproveita e ajusta pra cada vaga automaticamente.",
-  },
-  {
-    q: "Recebo vagas de outras regiões também?",
-    a: "Sim. Você recebe vagas da sua região e vagas remotas de qualquer lugar do Brasil.",
-  },
-  {
-    q: "Como funciona a mensagem de abordagem?",
-    a: "Pra cada vaga, o sistema já escreve um texto curto de contato baseado no seu currículo e na vaga. É só copiar e mandar.",
-  },
-  { q: "Posso cancelar quando quiser?", a: "Pode. Sem multa, sem processo de retenção passivo-agressivo." },
-  {
-    q: "O que muda entre os planos?",
-    a: "O plano Plus cruza mais fontes de vaga e entrega com mais frequência ao longo do dia.",
-  },
-];
-
-// Ilustrativo — troca por vaga real assim que o worker tiver dado suficiente em produção.
-const TICKER_BASE = [
-  "Analista de Dados · SP",
-  "Dev Front-end Jr · Remoto",
-  "Auxiliar Administrativo · BH",
-  "Designer de Produto · Remoto",
-  "Vendedor Interno · POA",
-  "Analista de RH · Curitiba",
-  "Suporte Técnico · Remoto",
-  "Assistente Financeiro · Recife",
+    size: "large"
+  }
 ];
 
 function useReveal() {
@@ -100,7 +39,7 @@ function useReveal() {
       ([entry]) => {
         if (entry.isIntersecting) setRevelado(true);
       },
-      { threshold: 0.12 }
+      { threshold: 0.15 }
     );
     observer.observe(el);
     return () => observer.disconnect();
@@ -109,273 +48,171 @@ function useReveal() {
   return [ref, revelado];
 }
 
-function fmt(n) {
-  return `R$ ${n}`;
+function CheckIcon() {
+  return (
+    <svg className="lp-feature-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+  );
 }
 
 export function Landing() {
   const [billing, setBilling] = useState("monthly");
-  const [faqAberta, setFaqAberta] = useState(0);
 
-  const [stepsRef, stepsRevelado] = useReveal();
-  const [benefitsRef, benefitsRevelado] = useReveal();
-  const [proofRef, proofRevelado] = useReveal();
+  const [bentoRef, bentoRevelado] = useReveal();
   const [pricingRef, pricingRevelado] = useReveal();
-  const [faqRef, faqRevelado] = useReveal();
 
   const preco = billing === "monthly" ? PRECOS.monthlyPrice : PRECOS.annualMonthlyEquivalent;
   const precoPlus = billing === "monthly" ? PRECOS.monthlyPricePlus : PRECOS.annualMonthlyEquivalentPlus;
-  const tickerItems = [...TICKER_BASE, ...TICKER_BASE];
 
-  const revelar = (revelado) => ({
-    opacity: revelado ? 1 : 0,
-    transform: revelado ? "translateY(0)" : "translateY(14px)",
-  });
+  const animClass = (rev) => `animate-on-scroll ${rev ? "visible" : ""}`;
 
   return (
-    <div className="lp">
-      <div className="lp-hero-bloco">
-        <nav className="lp-nav">
-          <Link to="/" className="lp-logo" style={{ textDecoration: 'none' }}>
-            <span className="lp-logo-marca" />
-            VagaMatch
-          </Link>
-          <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-            <ThemeToggle />
-            <Link to="/login" style={{ color: "var(--text-main)", textDecoration: "none", fontSize: "0.9rem", fontWeight: "500" }}>
-              Entrar
-            </Link>
-            <a href="#planos" className="lp-botao-claro">
-              Ativar minhas vagas
+    <div className="lp-premium-wrap">
+      {/* Ambient Lights */}
+      <div className="lp-glow-1"></div>
+      <div className="lp-glow-2"></div>
+      <div className="lp-glow-3"></div>
+
+      {/* Nav */}
+      <nav className="lp-nav-p">
+        <Link to="/" className="lp-logo-p">
+          <div className="lp-logo-dot"></div>
+          VagaMatch
+        </Link>
+        <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
+          <Link to="/login" className="lp-btn-ghost">Entrar</Link>
+          <a href="#planos" className="lp-btn-primary">Começar Agora</a>
+        </div>
+      </nav>
+
+      {/* Hero */}
+      <section className="lp-hero-p">
+        <div className="lp-hero-content">
+          <div className="lp-badge-p">
+            <span className="lp-pulse-dot"></span>
+            Monitoramento 24/7 Ativo
+          </div>
+          <h1 className="lp-h1-p">
+            Pare de procurar.<br />
+            <span className="lp-text-gradient">Deixe a vaga te achar.</span>
+          </h1>
+          <p className="lp-hero-sub-p">
+            Você envia o currículo uma vez. Nós cruzamos com centenas de fontes e enviamos vagas perfeitas direto no seu Telegram, já com currículo ajustado para cada empresa.
+          </p>
+          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
+            <a href="#planos" className="lp-btn-primary" style={{ padding: "1rem 2rem", fontSize: "1.1rem" }}>
+              Ativar Minhas Vagas
             </a>
           </div>
-        </nav>
+        </div>
 
-        <section className="lp-hero">
-          <div className="lp-status">
-            <span className="lp-status-ponto" />
-            <span>rodando agora para quem já assinou</span>
-          </div>
-          <h1 className="lp-titulo">
-            Procurar emprego
-            <br />é trabalho de robô.
-          </h1>
-          <div className="lp-hero-inferior">
-            <div>
-              <p className="lp-subtitulo">
-                Assine, mande o currículo, e receba no Telegram vagas da sua região e do Brasil todo — com
-                currículo já formatado e mensagem de abordagem pronta pra cada uma.
-              </p>
-              <div className="lp-hero-cta">
-                <a href="#planos" className="lp-botao-verde">
-                  Ativar minhas vagas
-                </a>
-                <span className="lp-hero-nota">cancele quando quiser</span>
+        <div className="lp-hero-visual-p">
+          <div className="lp-mockup-glass">
+            <div className="lp-chat-header-p">
+              <div className="lp-chat-avatar-p">VM</div>
+              <div>
+                <div style={{ fontWeight: 700, color: "#fff" }}>VagaMatch Bot</div>
+                <div style={{ fontSize: "0.8rem", color: "var(--neon-green)" }}>Online</div>
               </div>
             </div>
-
-            <div className="lp-hero-visual">
-              <div className="lp-chat">
-                <div className="lp-chat-topo">
-                  <div className="lp-chat-avatar">VM</div>
-                  <div>
-                    <div className="lp-chat-nome">VagaMatch bot</div>
-                    <div className="lp-chat-status">online</div>
-                  </div>
-                </div>
-                <div className="lp-chat-corpo">
-                  <div className="lp-chat-bolha-enviada">currículo recebido ✓</div>
-                  <div className="lp-chat-vaga">
-                    <div className="lp-chat-vaga-tag">NOVA VAGA · SÃO PAULO, SP</div>
-                    <div className="lp-chat-vaga-titulo">Analista de Dados Pleno</div>
-                    <div className="lp-chat-vaga-info">Híbrida · publicada há 40min</div>
-                    <div className="lp-chat-anexo">📎 currículo_ajustado.pdf</div>
-                    <div className="lp-chat-abordagem">
-                      "Vi a vaga de Analista de Dados e quero me candidatar — trago experiência direta com
-                      SQL e dashboards."
-                    </div>
-                  </div>
-                </div>
-              </div>
+            
+            <div className="lp-chat-bubble-user">
+              Currículo PDF enviado ✓
             </div>
-          </div>
-        </section>
-
-        <div className="lp-ticker-faixa">
-          <div className="lp-ticker">
-            {tickerItems.map((t, i) => (
-              <span key={i}>
-                <span className="lp-ticker-ponto">●</span>&nbsp; {t}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <section ref={stepsRef} style={revelar(stepsRevelado)} className="lp-secao lp-transicao">
-        <div className="lp-secao-cabecalho">
-          <div className="lp-etiqueta">COMO FUNCIONA</div>
-          <h2 className="lp-h2">Você faz duas coisas. O sistema faz o resto.</h2>
-        </div>
-        <div className="lp-passos-zig">
-          {STEPS.map((step, i) => (
-            <div
-              className={i % 2 === 0 ? "lp-passo-linha esquerda" : "lp-passo-linha direita"}
-              key={step.num}
-            >
-              <div className="lp-passo-zig" style={{ borderLeftColor: step.accent }}>
-                <div className="lp-passo-num">{step.num}</div>
+            
+            <div className="lp-chat-bubble-bot">
+              <div className="lp-chat-vaga-tag-p">Match 95% • São Paulo, SP</div>
+              <div className="lp-chat-vaga-title-p">Desenvolvedor Front-end Pleno</div>
+              <div style={{ fontSize: "0.85rem", color: "var(--text-body)" }}>Empresa: TechStart • Há 10 min</div>
+              
+              <div className="lp-chat-attachment-p">
+                <span style={{ fontSize: "1.2rem" }}>📄</span>
                 <div>
-                  <div className="lp-passo-titulo">{step.title}</div>
-                  <div className="lp-passo-desc">{step.desc}</div>
+                  <div style={{ color: "#fff", fontWeight: 500 }}>curriculo_TechStart.pdf</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-body)" }}>Ajustado para React e UI/UX</div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Bento Grid Features */}
+      <section className="lp-section-p" ref={bentoRef}>
+        <div className={`lp-section-title-p ${animClass(bentoRevelado)}`}>
+          <div className="lp-section-tag-p">Como Funciona</div>
+          <h2 className="lp-h2-p">Um robô trabalhando <span className="lp-text-gradient-green">por você</span></h2>
+        </div>
+        
+        <div className={`lp-bento-grid ${animClass(bentoRevelado)}`} style={{ transitionDelay: "0.2s" }}>
+          {BENEFITS.map((b, i) => (
+            <div key={i} className={`lp-bento-card ${b.size === "large" ? "lp-bento-large" : ""}`}>
+              <div className="lp-bento-icon">{b.icon}</div>
+              <h3 className="lp-bento-title">{b.title}</h3>
+              <p className="lp-bento-desc">{b.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
-      <section ref={benefitsRef} style={revelar(benefitsRevelado)} className="lp-secao lp-transicao lp-beneficios-secao">
-        <div className="lp-beneficios-grid">
-          <div className="lp-beneficios-titulo-col">
-            <div className="lp-etiqueta">O QUE VOCÊ RECEBE</div>
-            <h2 className="lp-h2 lp-beneficios-titulo">Não é lista de vagas. É a candidatura pronta.</h2>
-          </div>
-          <div className="lp-beneficios-lista">
-            {BENEFITS.map((b) => (
-              <div className="lp-beneficio-item" key={b.title}>
-                <div className={b.size === "grande" ? "lp-beneficio-item-titulo grande" : "lp-beneficio-item-titulo"}>
-                  {b.title}
-                </div>
-                <div className="lp-beneficio-item-desc">{b.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section ref={proofRef} style={revelar(proofRevelado)} className="lp-secao lp-transicao lp-prova">
-        <div className="lp-prova-conteudo">
-          <div className="lp-etiqueta lp-etiqueta-clara">O SISTEMA EM NÚMEROS</div>
-          <div className="lp-stats-grid">
-            {STATS.map((stat) => (
-              <div className="lp-stat" key={stat.label}>
-                <div className="lp-stat-valor">{stat.value}</div>
-                <div className="lp-stat-label">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section id="planos" ref={pricingRef} style={revelar(pricingRevelado)} className="lp-secao lp-transicao">
-        <div className="lp-pricing-cabecalho">
-          <div>
-            <div className="lp-etiqueta">PLANOS</div>
-            <h2 className="lp-h2">Um valor. Sem letra miúda.</h2>
-          </div>
-          <div className="lp-toggle">
-            <button
-              className={billing === "monthly" ? "lp-toggle-opcao ativo" : "lp-toggle-opcao"}
-              onClick={() => setBilling("monthly")}
-            >
-              Mensal
-            </button>
-            <button
-              className={billing === "annual" ? "lp-toggle-opcao ativo" : "lp-toggle-opcao"}
-              onClick={() => setBilling("annual")}
-            >
-              Anual · 2 meses de graça
-            </button>
-          </div>
+      {/* Pricing */}
+      <section id="planos" className="lp-section-p" ref={pricingRef}>
+        <div className={`lp-section-title-p ${animClass(pricingRevelado)}`}>
+          <div className="lp-section-tag-p">Investimento</div>
+          <h2 className="lp-h2-p">Sua carreira no <span className="lp-text-gradient-green">automático</span></h2>
         </div>
 
-        <div className="lp-planos">
-          <div className="lp-plano">
-            <div className="lp-plano-nome">Match</div>
-            <div className="lp-plano-subtitulo">pra quem quer testar sem compromisso</div>
-            <div className="lp-plano-preco">
-              <span className="lp-plano-preco-valor">{fmt(preco)}</span>
-              <span className="lp-plano-preco-periodo">/mês</span>
+        <div className={`lp-pricing-grid ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.2s" }}>
+          {/* Basic Plan */}
+          <div className="lp-pricing-card">
+            <h3 style={{ fontSize: "1.5rem", color: "#fff", marginBottom: "0.5rem" }}>Match</h3>
+            <p style={{ color: "var(--text-body)", marginBottom: "2rem" }}>Para quem quer testar sem compromisso</p>
+            <div className="lp-price-val">
+              <span>R$</span>{preco}<span>/mês</span>
             </div>
-            <div className="lp-plano-features">
-              {PLANO_FEATURES.map((f) => (
-                <div className="lp-plano-feature" key={f}>
-                  <span>—</span>
-                  {f}
+            
+            <div className="lp-feature-list">
+              {PLANO_FEATURES.map((f, i) => (
+                <div key={i} className="lp-feature-item">
+                  <CheckIcon /> {f}
                 </div>
               ))}
             </div>
-            <Link to="/cadastro" className="lp-plano-botao">
-              Ativar minhas vagas
+            <Link to="/cadastro" className="lp-btn-ghost" style={{ display: "block", textAlign: "center", marginTop: "2.5rem", padding: "1rem", border: "1px solid var(--glass-border)", borderRadius: "999px" }}>
+              Assinar Match
             </Link>
           </div>
 
-          <div className="lp-plano lp-plano-destaque">
-            <div className="lp-plano-selo">RECOMENDADO PRA QUEM ESTÁ NA BUSCA ATIVA</div>
-            <div className="lp-plano-nome lp-plano-nome-clara">Match Plus</div>
-            <div className="lp-plano-subtitulo lp-plano-subtitulo-clara">mais fontes de vaga, mais rápido</div>
-            <div className="lp-plano-preco">
-              <span className="lp-plano-preco-valor lp-plano-preco-valor-clara">{fmt(precoPlus)}</span>
-              <span className="lp-plano-preco-periodo lp-plano-preco-periodo-clara">/mês</span>
+          {/* Premium Plan */}
+          <div className="lp-pricing-card premium">
+            <div style={{ position: "absolute", top: 0, left: "50%", transform: "translate(-50%, -50%)", background: "var(--neon-green)", color: "#000", fontWeight: 800, padding: "6px 20px", borderRadius: "999px", fontSize: "0.85rem", letterSpacing: "0.05em" }}>RECOMENDADO</div>
+            <h3 style={{ fontSize: "1.8rem", color: "#fff", marginBottom: "0.5rem" }}>Match Plus</h3>
+            <p style={{ color: "var(--text-body)", marginBottom: "2rem" }}>Mais fontes de vagas, velocidade máxima</p>
+            <div className="lp-price-val" style={{ color: "var(--neon-green)" }}>
+              <span style={{ color: "var(--text-body)" }}>R$</span>{precoPlus}<span style={{ color: "var(--text-body)" }}>/mês</span>
             </div>
-            <div className="lp-plano-features">
-              {PLANO_PLUS_FEATURES.map((f) => (
-                <div className="lp-plano-feature lp-plano-feature-clara" key={f}>
-                  <span className="lp-plano-feature-marca-clara">—</span>
-                  {f}
+            
+            <div className="lp-feature-list">
+              {PLANO_PLUS_FEATURES.map((f, i) => (
+                <div key={i} className="lp-feature-item" style={{ color: "#fff" }}>
+                  <CheckIcon /> {f}
                 </div>
               ))}
             </div>
-            <Link to="/cadastro" className="lp-plano-botao lp-plano-botao-destaque">
-              Ativar minhas vagas
+            <Link to="/cadastro" className="lp-btn-primary" style={{ display: "block", textAlign: "center", marginTop: "2.5rem", padding: "1rem" }}>
+              Ativar Match Plus 🚀
             </Link>
           </div>
         </div>
-        <div className="lp-preco-nota">preços ilustrativos — ajuste antes de publicar</div>
       </section>
 
-      <section ref={faqRef} style={revelar(faqRevelado)} className="lp-secao lp-transicao lp-faq-secao">
-        <div className="lp-secao-cabecalho">
-          <div className="lp-etiqueta">PERGUNTAS FREQUENTES</div>
-          <h2 className="lp-h2-pequeno">Antes de perguntar no Telegram.</h2>
+      {/* Footer */}
+      <footer style={{ borderTop: "1px solid var(--glass-border)", padding: "3rem 2rem", textAlign: "center", color: "var(--text-body)", position: "relative", zIndex: 10 }}>
+        <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "#fff", marginBottom: "1rem" }}>
+          VagaMatch
         </div>
-        <div>
-          {FAQS.map((faq, i) => {
-            const aberta = faqAberta === i;
-            return (
-              <div className="lp-faq-item" key={faq.q}>
-                <button className="lp-faq-pergunta" onClick={() => setFaqAberta(aberta ? -1 : i)}>
-                  {faq.q}
-                  <span className={aberta ? "lp-faq-mais aberto" : "lp-faq-mais"}>+</span>
-                </button>
-                <div className="lp-faq-resposta" style={{ maxHeight: aberta ? "200px" : "0" }}>
-                  <div className="lp-faq-resposta-texto">{faq.a}</div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="lp-cta-final">
-        <div>
-          <h2 className="lp-cta-final-titulo">
-            Pare de procurar.
-            <br />
-            <span className="lp-cta-final-destaque">Deixe a vaga te achar.</span>
-          </h2>
-          <a href="#planos" className="lp-botao-claro">
-            Ativar minhas vagas
-          </a>
-        </div>
-      </section>
-
-      <footer className="lp-footer">
-        <div className="lp-footer-conteudo">
-          <div className="lp-footer-marca">VagaMatch</div>
-          <div className="lp-footer-nota">© 2026 VagaMatch. Sem spam, sem rodeio.</div>
-        </div>
+        <p>© 2026 VagaMatch. Desenvolvido para acelerar sua carreira.</p>
       </footer>
     </div>
   );
