@@ -67,7 +67,7 @@ async function tratarCallback(cq) {
     }
     const modoRegiao = modo === "brasil" ? "brasil" : "minha_regiao";
     const raioNum = Number(raio);
-    const raioValido = Number.isFinite(raioNum) && raioNum > 0 ? raioNum : 50;
+    const raioValido = Number.isFinite(raioNum) && raioNum > 0 && raioNum <= 5000 ? raioNum : 500;
     await definirModoRegiao(perfil.id, modoRegiao, modoRegiao === "minha_regiao" ? raioValido : null);
     await responderCallback(cq.id, modoRegiao === "brasil" ? "Modo: Brasil todo ✅" : `Modo: minha região (raio ${raio}km) ✅`);
     return;
@@ -96,7 +96,7 @@ async function tratarMensagem(msg) {
       return;
     }
     if (pref) {
-      const textoStatus = `👤 *Seu Status de Busca*\n\n🎯 *Cargos-alvo:*\n${(pref.cargos_alvo || []).join(', ')}\n\n🔑 *Palavras-chave:*\n${(pref.palavras_chave || []).join(', ')}\n\n📍 *Região:*\n${pref.modo_regiao === 'brasil' ? 'Brasil Todo' : 'Minha Região (' + (pref.raio_km || 50) + 'km)'}`;
+      const textoStatus = `👤 *Seu Status de Busca*\n\n🎯 *Cargos-alvo:*\n${(pref.cargos_alvo || []).join(', ')}\n\n🔑 *Palavras-chave:*\n${(pref.palavras_chave || []).join(', ')}\n\n📍 *Região:*\n${pref.modo_regiao === 'brasil' ? 'Brasil Todo' : 'Minha Região (' + (pref.raio_km || 500) + 'km)'}`;
       await enviarMensagemSimples(msg.chat.id, textoStatus);
     } else {
       await enviarMensagemSimples(msg.chat.id, "Nenhuma preferência configurada ainda.");
