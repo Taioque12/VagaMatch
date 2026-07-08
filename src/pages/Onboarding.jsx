@@ -5,6 +5,7 @@ import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 import { extrairDadosCurriculo } from "../lib/gemini.js";
+import { gerarCurriculoPdf } from "../lib/curriculoPdf.js";
 
 export function Onboarding() {
   const { session } = useAuth();
@@ -16,6 +17,7 @@ export function Onboarding() {
   const [salvo, setSalvo] = useState(false);
   const [analisandoPdf, setAnalisandoPdf] = useState(false);
   const [nomeArquivo, setNomeArquivo] = useState(null);
+  const [baixandoPdf, setBaixandoPdf] = useState(false);
 
   const [telegramChatId, setTelegramChatId] = useState("");
   const [dadosExtraidos, setDadosExtraidos] = useState(null);
@@ -141,6 +143,23 @@ export function Onboarding() {
     }
   }
 
+  async function handleBaixarPdf() {
+    if (!dadosExtraidos) return;
+    setBaixandoPdf(true);
+    setErro(null);
+    try {
+      await gerarCurriculoPdf(dadosExtraidos, {
+        nomeCompleto: dadosExtraidos.nome_completo,
+        localizacao: dadosExtraidos.localizacao,
+        email: session?.user?.email,
+      });
+    } catch (err) {
+      setErro(err.message);
+    } finally {
+      setBaixandoPdf(false);
+    }
+  }
+
   if (carregando) return <p className="carregando">Carregando...</p>;
 
   const pronto = !!dadosExtraidos;
@@ -210,6 +229,16 @@ export function Onboarding() {
             {dadosExtraidos.resumo_profissional && (
               <p className="resumo-preview">{dadosExtraidos.resumo_profissional}</p>
             )}
+
+            <button
+              type="button"
+              onClick={handleBaixarPdf}
+              disabled={baixandoPdf}
+              className="acao"
+              style={{ marginTop: "1rem" }}
+            >
+              {baixandoPdf ? "Gerando PDF..." : "Baixar currículo em PDF"}
+            </button>
           </section>
         )}
 
