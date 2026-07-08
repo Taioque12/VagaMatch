@@ -54,6 +54,11 @@ export async function gerarCurriculoPdf(cv, perfil) {
   try {
     console.log("[PDF] Iniciando geração com dados:", { cv, perfil });
 
+    // Validações básicas
+    if (!cv) throw new Error("Dados do currículo não fornecidos");
+    if (!perfil) throw new Error("Dados do perfil não fornecidos");
+    if (!perfil.nomeCompleto) throw new Error("Nome completo não fornecido");
+
     const { jsPDF } = await import("jspdf");
     console.log("[PDF] jsPDF importado");
 
@@ -86,47 +91,71 @@ export async function gerarCurriculoPdf(cv, perfil) {
       console.log("[PDF] Resumo adicionado");
     }
 
-    if (cv.habilidades?.length) {
+    if (cv.habilidades && Array.isArray(cv.habilidades) && cv.habilidades.length > 0) {
       y = secao(doc, y, "Habilidades Técnicas");
       y = paragrafo(doc, y, cv.habilidades.join(" · "));
       console.log("[PDF] Habilidades adicionadas");
     }
 
-    if (cv.experiencias?.length) {
+    if (cv.experiencias && Array.isArray(cv.experiencias) && cv.experiencias.length > 0) {
       y = secao(doc, y, "Experiência Profissional");
       for (const exp of cv.experiencias) {
+        if (!exp || typeof exp !== "object") continue;
         y = novaPagina(doc, y);
         doc.setFont("helvetica", "bold");
-        doc.text(`${exp.cargo} | ${exp.empresa} | ${exp.periodo}`, MARGEM, y);
+        doc.text(`${exp.cargo || ""} | ${exp.empresa || ""} | ${exp.periodo || ""}`, MARGEM, y);
         y += 13;
         doc.setFont("helvetica", "normal");
-        for (const b of exp.bullets || []) y = bullet(doc, y, b);
+        if (exp.bullets && Array.isArray(exp.bullets)) {
+          for (const b of exp.bullets) {
+            if (b) y = bullet(doc, y, b);
+          }
+        }
         y += 4;
       }
       console.log(`[PDF] ${cv.experiencias.length} experiência(s) adicionada(s)`);
     }
 
-    if (cv.formacao?.length) {
+    if (cv.formacao && Array.isArray(cv.formacao) && cv.formacao.length > 0) {
       y = secao(doc, y, "Formação Acadêmica");
-      for (const f of cv.formacao) y = bullet(doc, y, f);
+      for (const f of cv.formacao) {
+        if (f) y = bullet(doc, y, f);
+      }
       console.log(`[PDF] ${cv.formacao.length} formação(ões) adicionada(s)`);
     }
 
-    if (cv.cursos?.length) {
+    if (cv.cursos && Array.isArray(cv.cursos) && cv.cursos.length > 0) {
       y = secao(doc, y, "Cursos Complementares");
-      for (const c of cv.cursos) y = bullet(doc, y, c);
+      for (const c of cv.cursos) {
+        if (c) y = bullet(doc, y, c);
+      }
       console.log(`[PDF] ${cv.cursos.length} curso(s) adicionado(s)`);
     }
 
-    if (cv.projetos?.length) {
+    if (cv.projetos && Array.isArray(cv.projetos) && cv.projetos.length > 0) {
       y = secao(doc, y, "Projetos");
-      for (const pr of cv.projetos) y = bullet(doc, y, pr);
+      for (const pr of cv.projetos) {
+        if (pr) y = bullet(doc, y, pr);
+      }
       console.log(`[PDF] ${cv.projetos.length} projeto(s) adicionado(s)`);
     }
 
     const fileName = `curriculo-${(perfil.nomeCompleto || "vagamatch").replace(/\s+/g, "_")}.pdf`;
-    console.log("[PDF] Chamando doc.save com arquivo:", fileName);
-    doc.save(fileName);
+    console.log("[PDF] Gerando blob do PDF...");
+
+    // Gera blob e cria link de download (mais confiável que doc.save())
+    const pdfBlob = doc.output("blob");
+    console.log("[PDF] Blob gerado, tamanho:", pdfBlob.size, "bytes");
+
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
     console.log("[PDF] PDF salvo com sucesso");
   } catch (error) {
     console.error("[PDF] Erro ao gerar PDF:", error);
