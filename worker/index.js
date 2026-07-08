@@ -29,7 +29,11 @@ const OUT_DIR = join(here, "output");
 
 // Uso: node worker/index.js [--limit N]  (limita vagas processadas POR USUÁRIO, útil p/ teste)
 const limitArg = process.argv.indexOf("--limit");
-const LIMITE = limitArg > -1 ? Number(process.argv[limitArg + 1]) : Infinity;
+const limitValue = limitArg > -1 ? Number(process.argv[limitArg + 1]) : NaN;
+const LIMITE = Number.isFinite(limitValue) && limitValue > 0 ? limitValue : Infinity;
+if (limitArg > -1 && !Number.isFinite(limitValue)) {
+  console.warn(`⚠️  --limit inválido ou faltando valor. Usando Infinity (sem limite).`);
+}
 
 const nomeSeguro = (jobId) => jobId.replace(/[^a-zA-Z0-9_-]/g, "_");
 const ADMIN_CHAT_ID = process.env.ADMIN_TELEGRAM_CHAT_ID; // opcional — alerta de falha fatal
@@ -100,17 +104,13 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
 
   if (!novas.length) return { processadas: 0, falhas: 0 };
 
-  if (novas.length > 1) {
-    await enviarResumoDiario(perfil.telegram_chat_id, novas).catch((e) =>
-      console.error(`Falha no resumo (${perfil.id}): ${e.message}`)
-    );
-  }
-
   const email = await buscarEmail(perfil.id);
   const perfilCV = { nomeCompleto: perfil.nome_completo || "Candidato", localizacao: perfil.localizacao, email };
 
   let processadas = 0;
   let falhas = 0;
+  const vagasAprovadas = []; // Vagas que passaram no filtro IA
+
   for (const vaga of novas) {
     if (processadas >= LIMITE) break;
     try {
@@ -126,6 +126,8 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
         await marcarStatus(vaga.id, "descartada");
         continue;
       }
+
+      vagasAprovadas.push(vaga);
 
       // Marca como descoberta só após IA aprovar (antes de CV/Telegram)
       await marcarStatus(vaga.id, "descoberta");
@@ -149,6 +151,13 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
       await marcarStatus(vaga.id, "erro").catch(() => {});
       falhas++;
     }
+  }
+
+  // Envia resumo após filtro IA (só vagas aprovadas)
+  if (vagasAprovadas.length > 1) {
+    await enviarResumoDiario(perfil.telegram_chat_id, vagasAprovadas).catch((e) =>
+      console.error(`Falha no resumo (${perfil.id}): ${e.message}`)
+    );
   }
 
   return { processadas, falhas };

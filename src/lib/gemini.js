@@ -117,10 +117,9 @@ Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
       config: { responseMimeType: "application/json" },
     });
 
-    let cleaned = text;
-    if (cleaned.startsWith("```json")) {
-      cleaned = cleaned.replace(/^```json\n/, "").replace(/\n```$/, "");
-    }
+    let cleaned = text.trim();
+    // Remove markdown code fences: ```json...``` ou ```...```
+    cleaned = cleaned.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     try {
       const dados = JSON.parse(cleaned);
       validarSchemaCurriculo(dados);

@@ -62,6 +62,12 @@ Deno.serve(async (req) => {
     return json({ error: "Body inválido." }, 400);
   }
 
+  const MAX_PAYLOAD_SIZE = 20 * 1024 * 1024; // 20MB
+  const payloadSize = JSON.stringify(payload).length;
+  if (payloadSize > MAX_PAYLOAD_SIZE) {
+    return json({ error: `Payload excede limite (${Math.round(payloadSize / 1024 / 1024)}MB > 20MB).` }, 413);
+  }
+
   const { model = "gemini-2.5-flash", contents, config } = payload;
   if (!contents) return json({ error: "Campo 'contents' obrigatório." }, 400);
 

@@ -39,13 +39,17 @@ Cargos-alvo: ${(curriculo.cargos_alvo || []).join(", ")}
       }
     });
 
-    let text = response.text;
-    if (text.startsWith("\`\`\`json")) {
-      text = text.replace(/^\`\`\`json\n/, "").replace(/\n\`\`\`$/, "");
-    }
+    let text = response.text.trim();
+    // Remove markdown code fences: ```json...``` ou ```...```
+    text = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
     const json = JSON.parse(text);
+
+    // Coerce score to number, validar range 0-100
+    const scoreRaw = json.score ?? 0;
+    const score_ia = Math.max(0, Math.min(100, Number(scoreRaw) || 0));
+
     return {
-      score_ia: json.score || 0,
+      score_ia,
       motivo_ia: json.motivo || "Avaliado pela IA."
     };
   } catch (error) {

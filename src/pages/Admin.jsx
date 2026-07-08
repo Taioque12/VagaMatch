@@ -1,15 +1,39 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 export function Admin() {
+  const { session } = useAuth();
+  const navigate = useNavigate();
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
   const [metricas, setMetricas] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    if (!session) {
+      navigate("/login");
+      return;
+    }
+
     async function carregar() {
+      // Verifica se usuário é admin
+      const { data: perfil, error: erroRoleCheck } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      if (erroRoleCheck || perfil?.role !== "admin") {
+        setErro("Acesso negado. Você não é admin.");
+        setTimeout(() => navigate("/dashboard"), 1500);
+        setCarregando(false);
+        return;
+      }
+      setIsAdmin(true);
+
       setCarregando(true);
       setErro(null);
       try {
@@ -63,8 +87,9 @@ export function Admin() {
       }
     }
     carregar();
-  }, []);
+  }, [session, navigate]);
 
+  if (!session || !isAdmin) return null; // Aguarda validação
   if (carregando) return <p className="carregando">Carregando métricas...</p>;
   if (erro) return <p className="erro">Erro ao carregar métricas: {erro}</p>;
 
