@@ -5,6 +5,8 @@ import { dirname } from "path";
 import { env, requireEnv } from "./config.js";
 import { buscarVagas } from "./adzuna.js";
 import { buscarVagasJSearch } from "./jsearch.js";
+import { buscarVagasReed } from "./reed.js";
+import { buscarVagasJooble } from "./jooble.js";
 import { filtrarRelevantes, ordenarPorScore } from "./filter.js";
 import {
   listarUsuariosAtivos,
@@ -66,6 +68,18 @@ async function buscarComCache(cache, cargo, regiao, raioKm) {
     for (const v of vagasJSearch) vagas.set(v.job_id, v);
   } catch (e) {
     console.error(`Busca JSearch falhou (${cargo} / ${regiao}): ${e.message}`);
+  }
+  try {
+    const vagasReed = await buscarVagasReed({ termo: cargo, regiao });
+    for (const v of vagasReed) vagas.set(v.job_id, v);
+  } catch (e) {
+    console.error(`Busca Reed falhou (${cargo} / ${regiao}): ${e.message}`);
+  }
+  try {
+    const vagasJooble = await buscarVagasJooble({ termo: cargo, regiao });
+    for (const v of vagasJooble) vagas.set(v.job_id, v);
+  } catch (e) {
+    console.error(`Busca Jooble falhou (${cargo} / ${regiao}): ${e.message}`);
   }
 
   const resultado = [...vagas.values()];
