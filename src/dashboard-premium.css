@@ -1,0 +1,318 @@
+/* 
+  Redesign Premium - Dashboard VagaMatch 
+  Foco em Layout Moderno SaaS, Glassmorphism Funcional e Hierarquia de Dados
+*/
+
+/* 1. Global & Background Overrides */
+.lp-hero-bloco {
+  background-color: var(--bg-main) !important;
+  background-image: 
+    radial-gradient(circle at top right, var(--primary-light), transparent 40%),
+    radial-gradient(circle at bottom left, rgba(59, 130, 246, 0.05), transparent 40%);
+}
+
+/* 2. Top Nav Flutuante */
+.lp-nav {
+  margin: 1rem auto 2rem;
+  border-radius: 999px;
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border-glass);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+  padding: 0.8rem 1.5rem !important;
+  position: sticky;
+  top: 1rem;
+  z-index: 50;
+  transition: all 0.3s ease;
+}
+
+/* 3. Painel de Busca (Status Monitor) */
+.painel-busca {
+  background: var(--bg-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 20px;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+}
+
+.painel-busca::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 4px; height: 100%;
+  background: var(--primary);
+  border-radius: 4px 0 0 4px;
+}
+
+.status-busca {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main) !important;
+}
+
+.status-busca.ativo::before {
+  content: '';
+  display: block;
+  width: 10px; height: 10px;
+  background: var(--primary);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--primary);
+  animation: pulse-dot 1.5s infinite;
+}
+
+.status-busca.pausado::before {
+  content: '';
+  display: block;
+  width: 10px; height: 10px;
+  background: var(--text-muted);
+  border-radius: 50%;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+/* 4. Mini Bento Stats */
+.cartoes-stats-vertical {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.stat {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 16px;
+  padding: 1.2rem;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: none;
+  transition: all 0.2s ease;
+}
+
+.stat:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glass);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px -10px rgba(0,0,0,0.1);
+}
+
+.stat-numero {
+  font-family: 'Outfit', 'Manrope', sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-main);
+  line-height: 1;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+/* 5. Filtros em Pills */
+.filtros-vertical {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filtro {
+  flex: none;
+  width: auto;
+  border-radius: 999px;
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  text-align: center;
+  background: transparent;
+  border: 1px solid var(--border-input);
+}
+
+.filtro.ativo {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  box-shadow: 0 4px 15px var(--primary-light);
+}
+
+/* 6. Vaga Card Overhaul */
+.grid-vagas {
+  gap: 1.5rem;
+}
+
+.vaga-card {
+  border-radius: 20px;
+  border: 1px solid var(--border-glass);
+  background: var(--bg-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.02);
+  border-left: none; /* Removemos a borda grossa esquecida */
+  flex-direction: column !important; /* Força coluna inteira */
+  padding: 1.5rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.vaga-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(0,0,0,0.08);
+  border-color: var(--primary-border);
+}
+
+/* Cabeçalho do Card (com Match embutido) */
+.vaga-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.vaga-card-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vaga-cabecalho strong {
+  font-size: 1.35rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.vaga-empresa {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Match Badge (Substitui o círculo gigante) */
+.match-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary-light);
+  border: 1px solid var(--primary-border);
+  color: var(--primary-text);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-family: 'Outfit', 'Manrope', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.match-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* Box de Lâmpada Rebaixado */
+.vaga-motivo {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+  align-items: flex-start;
+  margin: 1.5rem 0;
+}
+
+.motivo-icon {
+  background: rgba(255, 204, 0, 0.15);
+  padding: 6px;
+  border-radius: 8px;
+  font-size: 1.1rem;
+}
+
+.vaga-motivo p {
+  font-size: 0.95rem;
+  color: var(--text-main);
+  line-height: 1.5;
+  opacity: 0.9;
+}
+
+/* Botões de Ação do Card */
+.vaga-rodape {
+  border-top: 1px solid var(--border-glass);
+  padding-top: 1.2rem;
+  margin-top: 0;
+}
+
+.acao {
+  font-family: 'Inter', 'Manrope', sans-serif;
+  font-weight: 600;
+  font-size: 0.9rem;
+  padding: 0.6rem 1.2rem;
+  border-radius: 999px;
+  transition: all 0.2s;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: #fff !important;
+  border: none;
+  box-shadow: 0 4px 10px var(--primary-light);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.acao:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px var(--primary-light);
+}
+
+.acao.secundaria {
+  background: transparent;
+  border: 1px solid var(--border-input);
+  color: var(--text-main) !important;
+  box-shadow: none;
+}
+
+.acao.secundaria:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glass);
+}
+
+.link-vaga {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.link-vaga:hover {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.badge {
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  color: var(--text-muted);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}

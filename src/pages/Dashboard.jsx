@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
+import "./dashboard-premium.css";
 
 const STATUS_LABEL = {
   descoberta: "Descoberta",
@@ -114,17 +115,15 @@ export function Dashboard() {
     setProcessandoCheckout(true);
     setErro(null);
     try {
-      // price_12345: O usuário precisará colocar o Price ID real no código ou no .env depois.
-      // Vamos assumir que criaremos uma env genérica ou passamos um ID genérico aqui por enquanto.
       const { data, error } = await supabase.functions.invoke("stripe-checkout", {
-        body: { priceId: "price_dummy123" }, // TODO: Mudar para o Price ID real
+        body: { priceId: "price_dummy123" },
       });
 
       if (error) throw new Error(error.message);
       if (data?.error) throw new Error(data.error);
 
       if (data?.url) {
-        window.location.href = data.url; // Redireciona pro Checkout
+        window.location.href = data.url;
       }
     } catch (e) {
       setErro("Falha ao iniciar checkout: " + e.message);
@@ -134,7 +133,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <nav className="lp-nav">
         <Link to="/dashboard" className="lp-logo" style={{ textDecoration: 'none' }}>
           <span className="lp-logo-marca" />
@@ -150,18 +149,19 @@ export function Dashboard() {
           <button className="btn-sair" onClick={sair}>Sair</button>
         </div>
       </nav>
+      
       <div className="dashboard-container">
         {/* Sidebar Esquerda: Controles e Stats */}
         <aside className="dashboard-sidebar">
           <div className="painel-busca">
             <div>
-              <strong style={{display: 'block', marginBottom: '0.3rem'}}>Busca automática</strong>
+              <strong style={{display: 'block', marginBottom: '0.4rem', fontSize: '1.05rem', letterSpacing: '-0.01em'}}>Busca automática</strong>
               <span className={`status-busca ${buscaAtiva ? 'ativo' : 'pausado'}`}>
                 {buscaAtiva === null ? "..." : buscaAtiva ? "Em andamento" : "Pausada"}
               </span>
             </div>
-            <button className="acao" onClick={alternarBusca} disabled={salvandoAtivo || buscaAtiva === null}>
-              {buscaAtiva ? "Pausar" : "Retomar"}
+            <button className="acao secundaria" onClick={alternarBusca} disabled={salvandoAtivo || buscaAtiva === null} style={{marginTop: '1rem', width: '100%'}}>
+              {buscaAtiva ? "Pausar Busca" : "Retomar Busca"}
             </button>
           </div>
 
@@ -200,17 +200,17 @@ export function Dashboard() {
             ))}
           </div>
 
-          <div style={{ marginTop: "2rem", padding: "1rem", backgroundColor: "var(--bg-glass)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+          <div style={{ marginTop: "2rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
             <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Seu Plano</h3>
-            <p style={{ margin: "0.5rem 0", fontWeight: "bold", textTransform: "capitalize" }}>{plano}</p>
+            <p style={{ margin: "0.5rem 0", fontWeight: "800", textTransform: "capitalize", fontSize: "1.2rem", color: "var(--text-main)" }}>{plano}</p>
             {plano === "gratis" && (
               <button 
-                className="botao-principal" 
-                style={{ width: "100%", marginTop: "0.5rem", padding: "0.6rem" }}
+                className="acao" 
+                style={{ width: "100%", marginTop: "0.5rem" }}
                 onClick={handleUpgrade}
                 disabled={processandoCheckout}
               >
-                {processandoCheckout ? "Carregando..." : "Assinar Premium"}
+                {processandoCheckout ? "Processando..." : "Assinar Premium"}
               </button>
             )}
           </div>
@@ -219,65 +219,64 @@ export function Dashboard() {
         {/* Área Principal: Lista de Vagas */}
         <main className="dashboard-main">
           {erro && <p className="erro">{erro}</p>}
-          {vagasFiltradas === null && !erro && <p className="carregando">Carregando vagas com match...</p>}
+          {vagasFiltradas === null && !erro && <p className="carregando">Sincronizando vagas...</p>}
           {vagasFiltradas?.length === 0 && (
             <div className="estado-vazio">
-              <div className="estado-vazio-icone">🔍</div>
+              <div className="estado-vazio-icone">✨</div>
               <p>Nenhuma vaga aqui ainda.</p>
-              <span>Confira se seu <Link to="/onboarding">perfil está completo</Link> e se a busca está ativa.</span>
+              <span>O robô está escaneando a web. Se demorar, confira seu <Link to="/onboarding" style={{color: 'var(--primary)', fontWeight: 600}}>perfil</Link>.</span>
             </div>
           )}
 
           <div className="grid-vagas">
             {vagasFiltradas?.map((v) => (
               <div key={v.id} className={`vaga-card status-${v.status}`}>
-                <div className="vaga-card-score">
-                  <div className="score-circle">
-                    <span className="score-number">{v.score}</span>
-                    <span className="score-label">Match</span>
+                <div className="vaga-card-header">
+                  <div className="vaga-card-title-group">
+                    <div className="vaga-cabecalho">
+                      <strong>{v.titulo}</strong>
+                    </div>
+                    <p className="vaga-empresa">
+                      {v.empresa} • {v.fonte} • {new Date(v.data_encontrada).toLocaleDateString("pt-BR")}
+                    </p>
+                  </div>
+                  <div className="match-badge">
+                    <span className="match-icon">🎯</span>
+                    {v.score} Match
                   </div>
                 </div>
-                
-                <div className="vaga-card-content">
-                  <div className="vaga-cabecalho">
-                    <strong>{v.titulo}</strong>
-                  </div>
-                  <p className="vaga-empresa">
-                    {v.empresa} — {v.fonte} · {new Date(v.data_encontrada).toLocaleDateString("pt-BR")}
-                  </p>
                   
-                  {v.motivo_ia && (
-                    <div className="vaga-motivo">
-                      <span className="motivo-icon">💡</span>
-                      <p>{v.motivo_ia}</p>
-                    </div>
-                  )}
-
-                  <div className="vaga-rodape">
-                    <span className="badge">{STATUS_LABEL[v.status] ?? v.status}</span>
-                    {v.feedback && (
-                      <span className="badge">{v.feedback === "positivo" ? "👍" : "👎"}</span>
-                    )}
-                    {v.url && (
-                      <a href={v.url} target="_blank" rel="noreferrer" className="link-vaga">
-                        Ver vaga
-                      </a>
-                    )}
-                    <span className="espaco" />
-                    <Link to={`/gerador/${v.id}`} className="acao">
-                      Gerar CV/Carta
-                    </Link>
-                    {v.status !== "candidatado" && (
-                      <button className="acao" onClick={() => mudarStatus(v, "candidatado")}>
-                        Me candidatei
-                      </button>
-                    )}
-                    {v.status !== "descartada" && (
-                      <button className="acao secundaria" onClick={() => mudarStatus(v, "descartada")}>
-                        Descartar
-                      </button>
-                    )}
+                {v.motivo_ia && (
+                  <div className="vaga-motivo">
+                    <span className="motivo-icon">✨</span>
+                    <p>{v.motivo_ia}</p>
                   </div>
+                )}
+
+                <div className="vaga-rodape">
+                  <span className="badge">{STATUS_LABEL[v.status] ?? v.status}</span>
+                  {v.feedback && (
+                    <span className="badge">{v.feedback === "positivo" ? "👍" : "👎"}</span>
+                  )}
+                  {v.url && (
+                    <a href={v.url} target="_blank" rel="noreferrer" className="link-vaga">
+                      <span>🔗</span> Ver vaga original
+                    </a>
+                  )}
+                  <span className="espaco" style={{flex: 1}} />
+                  <Link to={`/gerador/${v.id}`} className="acao secundaria" style={{marginRight: '8px'}}>
+                    Gerar Documentos
+                  </Link>
+                  {v.status !== "candidatado" && (
+                    <button className="acao" onClick={() => mudarStatus(v, "candidatado")} style={{marginRight: '8px'}}>
+                      Me candidatei
+                    </button>
+                  )}
+                  {v.status !== "descartada" && (
+                    <button className="acao secundaria" onClick={() => mudarStatus(v, "descartada")}>
+                      Descartar
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
