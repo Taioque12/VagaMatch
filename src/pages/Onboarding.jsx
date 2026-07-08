@@ -99,11 +99,20 @@ export function Onboarding() {
     const d = dadosExtraidos;
 
     try {
+      // Valida telegram_chat_id: deve ser numérico se fornecido
+      let validChatId = null;
+      if (telegramChatId?.trim()) {
+        if (!/^-?\d+$/.test(telegramChatId)) {
+          throw new Error("Chat ID do Telegram deve ser um número (sem espaços/símbolos).");
+        }
+        validChatId = telegramChatId;
+      }
+
       const { error: e1 } = await supabase.from("profiles").upsert({
         id: userId,
         nome_completo: d.nome_completo || "",
         localizacao: d.localizacao || "",
-        telegram_chat_id: telegramChatId || null,
+        telegram_chat_id: validChatId,
         updated_at: new Date().toISOString(),
       });
       if (e1) throw e1;

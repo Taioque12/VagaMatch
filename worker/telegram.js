@@ -28,14 +28,23 @@ function botoesFeedback(callbackId) {
   };
 }
 
+function escaparMarkdown(text) {
+  if (!text) return text;
+  return String(text).replace(/[_*[\]()~`>#+=|{}<\-!.\\]/g, '\\$&');
+}
+
 function legendaVaga(vaga, palavrasCobertas) {
+  const salario = vaga.salario_min && vaga.salario_max
+    ? `💰 R$ ${Math.round(vaga.salario_min)}–${Math.round(vaga.salario_max)}`
+    : null;
+
   return [
-    `💼 *${vaga.titulo}*`,
-    `🏢 ${vaga.empresa} — ${vaga.local}`,
-    vaga.salario_min ? `💰 R$ ${Math.round(vaga.salario_min)}–${Math.round(vaga.salario_max)}` : null,
+    `💼 *${escaparMarkdown(vaga.titulo)}*`,
+    `🏢 ${escaparMarkdown(vaga.empresa)} — ${escaparMarkdown(vaga.local)}`,
+    salario,
     `⭐ Score IA: ${vaga.score ?? 0}/100`,
-    vaga.motivo_ia ? `\n💡 *Por que essa vaga é pra você:*\n${vaga.motivo_ia}\n` : null,
-    `🔗 ${vaga.url}`,
+    vaga.motivo_ia ? `\n💡 *Por que essa vaga é pra você:*\n${escaparMarkdown(vaga.motivo_ia)}\n` : null,
+    `🔗 ${escaparMarkdown(vaga.url)}`,
   ]
     .filter(Boolean)
     .join("\n");

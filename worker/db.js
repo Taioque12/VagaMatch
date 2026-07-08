@@ -5,15 +5,18 @@ import { env } from "./config.js";
 export const supabase = createClient(env.supabaseUrl, env.supabaseServiceKey);
 
 // Usuários com busca ativa e Telegram vinculado (pré-requisitos pra rodar o pipeline).
-// Processa em lotes usando limit e offset para escalar infinitamente.
-export async function listarUsuariosAtivos(limite = 50, offset = 0) {
-  const { data: prefs, error } = await supabase
+// Processa em lotes usando cursor (lastUserId) em vez de offset numérico, evita pular/repetir.
+export async function listarUsuariosAtivos(limite = 50, lastUserId = null) {
+  let query = supabase
     .from("preferencias")
     .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada")
     .eq("ativo", true)
     .or("disparo_manual.eq.false,busca_solicitada.eq.true")
-    .order("user_id", { ascending: true })
-    .range(offset, offset + limite - 1);
+    .order("user_id", { ascending: true });
+
+  if (lastUserId) query = query.gt("user_id", lastUserId);
+
+  const { data: prefs, error } = await query.limit(limite);
 
   if (error) throw new Error(`Supabase select (preferencias): ${error.message}`);
   if (!prefs?.length) return [];
@@ -74,20 +77,25 @@ export async function definirModoRegiao(userId, modoRegiao, raioKm) {
   if (error) throw new Error(`Supabase update (modo_regiao): ${error.message}`);
 }
 
-// Retorna só as vagas ainda não vistas por ESSE usuário e registra as novas.
+// Retorna só as vagas ainda não processadas por ESSE usuário e registra as novas.
+// Dedup exclui jobs com status terminal (notificada/descartada/erro) — reprocessa "descoberta" se falhou.
 // O insert usa .select() pra devolver id/callback_id gerados, necessários pra notificar depois.
 export async function deduplicarParaUsuario(userId, vagas) {
   if (!vagas.length) return [];
   const jobIds = vagas.map((v) => v.job_id);
   const { data: vistas, error } = await supabase
     .from("vagas_vistas")
-    .select("job_id")
+    .select("job_id, status")
     .eq("user_id", userId)
     .in("job_id", jobIds);
   if (error) throw new Error(`Supabase select (vagas_vistas): ${error.message}`);
 
-  const jaVistas = new Set((vistas ?? []).map((r) => r.job_id));
-  const novas = vagas.filter((v) => !jaVistas.has(v.job_id));
+  const jaProcessadas = new Set(
+    (vistas ?? [])
+      .filter((r) => ["notificada", "descartada", "erro"].includes(r.status))
+      .map((r) => r.job_id)
+  );
+  const novas = vagas.filter((v) => !jaProcessadas.has(v.job_id));
   if (!novas.length) return [];
 
   const { data: inseridas, error: insErr } = await supabase
@@ -100,7 +108,7 @@ export async function deduplicarParaUsuario(userId, vagas) {
         empresa: v.empresa,
         fonte: v.fonte,
         url: v.url,
-        status: "descoberta",
+        status: "pendente_processamento",
         score: v.score ?? 0,
         motivo_ia: v.motivo_ia ?? null,
       }))

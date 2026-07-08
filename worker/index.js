@@ -127,6 +127,9 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
         continue;
       }
 
+      // Marca como descoberta só após IA aprovar (antes de CV/Telegram)
+      await marcarStatus(vaga.id, "descoberta");
+
       const cv = await gerarCurriculo(vaga, curriculo, perfilCV.nomeCompleto);
       const base = `CV_${nomeSeguro(perfil.id)}_${nomeSeguro(vaga.job_id)}`;
       const docxPath = await gerarDocx(cv, perfilCV, join(OUT_DIR, `${base}.docx`));
@@ -168,15 +171,15 @@ async function main() {
   }
 
   const TAMANHO_LOTE = 50;
-  const cursorAtual = Number(await getState("worker_user_offset")) || 0;
-  console.log(`Buscando usuários a partir do offset: ${cursorAtual}`);
+  const lastUserId = await getState("worker_last_user_id");
+  console.log(`Buscando usuários após: ${lastUserId || "(início)"}`);
 
-  const usuarios = await listarUsuariosAtivos(TAMANHO_LOTE, cursorAtual);
+  const usuarios = await listarUsuariosAtivos(TAMANHO_LOTE, lastUserId);
   console.log(`Lote atual: ${usuarios.length} usuário(s) encontrados com Telegram vinculado.`);
 
   if (usuarios.length === 0) {
     // Chegou no fim da lista (ou não tem ninguém). Reseta para a próxima rodada!
-    console.log("Fim da lista de usuários. Resetando cursor para 0.");
+    console.log("Fim da lista de usuários. Resetando cursor para início.");
     await setState("worker_user_offset", 0);
     return;
   }
@@ -208,10 +211,17 @@ async function main() {
   }
 
   console.log(`Lote processado. ${totalProcessadas} vaga(s) notificada(s), ${totalFalhas} falha(s) no total.`);
-  
-  // Avança o cursor para o próximo lote (daqui a 10 min, por exemplo)
-  await setState("worker_user_offset", cursorAtual + TAMANHO_LOTE);
-  console.log(`Próximo offset definido para: ${cursorAtual + TAMANHO_LOTE}`);
+
+  // Salva o último user_id processado como cursor pra próxima rodada
+  if (usuarios.length > 0) {
+    const ultimoUserId = usuarios[usuarios.length - 1].pref.user_id;
+    await setState("worker_last_user_id", ultimoUserId);
+    console.log(`Cursor avançado para user_id: ${ultimoUserId}`);
+  } else {
+    // Se lista vazia, reseta cursor
+    await setState("worker_last_user_id", null);
+    console.log("Lista vazia, cursor resetado.");
+  }
 }
 
 main().catch(async (e) => {
