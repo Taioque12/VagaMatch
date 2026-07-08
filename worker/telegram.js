@@ -158,8 +158,8 @@ export async function enviarMenuRegiao(chatId) {
     text: "Buscar vaga onde?",
     reply_markup: {
       inline_keyboard: [
-        [{ text: "📍 Minha região (raio 50km)", callback_data: "modo:regiao:50" }],
         [{ text: "📍 Minha região (raio 100km)", callback_data: "modo:regiao:100" }],
+        [{ text: "📍 Minha região (raio 500km)", callback_data: "modo:regiao:500" }],
         [{ text: "🌎 Brasil todo", callback_data: "modo:brasil:0" }],
       ],
     },
