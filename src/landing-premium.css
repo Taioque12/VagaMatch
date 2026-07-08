@@ -27,10 +27,11 @@
 .lp-glow-1, .lp-glow-2, .lp-glow-3 {
   position: absolute;
   border-radius: 50%;
-  filter: blur(120px);
   z-index: 0;
   pointer-events: none;
   opacity: 0.4;
+  transform: translateZ(0); /* Força aceleração de GPU */
+  will-change: transform, opacity;
 }
 
 .lp-glow-1 {
