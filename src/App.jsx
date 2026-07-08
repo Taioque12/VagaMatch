@@ -10,6 +10,8 @@ import { Onboarding } from "./pages/Onboarding.jsx";
 import { Dashboard } from "./pages/Dashboard.jsx";
 import { Admin } from "./pages/Admin.jsx";
 import { Gerador } from "./pages/Gerador.jsx";
+import { Sucesso } from "./pages/Sucesso.jsx";
+import { Cancelado } from "./pages/Cancelado.jsx";
 
 export function App() {
   return (
@@ -20,6 +22,8 @@ export function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/cadastro" element={<Cadastro />} />
+          <Route path="/sucesso" element={<RotaProtegida><Sucesso /></RotaProtegida>} />
+          <Route path="/cancelado" element={<RotaProtegida><Cancelado /></RotaProtegida>} />
           <Route
             path="/onboarding"
             element={

@@ -27,6 +27,8 @@ export function Dashboard() {
   const [buscaAtiva, setBuscaAtiva] = useState(null);
   const [salvandoAtivo, setSalvandoAtivo] = useState(false);
   const [ehAdmin, setEhAdmin] = useState(false);
+  const [plano, setPlano] = useState("gratis");
+  const [processandoCheckout, setProcessandoCheckout] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -52,10 +54,13 @@ export function Dashboard() {
 
     supabase
       .from("profiles")
-      .select("role")
+      .select("role, plano")
       .eq("id", userId)
       .maybeSingle()
-      .then(({ data }) => setEhAdmin(data?.role === "admin"));
+      .then(({ data }) => {
+        setEhAdmin(data?.role === "admin");
+        setPlano(data?.plano || "gratis");
+      });
   }, [session]);
 
   const stats = useMemo(() => {
@@ -103,6 +108,29 @@ export function Dashboard() {
 
   async function sair() {
     await supabase.auth.signOut();
+  }
+
+  async function handleUpgrade() {
+    setProcessandoCheckout(true);
+    setErro(null);
+    try {
+      // price_12345: O usuário precisará colocar o Price ID real no código ou no .env depois.
+      // Vamos assumir que criaremos uma env genérica ou passamos um ID genérico aqui por enquanto.
+      const { data, error } = await supabase.functions.invoke("stripe-checkout", {
+        body: { priceId: "price_dummy123" }, // TODO: Mudar para o Price ID real
+      });
+
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.url) {
+        window.location.href = data.url; // Redireciona pro Checkout
+      }
+    } catch (e) {
+      setErro("Falha ao iniciar checkout: " + e.message);
+    } finally {
+      setProcessandoCheckout(false);
+    }
   }
 
   return (
@@ -170,6 +198,21 @@ export function Dashboard() {
                 {f.label}
               </button>
             ))}
+          </div>
+
+          <div style={{ marginTop: "2rem", padding: "1rem", backgroundColor: "var(--bg-glass)", borderRadius: "8px", border: "1px solid var(--border-glass)" }}>
+            <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Seu Plano</h3>
+            <p style={{ margin: "0.5rem 0", fontWeight: "bold", textTransform: "capitalize" }}>{plano}</p>
+            {plano === "gratis" && (
+              <button 
+                className="botao-principal" 
+                style={{ width: "100%", marginTop: "0.5rem", padding: "0.6rem" }}
+                onClick={handleUpgrade}
+                disabled={processandoCheckout}
+              >
+                {processandoCheckout ? "Carregando..." : "Assinar Premium"}
+              </button>
+            )}
           </div>
         </aside>
 
