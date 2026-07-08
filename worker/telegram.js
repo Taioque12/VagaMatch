@@ -107,7 +107,7 @@ export async function alertarErro(chatId, mensagem) {
   try {
     await chamarApi("sendMessage", {
       chat_id: chatId,
-      text: `⚠️ *Erro no worker do VagaMatch:*\n${mensagem}`,
+      text: `⚠️ *Erro no worker do VagaMatch:*\n${escaparMarkdown(mensagem)}`,
       parse_mode: "Markdown",
     });
   } catch (e) {
