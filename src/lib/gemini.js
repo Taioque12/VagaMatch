@@ -93,7 +93,12 @@ Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
     if (cleaned.startsWith("```json")) {
       cleaned = cleaned.replace(/^```json\n/, "").replace(/\n```$/, "");
     }
-    return JSON.parse(cleaned);
+    try {
+      return JSON.parse(cleaned);
+    } catch (parseError) {
+      console.error("JSON parse erro:", parseError.message, "Resposta:", cleaned.slice(0, 200));
+      throw new Error("Falha ao processar resposta da IA (JSON inválido).");
+    }
   } catch (error) {
     console.error("Erro ao extrair dados do currículo:", error.message);
     throw new Error("Falha ao ler o PDF com IA. Tente preencher manualmente.");
