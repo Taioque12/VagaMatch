@@ -35,7 +35,7 @@ worker de ponta a ponta em produção, e decidir/implementar billing real).
 
 ## Status Atual
 
-**🎉 BETA GRATUITO NO AR — v2 com IA Completa + Glassmorphism UI!**
+**🎉 BETA GRATUITO NO AR — v2 com IA Completa + Glassmorphism UI + Robustez!**
 
 Infraestrutura:
 - ✅ Supabase: projeto `wrdxvhhmyptizlpdeaue`, schema com RLS e coluna `motivo_ia` migrada
@@ -43,15 +43,30 @@ Infraestrutura:
 - ✅ Onboarding IA: O usuário não precisa mais digitar nada, envia o PDF e a IA extrai tudo (cargo, skill, resumo)
 - ✅ Dashboard Premium: Redesign com Glassmorphism, Score IA com cores, e grid moderno
 - ✅ Filtro de IA do Worker: Avaliação 0-100 via Gemini Flash para cada vaga encontrada, cortando spam
-- ✅ Telegram Aprimorado: Mostra o `Score` e o "Porque essa vaga é pra você" direto no celular
+- ✅ Telegram Aprimorado: Mostra o `Score` e o "Porque essa vaga é pra você" direto no celular, botões de status e raio customizável
 - ✅ Theme toggle: dark/light mode com CSS variables
 - ✅ Landing page: completa com features + pricing + ticker de vagas
 
-## Segurança
+Qualidade:
+- ✅ Request timeout (30s) em chamadas Gemini
+- ✅ Schema validation em extração de currículo (campos obrigatórios)
+- ✅ Rate limiting (10 req/min) na edge function
+- ✅ Test coverage (gemini.js, edge function tests)
+- ✅ RLS privilege escalation fix + triggers de proteção
 
+## Segurança & Robustez
+
+**Segurança:**
 - **RLS reforçado** (`006_fix_privilege_escalation.sql`): triggers bloqueiam usuário comum de alterar colunas privilegiadas (`role`, `plano`, `assinatura_*` em `profiles`; `status`, `score`, etc em `vagas_vistas`) — só `service_role` (worker) pode.
 - **Gemini API key fora do bundle**: chamadas de IA do frontend passam pela Edge Function `gemini-proxy` (autenticada via JWT), a key nunca é exposta no client.
+- **Rate limiting**: edge function limita 10 requisições/minuto por usuário (HTTP 429 se exceder).
 - Scripts de debug (`worker/update_user.js`) têm guard `NODE_ENV=production` pra não rodar em produção por engano.
+
+**Robustez:**
+- **Request timeout**: chamadas Gemini têm timeout 30s (AbortController) — evita travamentos.
+- **Schema validation**: extração de currículo valida campos obrigatórios (`nome_completo`, `habilidades`) e rejeita JSON inválido.
+- **Raio de busca**: default 500km com validação máxima 5000km (evita valores inválidos da UI).
+- **Error handling**: erros de API/JSON/timeout propagados com mensagens claras pro usuário.
 
 ## Próximos passos (em ordem sugerida)
 
