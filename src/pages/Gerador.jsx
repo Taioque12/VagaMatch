@@ -80,6 +80,33 @@ export function Gerador() {
     URL.revokeObjectURL(url);
   }
 
+  async function baixarPdf() {
+    if (!textoGerado) return;
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
+    const margem = 48;
+    const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
+    const alturaPagina = doc.internal.pageSize.getHeight();
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(11);
+
+    const linhas = doc.splitTextToSize(textoGerado, larguraUtil);
+    let y = margem;
+    const alturaLinha = 14;
+
+    linhas.forEach((linha) => {
+      if (y > alturaPagina - margem) {
+        doc.addPage();
+        y = margem;
+      }
+      doc.text(linha, margem, y);
+      y += alturaLinha;
+    });
+
+    doc.save(`documento-${vaga?.empresa || "gerado"}.pdf`);
+  }
+
   if (carregando) return <p className="carregando">Carregando informações...</p>;
 
   return (
@@ -112,9 +139,12 @@ export function Gerador() {
 
       {textoGerado && (
         <div style={{ marginTop: "30px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
             <h2>Documento Gerado:</h2>
-            <button onClick={baixarTxt} className="acao">Baixar como TXT</button>
+            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+              <button onClick={baixarPdf} className="acao">Baixar como PDF</button>
+              <button onClick={baixarTxt} className="acao">Baixar como TXT</button>
+            </div>
           </div>
           <p className="ajuda">Revise o texto abaixo e copie-o, ou faça pequenos ajustes antes de salvar.</p>
           <textarea 
