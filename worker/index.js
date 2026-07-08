@@ -174,7 +174,8 @@ async function main() {
   mkdirSync(OUT_DIR, { recursive: true });
 
   try {
-    await processarFeedback();
+    // Polling desativado. Agora é o Webhook que cuida do feedback!
+    // await processarFeedback();
   } catch (e) {
     console.error(`Falha ao processar feedback: ${e.message}`);
   }
