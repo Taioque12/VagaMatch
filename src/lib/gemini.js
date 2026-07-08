@@ -1,21 +1,33 @@
 import { supabase } from './supabase.js';
 
-// Chama a Edge Function 'gemini-proxy', que guarda a API key do Gemini no servidor
-// e valida o JWT do usuário antes de gastar cota. Nunca falar com a API do Gemini
-// direto do frontend — a key não pode ir pro bundle.
+const GEMINI_TIMEOUT_MS = 30000; // 30 seg timeout
+
 async function chamarGemini({ contents, config }) {
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData?.session?.access_token;
   if (!token) throw new Error("Você precisa estar logado.");
 
-  const { data, error } = await supabase.functions.invoke('gemini-proxy', {
-    body: { contents, config },
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
 
-  if (error) throw new Error(error.message || "Falha ao chamar o serviço de IA.");
-  if (data?.error) throw new Error(data.error);
-  return data.text;
+  try {
+    const { data, error } = await supabase.functions.invoke('gemini-proxy', {
+      body: { contents, config },
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+    });
+
+    if (error) throw new Error(error.message || "Falha ao chamar o serviço de IA.");
+    if (data?.error) throw new Error(data.error);
+    return data.text;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error("Requisição expirou (Gemini demorou muito). Tente de novo.");
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 export async function gerarDocumentoIA(tipo, vaga, perfil) {
@@ -63,6 +75,22 @@ Retorne apenas o texto da carta de apresentação formatada, sem introduções o
   }
 }
 
+function validarSchemaCurriculo(dados) {
+  const campos_obrigatorios = ['nome_completo', 'habilidades'];
+  for (const campo of campos_obrigatorios) {
+    if (!dados[campo]) {
+      throw new Error(`Campo obrigatório "${campo}" ausente ou vazio.`);
+    }
+  }
+  if (!Array.isArray(dados.habilidades) || dados.habilidades.length === 0) {
+    throw new Error("Campo 'habilidades' deve ser um array não-vazio.");
+  }
+  if (typeof dados.nome_completo !== 'string' || dados.nome_completo.trim().length === 0) {
+    throw new Error("Campo 'nome_completo' deve ser uma string não-vazia.");
+  }
+  return dados;
+}
+
 export async function extrairDadosCurriculo(base64Data, mimeType = "application/pdf") {
   const prompt = `Você é um extrator de dados de currículos. Extraia todas as informações deste documento e retorne ESTRITAMENTE em formato JSON.
 As chaves do JSON devem ser exatamente estas:
@@ -94,10 +122,12 @@ Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
       cleaned = cleaned.replace(/^```json\n/, "").replace(/\n```$/, "");
     }
     try {
-      return JSON.parse(cleaned);
+      const dados = JSON.parse(cleaned);
+      validarSchemaCurriculo(dados);
+      return dados;
     } catch (parseError) {
-      console.error("JSON parse erro:", parseError.message, "Resposta:", cleaned.slice(0, 200));
-      throw new Error("Falha ao processar resposta da IA (JSON inválido).");
+      console.error("JSON parse/schema erro:", parseError.message, "Resposta:", cleaned.slice(0, 200));
+      throw new Error("Falha ao processar resposta da IA (JSON inválido ou campos ausentes).");
     }
   } catch (error) {
     console.error("Erro ao extrair dados do currículo:", error.message);

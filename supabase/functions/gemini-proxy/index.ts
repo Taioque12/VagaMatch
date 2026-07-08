@@ -12,6 +12,24 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Rate limit: 10 requisições por minuto por usuário
+const RATE_LIMIT_PER_MINUTE = 10;
+const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(userId: string): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(userId);
+  if (!record || now > record.resetAt) {
+    rateLimitMap.set(userId, { count: 1, resetAt: now + 60000 });
+    return true;
+  }
+  if (record.count < RATE_LIMIT_PER_MINUTE) {
+    record.count++;
+    return true;
+  }
+  return false;
+}
+
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -31,6 +49,10 @@ Deno.serve(async (req) => {
   const { data: userData, error: authError } = await supabase.auth.getUser();
   if (authError || !userData?.user) {
     return json({ error: "Não autenticado." }, 401);
+  }
+
+  if (!checkRateLimit(userData.user.id)) {
+    return json({ error: "Limite de requisições atingido (10/min). Tente de novo em 1 minuto." }, 429);
   }
 
   let payload;
