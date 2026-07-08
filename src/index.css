@@ -700,7 +700,8 @@ button:disabled {
 
 .lp-hero-bloco {
   background: var(--bg-hero);
-  transition: background 0.3s ease;
+  color: var(--text-main);
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 .lp-nav {
