@@ -148,12 +148,17 @@ export function Onboarding() {
     setBaixandoPdf(true);
     setErro(null);
     try {
+      console.log("Iniciando download do PDF com dados:", dadosExtraidos);
       await gerarCurriculoPdf(dadosExtraidos, {
         nomeCompleto: dadosExtraidos.nome_completo,
         localizacao: dadosExtraidos.localizacao,
         email: session?.user?.email,
       });
+      console.log("PDF gerado com sucesso");
+      setSalvo(true);
+      setTimeout(() => setSalvo(false), 3000);
     } catch (err) {
+      console.error("Erro ao gerar PDF:", err);
       setErro(err.message);
     } finally {
       setBaixandoPdf(false);

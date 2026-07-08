@@ -51,65 +51,71 @@ function bullet(doc, y, texto) {
 }
 
 export async function gerarCurriculoPdf(cv, perfil) {
-  const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  try {
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-  let y = MARGEM;
+    let y = MARGEM;
 
-  const subtitulo = [perfil.localizacao, perfil.email].filter(Boolean).join(" · ");
+    const subtitulo = [perfil.localizacao, perfil.email].filter(Boolean).join(" · ");
 
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor(0, 0, 0);
-  doc.text(perfil.nomeCompleto || "Nome não informado", MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
-  y += 20;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(0, 0, 0);
+    doc.text(perfil.nomeCompleto || "Nome não informado", MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
+    y += 20;
 
-  if (subtitulo) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(85, 85, 85);
-    doc.text(subtitulo, MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
-    y += 16;
-  }
-  doc.setTextColor(26, 26, 26);
-
-  if (cv.resumo_profissional) {
-    y = secao(doc, y, "Resumo Profissional");
-    y = paragrafo(doc, y, cv.resumo_profissional);
-  }
-
-  if (cv.habilidades?.length) {
-    y = secao(doc, y, "Habilidades Técnicas");
-    y = paragrafo(doc, y, cv.habilidades.join(" · "));
-  }
-
-  if (cv.experiencias?.length) {
-    y = secao(doc, y, "Experiência Profissional");
-    for (const exp of cv.experiencias) {
-      y = novaPagina(doc, y);
-      doc.setFont("helvetica", "bold");
-      doc.text(`${exp.cargo} | ${exp.empresa} | ${exp.periodo}`, MARGEM, y);
-      y += 13;
+    if (subtitulo) {
       doc.setFont("helvetica", "normal");
-      for (const b of exp.bullets || []) y = bullet(doc, y, b);
-      y += 4;
+      doc.setFontSize(10);
+      doc.setTextColor(85, 85, 85);
+      doc.text(subtitulo, MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
+      y += 16;
     }
-  }
+    doc.setTextColor(26, 26, 26);
 
-  if (cv.formacao?.length) {
-    y = secao(doc, y, "Formação Acadêmica");
-    for (const f of cv.formacao) y = bullet(doc, y, f);
-  }
+    if (cv.resumo_profissional) {
+      y = secao(doc, y, "Resumo Profissional");
+      y = paragrafo(doc, y, cv.resumo_profissional);
+    }
 
-  if (cv.cursos?.length) {
-    y = secao(doc, y, "Cursos Complementares");
-    for (const c of cv.cursos) y = bullet(doc, y, c);
-  }
+    if (cv.habilidades?.length) {
+      y = secao(doc, y, "Habilidades Técnicas");
+      y = paragrafo(doc, y, cv.habilidades.join(" · "));
+    }
 
-  if (cv.projetos?.length) {
-    y = secao(doc, y, "Projetos");
-    for (const pr of cv.projetos) y = bullet(doc, y, pr);
-  }
+    if (cv.experiencias?.length) {
+      y = secao(doc, y, "Experiência Profissional");
+      for (const exp of cv.experiencias) {
+        y = novaPagina(doc, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${exp.cargo} | ${exp.empresa} | ${exp.periodo}`, MARGEM, y);
+        y += 13;
+        doc.setFont("helvetica", "normal");
+        for (const b of exp.bullets || []) y = bullet(doc, y, b);
+        y += 4;
+      }
+    }
 
-  doc.save(`curriculo-${(perfil.nomeCompleto || "vagamatch").replace(/\s+/g, "_")}.pdf`);
+    if (cv.formacao?.length) {
+      y = secao(doc, y, "Formação Acadêmica");
+      for (const f of cv.formacao) y = bullet(doc, y, f);
+    }
+
+    if (cv.cursos?.length) {
+      y = secao(doc, y, "Cursos Complementares");
+      for (const c of cv.cursos) y = bullet(doc, y, c);
+    }
+
+    if (cv.projetos?.length) {
+      y = secao(doc, y, "Projetos");
+      for (const pr of cv.projetos) y = bullet(doc, y, pr);
+    }
+
+    const fileName = `curriculo-${(perfil.nomeCompleto || "vagamatch").replace(/\s+/g, "_")}.pdf`;
+    doc.save(fileName);
+  } catch (error) {
+    console.error("Erro ao gerar PDF:", error);
+    throw new Error(`Erro ao gerar PDF: ${error.message}`);
+  }
 }

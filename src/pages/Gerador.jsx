@@ -82,29 +82,37 @@ export function Gerador() {
 
   async function baixarPdf() {
     if (!textoGerado) return;
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const margem = 48;
-    const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
-    const alturaPagina = doc.internal.pageSize.getHeight();
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const margem = 48;
+      const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
+      const alturaPagina = doc.internal.pageSize.getHeight();
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
 
-    const linhas = doc.splitTextToSize(textoGerado, larguraUtil);
-    let y = margem;
-    const alturaLinha = 14;
+      const linhas = doc.splitTextToSize(textoGerado, larguraUtil);
+      let y = margem;
+      const alturaLinha = 14;
 
-    linhas.forEach((linha) => {
-      if (y > alturaPagina - margem) {
-        doc.addPage();
-        y = margem;
-      }
-      doc.text(linha, margem, y);
-      y += alturaLinha;
-    });
+      linhas.forEach((linha) => {
+        if (y > alturaPagina - margem) {
+          doc.addPage();
+          y = margem;
+        }
+        doc.text(linha, margem, y);
+        y += alturaLinha;
+      });
 
-    doc.save(`documento-${vaga?.empresa || "gerado"}.pdf`);
+      const fileName = `documento-${vaga?.empresa || "gerado"}.pdf`;
+      console.log("Salvando arquivo:", fileName);
+      doc.save(fileName);
+      console.log("PDF gerado com sucesso");
+    } catch (err) {
+      console.error("Erro ao gerar PDF:", err);
+      setErro(err.message);
+    }
   }
 
   if (carregando) return <p className="carregando">Carregando informações...</p>;
