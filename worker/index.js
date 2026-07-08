@@ -189,7 +189,7 @@ async function main() {
   if (usuarios.length === 0) {
     // Chegou no fim da lista (ou não tem ninguém). Reseta para a próxima rodada!
     console.log("Fim da lista de usuários. Resetando cursor para início.");
-    await setState("worker_user_offset", 0);
+    await setState("worker_last_user_id", "");
     return;
   }
 

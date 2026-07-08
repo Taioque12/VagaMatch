@@ -44,7 +44,7 @@ function legendaVaga(vaga, palavrasCobertas) {
     salario,
     `⭐ Score IA: ${vaga.score ?? 0}/100`,
     vaga.motivo_ia ? `\n💡 *Por que essa vaga é pra você:*\n${escaparMarkdown(vaga.motivo_ia)}\n` : null,
-    `🔗 ${escaparMarkdown(vaga.url)}`,
+    `🔗 [Acessar Vaga na Adzuna](${vaga.url})`,
   ]
     .filter(Boolean)
     .join("\n");
