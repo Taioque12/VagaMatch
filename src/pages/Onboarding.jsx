@@ -18,6 +18,7 @@ export function Onboarding() {
   const [analisandoPdf, setAnalisandoPdf] = useState(false);
   const [nomeArquivo, setNomeArquivo] = useState(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
+  const [pdfBaixado, setPdfBaixado] = useState(false);
 
   const [telegramChatId, setTelegramChatId] = useState("");
   const [dadosExtraidos, setDadosExtraidos] = useState(null);
@@ -144,21 +145,22 @@ export function Onboarding() {
   }
 
   async function handleBaixarPdf() {
-    if (!dadosExtraidos) return;
+    if (!dadosExtraidos) {
+      setErro("Nenhum dado de currículo para baixar. Importe um PDF primeiro.");
+      return;
+    }
     setBaixandoPdf(true);
     setErro(null);
+    setPdfBaixado(false);
     try {
-      console.log("Iniciando download do PDF com dados:", dadosExtraidos);
       await gerarCurriculoPdf(dadosExtraidos, {
         nomeCompleto: dadosExtraidos.nome_completo,
         localizacao: dadosExtraidos.localizacao,
         email: session?.user?.email,
       });
-      console.log("PDF gerado com sucesso");
-      setSalvo(true);
-      setTimeout(() => setSalvo(false), 3000);
+      setPdfBaixado(true);
+      setTimeout(() => setPdfBaixado(false), 4000);
     } catch (err) {
-      console.error("Erro ao gerar PDF:", err);
       setErro(err.message);
     } finally {
       setBaixandoPdf(false);
@@ -266,7 +268,8 @@ export function Onboarding() {
         )}
 
         {erro && <p className="erro" style={{ textAlign: "center" }}>{erro}</p>}
-        {salvo && <p className="sucesso" style={{ textAlign: "center" }}>Salvo com sucesso.</p>}
+        {pdfBaixado && <p className="sucesso" style={{ textAlign: "center" }}>✓ PDF baixado com sucesso! Verifique sua pasta de downloads.</p>}
+        {salvo && <p className="sucesso" style={{ textAlign: "center" }}>✓ Salvo com sucesso.</p>}
 
         {pronto && (
           <button

@@ -52,18 +52,32 @@ function bullet(doc, y, texto) {
 
 export async function gerarCurriculoPdf(cv, perfil) {
   try {
-    console.log("[PDF] Iniciando geração com dados:", { cv, perfil });
+    // Validações rigorosas
+    if (!cv || typeof cv !== "object") {
+      throw new Error("Dados do currículo não fornecidos ou inválidos");
+    }
+    if (!perfil || typeof perfil !== "object") {
+      throw new Error("Dados do perfil não fornecidos ou inválidos");
+    }
+    if (!perfil.nomeCompleto || perfil.nomeCompleto.trim() === "") {
+      throw new Error("Nome completo é obrigatório para gerar o PDF");
+    }
 
-    // Validações básicas
-    if (!cv) throw new Error("Dados do currículo não fornecidos");
-    if (!perfil) throw new Error("Dados do perfil não fornecidos");
-    if (!perfil.nomeCompleto) throw new Error("Nome completo não fornecido");
+    // Verifica se há pelo menos algum conteúdo
+    const temConteudo =
+      cv.resumo_profissional ||
+      (Array.isArray(cv.habilidades) && cv.habilidades.length > 0) ||
+      (Array.isArray(cv.experiencias) && cv.experiencias.length > 0) ||
+      (Array.isArray(cv.formacao) && cv.formacao.length > 0) ||
+      (Array.isArray(cv.cursos) && cv.cursos.length > 0) ||
+      (Array.isArray(cv.projetos) && cv.projetos.length > 0);
+
+    if (!temConteudo) {
+      throw new Error("Nenhum dado de currículo para gerar o PDF. Preencha pelo menos um campo.");
+    }
 
     const { jsPDF } = await import("jspdf");
-    console.log("[PDF] jsPDF importado");
-
     const doc = new jsPDF({ unit: "pt", format: "a4" });
-    console.log("[PDF] Documento PDF criado");
 
     let y = MARGEM;
 
@@ -72,9 +86,8 @@ export async function gerarCurriculoPdf(cv, perfil) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(20);
     doc.setTextColor(0, 0, 0);
-    doc.text(perfil.nomeCompleto || "Nome não informado", MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
+    doc.text(perfil.nomeCompleto, MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
     y += 20;
-    console.log("[PDF] Nome adicionado");
 
     if (subtitulo) {
       doc.setFont("helvetica", "normal");
@@ -88,13 +101,14 @@ export async function gerarCurriculoPdf(cv, perfil) {
     if (cv.resumo_profissional) {
       y = secao(doc, y, "Resumo Profissional");
       y = paragrafo(doc, y, cv.resumo_profissional);
-      console.log("[PDF] Resumo adicionado");
     }
 
     if (cv.habilidades && Array.isArray(cv.habilidades) && cv.habilidades.length > 0) {
       y = secao(doc, y, "Habilidades Técnicas");
-      y = paragrafo(doc, y, cv.habilidades.join(" · "));
-      console.log("[PDF] Habilidades adicionadas");
+      const habilidadesValidas = cv.habilidades.filter(h => h && String(h).trim());
+      if (habilidadesValidas.length > 0) {
+        y = paragrafo(doc, y, habilidadesValidas.join(" · "));
+      }
     }
 
     if (cv.experiencias && Array.isArray(cv.experiencias) && cv.experiencias.length > 0) {
@@ -108,45 +122,38 @@ export async function gerarCurriculoPdf(cv, perfil) {
         doc.setFont("helvetica", "normal");
         if (exp.bullets && Array.isArray(exp.bullets)) {
           for (const b of exp.bullets) {
-            if (b) y = bullet(doc, y, b);
+            if (b && String(b).trim()) y = bullet(doc, y, String(b));
           }
         }
         y += 4;
       }
-      console.log(`[PDF] ${cv.experiencias.length} experiência(s) adicionada(s)`);
     }
 
     if (cv.formacao && Array.isArray(cv.formacao) && cv.formacao.length > 0) {
       y = secao(doc, y, "Formação Acadêmica");
       for (const f of cv.formacao) {
-        if (f) y = bullet(doc, y, f);
+        if (f && String(f).trim()) y = bullet(doc, y, String(f));
       }
-      console.log(`[PDF] ${cv.formacao.length} formação(ões) adicionada(s)`);
     }
 
     if (cv.cursos && Array.isArray(cv.cursos) && cv.cursos.length > 0) {
       y = secao(doc, y, "Cursos Complementares");
       for (const c of cv.cursos) {
-        if (c) y = bullet(doc, y, c);
+        if (c && String(c).trim()) y = bullet(doc, y, String(c));
       }
-      console.log(`[PDF] ${cv.cursos.length} curso(s) adicionado(s)`);
     }
 
     if (cv.projetos && Array.isArray(cv.projetos) && cv.projetos.length > 0) {
       y = secao(doc, y, "Projetos");
       for (const pr of cv.projetos) {
-        if (pr) y = bullet(doc, y, pr);
+        if (pr && String(pr).trim()) y = bullet(doc, y, String(pr));
       }
-      console.log(`[PDF] ${cv.projetos.length} projeto(s) adicionado(s)`);
     }
 
-    const fileName = `curriculo-${(perfil.nomeCompleto || "vagamatch").replace(/\s+/g, "_")}.pdf`;
-    console.log("[PDF] Gerando blob do PDF...");
+    const fileName = `curriculo-${perfil.nomeCompleto.replace(/\s+/g, "_")}.pdf`;
 
-    // Gera blob e cria link de download (mais confiável que doc.save())
+    // Gera blob e cria link de download
     const pdfBlob = doc.output("blob");
-    console.log("[PDF] Blob gerado, tamanho:", pdfBlob.size, "bytes");
-
     const url = URL.createObjectURL(pdfBlob);
     const link = document.createElement("a");
     link.href = url;
@@ -155,10 +162,7 @@ export async function gerarCurriculoPdf(cv, perfil) {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-
-    console.log("[PDF] PDF salvo com sucesso");
   } catch (error) {
-    console.error("[PDF] Erro ao gerar PDF:", error);
     throw new Error(`Erro ao gerar PDF: ${error.message}`);
   }
 }
