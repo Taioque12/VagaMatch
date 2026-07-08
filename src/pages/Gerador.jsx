@@ -11,10 +11,11 @@ export function Gerador() {
   const [vaga, setVaga] = useState(null);
   const [perfil, setPerfil] = useState(null);
   const [carregando, setCarregando] = useState(true);
-  
+
   const [textoGerado, setTextoGerado] = useState("");
   const [gerando, setGerando] = useState(false);
   const [erro, setErro] = useState(null);
+  const [baixouArquivo, setBaixouArquivo] = useState(null);
 
   useEffect(() => {
     if (!session) return;
@@ -78,33 +79,51 @@ export function Gerador() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+    setBaixouArquivo("txt");
+    setTimeout(() => setBaixouArquivo(null), 3000);
   }
 
   async function baixarPdf() {
     if (!textoGerado) return;
-    const { jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const margem = 48;
-    const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
-    const alturaPagina = doc.internal.pageSize.getHeight();
+    try {
+      const { jsPDF } = await import("jspdf");
+      const doc = new jsPDF({ unit: "pt", format: "a4" });
+      const margem = 48;
+      const larguraUtil = doc.internal.pageSize.getWidth() - margem * 2;
+      const alturaPagina = doc.internal.pageSize.getHeight();
 
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
 
-    const linhas = doc.splitTextToSize(textoGerado, larguraUtil);
-    let y = margem;
-    const alturaLinha = 14;
+      const linhas = doc.splitTextToSize(textoGerado, larguraUtil);
+      let y = margem;
+      const alturaLinha = 14;
 
-    linhas.forEach((linha) => {
-      if (y > alturaPagina - margem) {
-        doc.addPage();
-        y = margem;
-      }
-      doc.text(linha, margem, y);
-      y += alturaLinha;
-    });
+      linhas.forEach((linha) => {
+        if (y > alturaPagina - margem) {
+          doc.addPage();
+          y = margem;
+        }
+        doc.text(linha, margem, y);
+        y += alturaLinha;
+      });
 
-    doc.save(`documento-${vaga?.empresa || "gerado"}.pdf`);
+      const fileName = `documento-${vaga?.empresa || "gerado"}.pdf`;
+      const pdfBlob = doc.output("blob");
+      const url = URL.createObjectURL(pdfBlob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setBaixouArquivo("pdf");
+      setTimeout(() => setBaixouArquivo(null), 3000);
+    } catch (err) {
+      setErro(err.message);
+    }
   }
 
   if (carregando) return <p className="carregando">Carregando informações...</p>;
@@ -136,6 +155,7 @@ export function Gerador() {
       </div>
 
       {erro && <p className="erro" style={{ marginTop: "20px" }}>{erro}</p>}
+      {baixouArquivo && <p className="sucesso" style={{ marginTop: "20px" }}>✓ {baixouArquivo.toUpperCase()} baixado com sucesso!</p>}
 
       {textoGerado && (
         <div style={{ marginTop: "30px" }}>

@@ -51,65 +51,118 @@ function bullet(doc, y, texto) {
 }
 
 export async function gerarCurriculoPdf(cv, perfil) {
-  const { jsPDF } = await import("jspdf");
-  const doc = new jsPDF({ unit: "pt", format: "a4" });
-
-  let y = MARGEM;
-
-  const subtitulo = [perfil.localizacao, perfil.email].filter(Boolean).join(" · ");
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(20);
-  doc.setTextColor(0, 0, 0);
-  doc.text(perfil.nomeCompleto || "Nome não informado", MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
-  y += 20;
-
-  if (subtitulo) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(85, 85, 85);
-    doc.text(subtitulo, MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
-    y += 16;
-  }
-  doc.setTextColor(26, 26, 26);
-
-  if (cv.resumo_profissional) {
-    y = secao(doc, y, "Resumo Profissional");
-    y = paragrafo(doc, y, cv.resumo_profissional);
-  }
-
-  if (cv.habilidades?.length) {
-    y = secao(doc, y, "Habilidades Técnicas");
-    y = paragrafo(doc, y, cv.habilidades.join(" · "));
-  }
-
-  if (cv.experiencias?.length) {
-    y = secao(doc, y, "Experiência Profissional");
-    for (const exp of cv.experiencias) {
-      y = novaPagina(doc, y);
-      doc.setFont("helvetica", "bold");
-      doc.text(`${exp.cargo} | ${exp.empresa} | ${exp.periodo}`, MARGEM, y);
-      y += 13;
-      doc.setFont("helvetica", "normal");
-      for (const b of exp.bullets || []) y = bullet(doc, y, b);
-      y += 4;
+  try {
+    // Validações rigorosas
+    if (!cv || typeof cv !== "object") {
+      throw new Error("Dados do currículo não fornecidos ou inválidos");
     }
-  }
+    if (!perfil || typeof perfil !== "object") {
+      throw new Error("Dados do perfil não fornecidos ou inválidos");
+    }
+    if (!perfil.nomeCompleto || perfil.nomeCompleto.trim() === "") {
+      throw new Error("Nome completo é obrigatório para gerar o PDF");
+    }
 
-  if (cv.formacao?.length) {
-    y = secao(doc, y, "Formação Acadêmica");
-    for (const f of cv.formacao) y = bullet(doc, y, f);
-  }
+    // Verifica se há pelo menos algum conteúdo
+    const temConteudo =
+      cv.resumo_profissional ||
+      (Array.isArray(cv.habilidades) && cv.habilidades.length > 0) ||
+      (Array.isArray(cv.experiencias) && cv.experiencias.length > 0) ||
+      (Array.isArray(cv.formacao) && cv.formacao.length > 0) ||
+      (Array.isArray(cv.cursos) && cv.cursos.length > 0) ||
+      (Array.isArray(cv.projetos) && cv.projetos.length > 0);
 
-  if (cv.cursos?.length) {
-    y = secao(doc, y, "Cursos Complementares");
-    for (const c of cv.cursos) y = bullet(doc, y, c);
-  }
+    if (!temConteudo) {
+      throw new Error("Nenhum dado de currículo para gerar o PDF. Preencha pelo menos um campo.");
+    }
 
-  if (cv.projetos?.length) {
-    y = secao(doc, y, "Projetos");
-    for (const pr of cv.projetos) y = bullet(doc, y, pr);
-  }
+    const { jsPDF } = await import("jspdf");
+    const doc = new jsPDF({ unit: "pt", format: "a4" });
 
-  doc.save(`curriculo-${(perfil.nomeCompleto || "vagamatch").replace(/\s+/g, "_")}.pdf`);
+    let y = MARGEM;
+
+    const subtitulo = [perfil.localizacao, perfil.email].filter(Boolean).join(" · ");
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(20);
+    doc.setTextColor(0, 0, 0);
+    doc.text(perfil.nomeCompleto, MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
+    y += 20;
+
+    if (subtitulo) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(85, 85, 85);
+      doc.text(subtitulo, MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
+      y += 16;
+    }
+    doc.setTextColor(26, 26, 26);
+
+    if (cv.resumo_profissional) {
+      y = secao(doc, y, "Resumo Profissional");
+      y = paragrafo(doc, y, cv.resumo_profissional);
+    }
+
+    if (cv.habilidades && Array.isArray(cv.habilidades) && cv.habilidades.length > 0) {
+      y = secao(doc, y, "Habilidades Técnicas");
+      const habilidadesValidas = cv.habilidades.filter(h => h && String(h).trim());
+      if (habilidadesValidas.length > 0) {
+        y = paragrafo(doc, y, habilidadesValidas.join(" · "));
+      }
+    }
+
+    if (cv.experiencias && Array.isArray(cv.experiencias) && cv.experiencias.length > 0) {
+      y = secao(doc, y, "Experiência Profissional");
+      for (const exp of cv.experiencias) {
+        if (!exp || typeof exp !== "object") continue;
+        y = novaPagina(doc, y);
+        doc.setFont("helvetica", "bold");
+        doc.text(`${exp.cargo || ""} | ${exp.empresa || ""} | ${exp.periodo || ""}`, MARGEM, y);
+        y += 13;
+        doc.setFont("helvetica", "normal");
+        if (exp.bullets && Array.isArray(exp.bullets)) {
+          for (const b of exp.bullets) {
+            if (b && String(b).trim()) y = bullet(doc, y, String(b));
+          }
+        }
+        y += 4;
+      }
+    }
+
+    if (cv.formacao && Array.isArray(cv.formacao) && cv.formacao.length > 0) {
+      y = secao(doc, y, "Formação Acadêmica");
+      for (const f of cv.formacao) {
+        if (f && String(f).trim()) y = bullet(doc, y, String(f));
+      }
+    }
+
+    if (cv.cursos && Array.isArray(cv.cursos) && cv.cursos.length > 0) {
+      y = secao(doc, y, "Cursos Complementares");
+      for (const c of cv.cursos) {
+        if (c && String(c).trim()) y = bullet(doc, y, String(c));
+      }
+    }
+
+    if (cv.projetos && Array.isArray(cv.projetos) && cv.projetos.length > 0) {
+      y = secao(doc, y, "Projetos");
+      for (const pr of cv.projetos) {
+        if (pr && String(pr).trim()) y = bullet(doc, y, String(pr));
+      }
+    }
+
+    const fileName = `curriculo-${perfil.nomeCompleto.replace(/\s+/g, "_")}.pdf`;
+
+    // Gera blob e cria link de download
+    const pdfBlob = doc.output("blob");
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    throw new Error(`Erro ao gerar PDF: ${error.message}`);
+  }
 }
