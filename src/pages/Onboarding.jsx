@@ -261,17 +261,29 @@ export function Onboarding() {
         {pronto && (
           <section className="cartao-telegram">
             <h2>Notificações no Telegram</h2>
-            <p className="ajuda">
-              Fale com{" "}
-              <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer">
-                @userinfobot
-              </a>{" "}
-              no Telegram pra pegar seu Chat ID e receber as vagas compatíveis automaticamente.
+            <p className="ajuda" style={{ marginBottom: 8 }}>
+              Para receber vagas no Telegram, siga esses 2 passos:
             </p>
+            <ol className="ajuda" style={{ paddingLeft: 20, lineHeight: 1.8, marginBottom: 12 }}>
+              <li>
+                <strong>Abra nosso bot</strong>{" "}
+                <a href="https://t.me/vagamatchbr_bot" target="_blank" rel="noreferrer">
+                  👉 @vagamatchbr_bot
+                </a>{" "}
+                e clique em <strong>"Começar"</strong> (ou digite <code>/start</code>).
+              </li>
+              <li>
+                <strong>Pegue seu Chat ID:</strong> abra{" "}
+                <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer">
+                  @userinfobot
+                </a>{" "}
+                no Telegram e copie o número <strong>Id</strong> que ele mostrar. Cole abaixo:
+              </li>
+            </ol>
             <input
               value={telegramChatId}
               onChange={(e) => setTelegramChatId(e.target.value)}
-              placeholder="Cole seu Telegram Chat ID"
+              placeholder="Cole seu Telegram Chat ID (ex: 123456789)"
             />
           </section>
         )}
