@@ -100,7 +100,7 @@ export async function deduplicarParaUsuario(userId, vagas) {
 
   const { data: inseridas, error: insErr } = await supabase
     .from("vagas_vistas")
-    .insert(
+    .upsert(
       novas.map((v) => ({
         user_id: userId,
         job_id: v.job_id,
@@ -111,7 +111,8 @@ export async function deduplicarParaUsuario(userId, vagas) {
         status: "pendente_processamento",
         score: v.score ?? 0,
         motivo_ia: v.motivo_ia ?? null,
-      }))
+      })),
+      { onConflict: 'user_id,job_id' }
     )
     .select();
   if (insErr) throw new Error(`Supabase insert (vagas_vistas): ${insErr.message}`);
