@@ -31,6 +31,7 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Filtro Híbrido: varredura de palavras-chave + análise profunda via **Gemini 2.5 Flash**
 - A IA lê a descrição da vaga e o currículo, gera um **Score (0-100)** e uma justificativa
 - Descarte automático de vagas com Score IA < 40
+- **Reprocessamento Automático:** Vagas interrompidas no meio do processo (ex: geração de currículo falhou) são reprocessadas de forma segura via Upsert sem travar o pipeline.
 
 ### 📱 Bot Telegram (Tempo Real)
 - **Webhook em tempo real** via Supabase Edge Function — respostas instantâneas
