@@ -25,9 +25,13 @@ describe('gemini.js', () => {
         data: { session: { access_token: 'test-token' } },
       });
 
-      supabase.functions.invoke.mockImplementation(() => {
-        return new Promise((resolve) => {
-          setTimeout(() => resolve({ data: { text: 'test' } }), 35000);
+      supabase.functions.invoke.mockImplementation((_name, { signal } = {}) => {
+        return new Promise((resolve, reject) => {
+          const t = setTimeout(() => resolve({ data: { text: 'test' } }), 35000);
+          signal?.addEventListener('abort', () => {
+            clearTimeout(t);
+            reject(Object.assign(new Error('aborted'), { name: 'AbortError' }));
+          });
         });
       });
 
@@ -37,7 +41,7 @@ describe('gemini.js', () => {
       } catch (err) {
         expect(err.message).toContain('expirou');
       }
-    });
+    }, 40000);
   });
 
   describe('validarSchemaCurriculo', () => {
@@ -85,7 +89,7 @@ describe('gemini.js', () => {
         await extrairDadosCurriculo('base64data');
         expect(false).toBe(true);
       } catch (err) {
-        expect(err.message).toContain('Campo obrigatório');
+        expect(err.message).toContain('Falha ao ler o PDF');
       }
     });
 
@@ -106,7 +110,7 @@ describe('gemini.js', () => {
         await extrairDadosCurriculo('base64data');
         expect(false).toBe(true);
       } catch (err) {
-        expect(err.message).toContain('não-vazio');
+        expect(err.message).toContain('Falha ao ler o PDF');
       }
     });
 

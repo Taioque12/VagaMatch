@@ -35,7 +35,7 @@ export function Onboarding() {
 
       if (perfil) setTelegramChatId(perfil.telegram_chat_id ?? "");
 
-      if (perfil?.nome_completo || curriculo) {
+      if (perfil?.nome_completo?.trim() || curriculo?.habilidades?.length > 0) {
         setDadosExtraidos({
           nome_completo: perfil?.nome_completo ?? "",
           localizacao: perfil?.localizacao ?? "",

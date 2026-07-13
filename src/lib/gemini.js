@@ -71,6 +71,7 @@ Retorne apenas o texto da carta de apresentação formatada, sem introduções o
     return await chamarGemini({ contents: prompt });
   } catch (error) {
     console.error("Erro ao gerar conteúdo:", error.message);
+    if (error.message.includes("expirou")) throw error;
     throw new Error("Falha ao gerar o documento com IA.");
   }
 }
