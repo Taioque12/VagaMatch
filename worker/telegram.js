@@ -1,5 +1,3 @@
-import { readFileSync } from "fs";
-import { basename } from "path";
 import { env } from "./config.js";
 
 const API = (metodo) => `https://api.telegram.org/bot${env.telegramBotToken}/${metodo}`;
@@ -33,7 +31,7 @@ function escaparMarkdown(text) {
   return String(text).replace(/[_*[\]()~`>#+=|{}<\-!.\\]/g, '\\$&');
 }
 
-function legendaVaga(vaga, palavrasCobertas) {
+function legendaVaga(vaga) {
   const salario = vaga.salario_min && vaga.salario_max
     ? `💰 R$ ${Math.round(vaga.salario_min)}–${Math.round(vaga.salario_max)}`
     : null;
@@ -45,50 +43,26 @@ function legendaVaga(vaga, palavrasCobertas) {
     `⭐ Score IA: ${vaga.score ?? 0}/100`,
     vaga.motivo_ia ? `\n💡 *Por que essa vaga é pra você:*\n${escaparMarkdown(vaga.motivo_ia)}\n` : null,
     `🔗 [Acessar Vaga na Adzuna](${vaga.url})`,
+    `\n📄 _Clique em "Candidatei\\-me" para receber seu currículo ajustado\\!_`,
   ]
     .filter(Boolean)
     .join("\n");
 }
 
-// Envia o(s) arquivo(s) de currículo pra um chat_id específico, com legenda + botões de feedback.
-// Retorna o message_id da mensagem principal (docx).
-export async function notificarVaga(chatId, vaga, docxPath, pdfPath, palavrasCobertas) {
-  const legenda = legendaVaga(vaga, palavrasCobertas);
+// ─── Passo 5: Envia notificação como mensagem de texto (sem anexos) ─────────
+// O currículo ajustado é gerado sob demanda quando o usuário clica "Candidatei-me"
+// no webhook do Telegram, economizando 1 chamada Gemini por vaga notificada.
+export async function notificarVaga(chatId, vaga) {
+  const legenda = legendaVaga(vaga);
 
-  const formDocx = new FormData();
-  formDocx.append("chat_id", chatId);
-  formDocx.append("caption", legenda);
-  formDocx.append("parse_mode", "Markdown");
-  formDocx.append("reply_markup", JSON.stringify(botoesFeedback(vaga.callback_id)));
-  formDocx.append(
-    "document",
-    new Blob([readFileSync(docxPath)], {
-      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    }),
-    basename(docxPath)
-  );
-  const resDocx = await fetch(API("sendDocument"), { method: "POST", body: formDocx });
-  const dataDocx = await resDocx.json();
-  if (!resDocx.ok || dataDocx.ok === false) {
-    throw new Error(`Telegram sendDocument (docx): ${JSON.stringify(dataDocx)}`);
-  }
+  const result = await chamarApi("sendMessage", {
+    chat_id: chatId,
+    text: legenda,
+    parse_mode: "MarkdownV2",
+    reply_markup: botoesFeedback(vaga.callback_id),
+  });
 
-  if (pdfPath) {
-    const formPdf = new FormData();
-    formPdf.append("chat_id", chatId);
-    formPdf.append("caption", "Versão em PDF");
-    formPdf.append(
-      "document",
-      new Blob([readFileSync(pdfPath)], { type: "application/pdf" }),
-      basename(pdfPath)
-    );
-    const resPdf = await fetch(API("sendDocument"), { method: "POST", body: formPdf });
-    if (!resPdf.ok) {
-      console.error(`Falha ao enviar PDF: ${await resPdf.text()}`);
-    }
-  }
-
-  return dataDocx.result.message_id;
+  return result.message_id;
 }
 
 export async function enviarResumoDiario(chatId, vagas) {

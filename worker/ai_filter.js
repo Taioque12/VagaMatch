@@ -53,6 +53,18 @@ Cargos-alvo: ${(curriculo.cargos_alvo || []).join(", ")}
       motivo_ia: json.motivo || "Avaliado pela IA."
     };
   } catch (error) {
+    // Distinguir rate limit (429) de erros genéricos — vaga não deve ser descartada por falta de quota.
+    const is429 = error.status === 429
+      || error.message?.includes("429")
+      || error.message?.includes("RESOURCE_EXHAUSTED");
+
+    if (is429) {
+      console.warn(`⚠️ Rate limit (429) do Gemini ao avaliar vaga: ${vaga.titulo}`);
+      const err = new Error(`Gemini rate limit (429): ${error.message}`);
+      err.isRateLimit = true;
+      throw err;
+    }
+
     console.error("Erro ao avaliar match com IA:", error.message);
     return { score_ia: 0, motivo_ia: "Falha na avaliação da IA." };
   }

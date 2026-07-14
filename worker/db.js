@@ -164,6 +164,17 @@ export async function getState(key) {
   return data?.value ?? null;
 }
 
+// Retorna value + updated_at — usado pelo cache de buscas pra verificar TTL.
+export async function getStateWithTimestamp(key) {
+  const { data, error } = await supabase
+    .from("app_state")
+    .select("value, updated_at")
+    .eq("key", key)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase select (app_state): ${error.message}`);
+  return data ?? null;
+}
+
 export async function setState(key, value) {
   const { error } = await supabase
     .from("app_state")
