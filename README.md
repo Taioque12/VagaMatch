@@ -23,7 +23,8 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 
 ### 🧠 Onboarding Inteligente (Smart Extraction)
 - Upload de PDF do currículo → a IA (Gemini) extrai automaticamente: nome, cargo, habilidades, experiências, cargos-alvo e palavras-chave
-- O usuário não precisa digitar nada manualmente
+- Interface interativa que permite ao usuário **editar as tags geradas pela IA** antes de salvar, garantindo total controle
+- O usuário não precisa preencher formulários manualmente
 
 ### 🔍 Pipeline de Busca com IA
 - Busca vagas na Adzuna usando cargos-alvo e regiões de cada usuário (raio padrão de 500km)
@@ -31,19 +32,21 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Filtro Híbrido: varredura de palavras-chave + análise profunda via **Gemini 2.5 Flash**
 - A IA lê a descrição da vaga e o currículo, gera um **Score (0-100)** e uma justificativa
 - Descarte automático de vagas com Score IA < 40
+- **Priorização Inteligente:** Novos cadastros ou uploads de currículo "furam a fila" e recebem as vagas quase que instantaneamente no próximo ciclo do worker
 - **Reprocessamento Automático:** Vagas interrompidas no meio do processo (ex: geração de currículo falhou) são reprocessadas de forma segura via Upsert sem travar o pipeline.
 
 ### 📱 Bot Telegram (Tempo Real)
+- **Login em 1-Clique:** Integração via *Deep Linking* (`/start {user_id}`). O site atualiza automaticamente via **Supabase Realtime** quando a conexão é feita
 - **Webhook em tempo real** via Supabase Edge Function — respostas instantâneas
 - Comandos: `/start`, `/menu`, `/buscar`, `/status`, `/regiao`
 - Botões inline: **✅ Candidatei-me** / **🗑️ Descartar** (gravam direto no banco)
-- Notificações trazem: arquivo DOCX/PDF personalizado, Score IA e justificativa
+- Notificações trazem: currículo em **PDF exclusivo e ajustado para a vaga**, Score IA e justificativa, enviados diretamente no chat
 - Link clicável para a vaga original na Adzuna
 - Configuração de raio de busca (100km, 500km ou Brasil todo)
 
 ### 💎 Dashboard Premium
-- Interface com Glassmorphism, grid de vagas, filtros rápidos
-- Exibição do Score IA com cores e motivo da recomendação
+- Painel Web principal (`/dashboard`) com Glassmorphism, grid de vagas, e filtros rápidos (acessado automaticamente após o onboarding)
+- Exibição do Score IA com cores e motivo da recomendação gerado pela IA
 - Dark/Light mode com CSS variables
 - Download do currículo em PDF
 
