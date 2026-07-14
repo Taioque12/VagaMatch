@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { oferecerEntrevista, processarMensagemEntrevista } from "./interview.ts"
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -56,6 +57,12 @@ async function enviarMenuRegiao(chatId: string | number) {
 
 async function enviarMensagemSimples(chatId: string | number, texto: string) {
   await chamarApi("sendMessage", { chat_id: chatId, text: texto, parse_mode: "Markdown" });
+}
+
+// Sem parse_mode: texto livre vindo do Gemini pode conter caracteres que quebram
+// o parser de Markdown do Telegram (mensagem seria rejeitada inteira).
+async function enviarTextoPuro(chatId: string | number, texto: string) {
+  await chamarApi("sendMessage", { chat_id: chatId, text: texto });
 }
 
 // ─── Passo 5: Geração de currículo on-demand via Gemini ─────────────────────
@@ -258,6 +265,9 @@ async function tratarCallback(cq: any) {
           text: textoFormatado,
           parse_mode: "Markdown",
         });
+
+        // Oferece a entrevista simulada logo após entregar o CV
+        await oferecerEntrevista(supabase, enviarTextoPuro, chatId, vaga.user_id, vaga.id);
       } catch (e) {
         console.error("Erro ao gerar currículo on-demand:", e);
         await chamarApi("sendMessage", {
@@ -311,6 +321,23 @@ async function tratarCallback(cq: any) {
 async function tratarMensagem(msg: any) {
   const texto = (msg.text ?? "").trim();
   const chatId = msg.chat.id;
+
+  // Fluxo de entrevista simulada: se o usuário tem sessão em andamento, a mensagem
+  // pode ser dele respondendo o recrutador IA. Comandos (/menu etc.) têm precedência
+  // dentro do próprio módulo — ele devolve false quando não consome a mensagem.
+  if (texto && !texto.startsWith("/start")) {
+    const { data: perfilEntrevista } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("telegram_chat_id", String(chatId))
+      .maybeSingle();
+    if (perfilEntrevista) {
+      const consumida = await processarMensagemEntrevista(
+        supabase, enviarTextoPuro, chatId, perfilEntrevista.id, texto
+      );
+      if (consumida) return;
+    }
+  }
 
   if (texto.startsWith("/start")) {
     const partes = texto.split(" ");
