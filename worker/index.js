@@ -13,16 +13,11 @@ import {
   getState,
   getStateWithTimestamp,
   setState,
-  supabase,
   atualizarScoreIA,
 } from "./db.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
 import { processarFeedback } from "./feedback.js";
-import { gerarCurriculo } from "./curriculo.js";
-import { gerarPdf } from "./pdf.js";
-import { join } from "path";
-import { tmpdir } from "os";
 
 // Uso: node worker/index.js [--limit N]  (limita vagas processadas POR USUÁRIO, útil p/ teste)
 const limitArg = process.argv.indexOf("--limit");
@@ -36,7 +31,7 @@ const ADMIN_CHAT_ID = process.env.ADMIN_TELEGRAM_CHAT_ID; // opcional — alerta
 
 // ─── Passo 4: Semáforo de concorrência (sem dependência externa) ────────────
 // Limita quantas promessas rodam ao mesmo tempo. Evita estourar o rate limit
-// do Gemini (15 RPM free tier) — cada vaga aprovada pode gerar 2 chamadas.
+// do Gemini (15 RPM free tier) — 1 chamada de score por vaga nova.
 function criarSemaforo(max) {
   let atual = 0;
   const fila = [];
@@ -57,12 +52,6 @@ function criarSemaforo(max) {
 // Cadência do cron é 10min — TTL maior que isso já corta a maioria das
 // chamadas repetidas sem deixar vaga muito velha.
 const CACHE_TTL_MS = 90 * 60 * 1000;
-
-async function buscarEmail(userId) {
-  const { data, error } = await supabase.auth.admin.getUserById(userId);
-  if (error) return null;
-  return data.user?.email ?? null;
-}
 
 // Chave única por combinação de busca (cargo + região + raio) — usada pra cachear
 // resultado entre usuários diferentes que buscam a mesma coisa, evitando 1 request por pessoa.
@@ -168,9 +157,6 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
 
   if (!novas.length) return { processadas: 0, falhas: 0 };
 
-  const email = await buscarEmail(perfil.id);
-  const perfilCV = { nomeCompleto: perfil.nome_completo || "Candidato", localizacao: perfil.localizacao, email };
-
   // ─── Passo 4: Processamento paralelo com semáforo (concorrência 3) ──────
   const sem = criarSemaforo(3);
   const vagasParaProcessar = novas.slice(0, LIMITE);
@@ -195,12 +181,9 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
         // Marca como descoberta só após IA aprovar (antes de Telegram)
         await marcarStatus(vaga.id, "descoberta");
 
-        // Gera o currículo adaptado para a vaga e cria o PDF
-        const cvTailored = await gerarCurriculo(vaga, curriculo, perfilCV.nomeCompleto);
-        const pdfPath = join(tmpdir(), `CV_${perfil.id}_${vaga.job_id}.pdf`);
-        await gerarPdf(cvTailored, perfilCV, pdfPath);
-
-        const messageId = await notificarVaga(perfil.telegram_chat_id, vaga, pdfPath);
+        // Notificação simples, sem CV/PDF — a geração agora é on-demand no webhook
+        // do Telegram, só quando o usuário clica "Me candidatei" (corta custo Gemini).
+        const messageId = await notificarVaga(perfil.telegram_chat_id, vaga);
         await salvarMessageId(vaga.id, messageId);
         await marcarStatus(vaga.id, "notificada");
         return { tipo: "ok", vaga };

@@ -141,6 +141,7 @@ export async function deduplicarParaUsuario(userId, vagas) {
         motivo_ia: v.motivo_ia ?? null,
         salario_min: v.salario_min ?? null,
         salario_max: v.salario_max ?? null,
+        descricao: (v.descricao || v.resumo || "").slice(0, 4000) || null,
       })),
       { onConflict: 'user_id,job_id' }
     )

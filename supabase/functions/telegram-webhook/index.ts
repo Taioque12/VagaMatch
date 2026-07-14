@@ -203,20 +203,21 @@ async function tratarCallback(cq: any) {
     // Buscar dados completos da vaga (incluindo descrição para geração de CV)
     const { data: vaga } = await supabase
       .from('vagas_vistas')
-      .select('id, user_id, job_id, titulo, empresa, url, telegram_message_id, telegram_chat_id, score, motivo_ia')
+      .select('id, user_id, job_id, titulo, empresa, url, telegram_message_id, score, motivo_ia, descricao')
       .eq('callback_id', callbackId)
       .maybeSingle();
-    
+
     if (!vaga) {
       await responderCallback("Vaga não encontrada (registro antigo).");
       return;
     }
     await supabase.from('vagas_vistas').update({ status }).eq('id', vaga.id);
     await responderCallback(TEXTOS_STATUS[tipo]);
-    
-    if (vaga.telegram_message_id && vaga.telegram_chat_id) {
+
+    // chat_id vem do próprio callback (vagas_vistas não tem coluna telegram_chat_id)
+    if (vaga.telegram_message_id && chatId) {
       await chamarApi("editMessageReplyMarkup", {
-        chat_id: vaga.telegram_chat_id,
+        chat_id: chatId,
         message_id: vaga.telegram_message_id,
         reply_markup: { inline_keyboard: [] },
       });
@@ -240,6 +241,12 @@ async function tratarCallback(cq: any) {
         }
 
         const nomeCompleto = perfil?.nome_completo || "Candidato";
+
+        // Aviso visível no chat (o answerCallback é só um toast efêmero)
+        await chamarApi("sendMessage", {
+          chat_id: chatId,
+          text: "⏳ Estou gerando seu currículo otimizado para esta vaga...",
+        });
 
         // Gerar currículo ajustado via Gemini
         const cvJson = await gerarCurriculoOnDemand(vaga, curriculo, nomeCompleto);
