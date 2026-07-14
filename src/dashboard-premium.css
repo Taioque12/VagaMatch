@@ -110,6 +110,7 @@
 
 .stat-numero {
   font-family: 'Outfit', 'Manrope', sans-serif;
+  font-variant-numeric: tabular-nums;
   font-size: 2rem;
   font-weight: 800;
   color: var(--text-main);
@@ -257,7 +258,7 @@
 }
 
 .acao {
-  font-family: 'Inter', 'Manrope', sans-serif;
+  font-family: 'Plus Jakarta Sans', 'Manrope', sans-serif;
   font-weight: 600;
   font-size: 0.9rem;
   padding: 0.6rem 1.2rem;
@@ -315,4 +316,50 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+/* 7. Skeleton Loading (formato dos vaga-cards, não spinner genérico) */
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-input) 25%,
+    var(--bg-glass-hover) 50%,
+    var(--bg-input) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-titulo {
+  height: 1.4rem;
+  width: 65%;
+  margin-bottom: 0.8rem;
+}
+
+.skeleton-linha {
+  height: 0.9rem;
+  width: 40%;
+  margin-bottom: 1.2rem;
+}
+
+.skeleton-linha.curta {
+  width: 30%;
+  margin-bottom: 0;
+}
+
+.skeleton-bloco {
+  height: 4.5rem;
+  width: 100%;
+  margin-bottom: 1.2rem;
+  border-radius: 12px;
+}
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }

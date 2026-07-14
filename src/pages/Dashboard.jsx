@@ -219,7 +219,18 @@ export function Dashboard() {
         {/* Área Principal: Lista de Vagas */}
         <main className="dashboard-main">
           {erro && <p className="erro">{erro}</p>}
-          {vagasFiltradas === null && !erro && <p className="carregando">Sincronizando vagas...</p>}
+          {vagasFiltradas === null && !erro && (
+            <div className="grid-vagas" aria-busy="true" aria-label="Carregando vagas">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="vaga-card skeleton-card">
+                  <div className="skeleton skeleton-titulo" />
+                  <div className="skeleton skeleton-linha" />
+                  <div className="skeleton skeleton-bloco" />
+                  <div className="skeleton skeleton-linha curta" />
+                </div>
+              ))}
+            </div>
+          )}
           {vagasFiltradas?.length === 0 && (
             <div className="estado-vazio">
               <div className="estado-vazio-icone">✨</div>

@@ -55,6 +55,13 @@ Deno.serve(async (req) => {
     return json({ error: "Limite de requisições atingido (10/min). Tente de novo em 1 minuto." }, 429);
   }
 
+  // Rejeita antes do parse: evita alocar memória com body gigante
+  const MAX_PAYLOAD_SIZE = 20 * 1024 * 1024; // 20MB
+  const contentLength = Number(req.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_PAYLOAD_SIZE) {
+    return json({ error: `Payload excede limite (${Math.round(contentLength / 1024 / 1024)}MB > 20MB).` }, 413);
+  }
+
   let payload;
   try {
     payload = await req.json();
@@ -62,7 +69,6 @@ Deno.serve(async (req) => {
     return json({ error: "Body inválido." }, 400);
   }
 
-  const MAX_PAYLOAD_SIZE = 20 * 1024 * 1024; // 20MB
   const payloadSize = JSON.stringify(payload).length;
   if (payloadSize > MAX_PAYLOAD_SIZE) {
     return json({ error: `Payload excede limite (${Math.round(payloadSize / 1024 / 1024)}MB > 20MB).` }, 413);
@@ -70,6 +76,13 @@ Deno.serve(async (req) => {
 
   const { model = "gemini-2.5-flash", contents, config } = payload;
   if (!contents) return json({ error: "Campo 'contents' obrigatório." }, 400);
+
+  // Whitelist de modelos: 'model' entra na URL da API — sem isso o cliente
+  // controla o path da requisição server-side.
+  const MODELOS_PERMITIDOS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
+  if (!MODELOS_PERMITIDOS.includes(model)) {
+    return json({ error: "Modelo não permitido." }, 400);
+  }
 
   try {
     const res = await fetch(

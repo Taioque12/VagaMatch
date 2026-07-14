@@ -168,9 +168,20 @@ async function tratarMensagem(msg: any) {
   }
 }
 
+const TELEGRAM_WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
+
 serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
+  }
+
+  // Valida que o update veio mesmo do Telegram (secret_token do setWebhook).
+  // Sem isso, qualquer um pode forjar updates e alterar preferências de usuários.
+  if (TELEGRAM_WEBHOOK_SECRET) {
+    const token = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
+    if (token !== TELEGRAM_WEBHOOK_SECRET) {
+      return new Response("Unauthorized", { status: 401 });
+    }
   }
 
   try {
