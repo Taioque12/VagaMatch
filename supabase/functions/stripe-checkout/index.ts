@@ -43,8 +43,15 @@ Deno.serve(async (req) => {
     return json({ error: "Body inválido." }, 400);
   }
 
-  const { priceId } = payload;
-  if (!priceId) return json({ error: "Campo 'priceId' obrigatório." }, 400);
+  // Preço definido server-side (env) — client escolhe só o plano, nunca o priceId,
+  // senão qualquer price da conta Stripe poderia ser usado na assinatura.
+  const PRICES: Record<string, string | undefined> = {
+    mensal: Deno.env.get("STRIPE_PRICE_ID_MENSAL"),
+    anual: Deno.env.get("STRIPE_PRICE_ID_ANUAL"),
+  };
+  const plano = payload.plano ?? "mensal";
+  const priceId = PRICES[plano];
+  if (!priceId) return json({ error: `Plano '${plano}' indisponível ou price não configurado.` }, 400);
 
   const stripe = new Stripe(STRIPE_SECRET_KEY, {
     apiVersion: "2023-10-16",

@@ -136,7 +136,7 @@ export function Dashboard() {
     setErro(null);
     try {
       const { data, error } = await supabase.functions.invoke("stripe-checkout", {
-        body: { priceId: "price_dummy123" },
+        body: { plano: "mensal" },
       });
 
       if (error) throw new Error(error.message);
