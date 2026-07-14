@@ -7,19 +7,47 @@ export const supabase = createClient(env.supabaseUrl, env.supabaseServiceKey);
 // Usuários com busca ativa e Telegram vinculado (pré-requisitos pra rodar o pipeline).
 // Processa em lotes usando cursor (lastUserId) em vez de offset numérico, evita pular/repetir.
 export async function listarUsuariosAtivos(limite = 50, lastUserId = null) {
-  let query = supabase
+  // 1. Buscar prioritários (busca_solicitada = true) - ignoram o cursor
+  const { data: prefsPrioritarios, error: err1 } = await supabase
     .from("preferencias")
     .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada")
     .eq("ativo", true)
-    .or("disparo_manual.eq.false,busca_solicitada.eq.true")
-    .order("user_id", { ascending: true });
+    .eq("busca_solicitada", true)
+    .limit(limite);
 
-  if (lastUserId) query = query.gt("user_id", lastUserId);
+  if (err1) throw new Error(`Supabase select (prioritarios): ${err1.message}`);
 
-  const { data: prefs, error } = await query.limit(limite);
+  let prefs = prefsPrioritarios || [];
+  const limiteRestante = limite - prefs.length;
 
-  if (error) throw new Error(`Supabase select (preferencias): ${error.message}`);
-  if (!prefs?.length) return [];
+  // 2. Completar com o lote normal usando o cursor
+  if (limiteRestante > 0) {
+    let queryNormal = supabase
+      .from("preferencias")
+      .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada")
+      .eq("ativo", true)
+      .eq("disparo_manual", false)
+      .order("user_id", { ascending: true });
+
+    if (lastUserId) {
+      queryNormal = queryNormal.gt("user_id", lastUserId);
+    }
+
+    const { data: prefsNormais, error: err2 } = await queryNormal.limit(limiteRestante);
+    if (err2) throw new Error(`Supabase select (normais): ${err2.message}`);
+
+    if (prefsNormais) {
+      const map = new Map(prefs.map((p) => [p.user_id, p]));
+      for (const p of prefsNormais) {
+        if (!map.has(p.user_id)) {
+          map.set(p.user_id, p);
+          prefs.push(p);
+        }
+      }
+    }
+  }
+
+  if (!prefs.length) return [];
 
   const userIds = prefs.map((p) => p.user_id);
 

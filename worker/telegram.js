@@ -1,4 +1,6 @@
 import { env } from "./config.js";
+import { readFileSync } from "fs";
+import { basename } from "path";
 
 const API = (metodo) => `https://api.telegram.org/bot${env.telegramBotToken}/${metodo}`;
 
@@ -52,17 +54,39 @@ function legendaVaga(vaga) {
 // ─── Passo 5: Envia notificação como mensagem de texto (sem anexos) ─────────
 // O currículo ajustado é gerado sob demanda quando o usuário clica "Candidatei-me"
 // no webhook do Telegram, economizando 1 chamada Gemini por vaga notificada.
-export async function notificarVaga(chatId, vaga) {
+export async function notificarVaga(chatId, vaga, pdfPath) {
   const legenda = legendaVaga(vaga);
 
-  const result = await chamarApi("sendMessage", {
-    chat_id: chatId,
-    text: legenda,
-    parse_mode: "MarkdownV2",
-    reply_markup: botoesFeedback(vaga.callback_id),
-  });
+  // Se não tem PDF, envia só a mensagem normal (como era)
+  if (!pdfPath) {
+    const result = await chamarApi("sendMessage", {
+      chat_id: chatId,
+      text: legenda,
+      parse_mode: "MarkdownV2",
+      reply_markup: botoesFeedback(vaga.callback_id),
+    });
+    return result.message_id;
+  }
 
-  return result.message_id;
+  // Se tem PDF, envia via sendDocument
+  const formPdf = new FormData();
+  formPdf.append("chat_id", chatId);
+  formPdf.append("caption", legenda);
+  formPdf.append("parse_mode", "MarkdownV2");
+  formPdf.append("reply_markup", JSON.stringify(botoesFeedback(vaga.callback_id)));
+  formPdf.append(
+    "document",
+    new Blob([readFileSync(pdfPath)], { type: "application/pdf" }),
+    basename(pdfPath)
+  );
+
+  const resPdf = await fetch(API("sendDocument"), { method: "POST", body: formPdf });
+  const dataPdf = await resPdf.json();
+  if (!resPdf.ok || dataPdf.ok === false) {
+    throw new Error(`Telegram sendDocument (pdf): ${JSON.stringify(dataPdf)}`);
+  }
+
+  return dataPdf.result.message_id;
 }
 
 export async function enviarResumoDiario(chatId, vagas) {

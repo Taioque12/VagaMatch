@@ -19,6 +19,10 @@ import {
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
 import { processarFeedback } from "./feedback.js";
+import { gerarCurriculo } from "./curriculo.js";
+import { gerarPdf } from "./pdf.js";
+import { join } from "path";
+import { tmpdir } from "os";
 
 // Uso: node worker/index.js [--limit N]  (limita vagas processadas POR USUÁRIO, útil p/ teste)
 const limitArg = process.argv.indexOf("--limit");
@@ -191,8 +195,12 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
         // Marca como descoberta só após IA aprovar (antes de Telegram)
         await marcarStatus(vaga.id, "descoberta");
 
-        // ─── Passo 5: Não gera currículo aqui — adiado para o clique "Candidatei-me" ──
-        const messageId = await notificarVaga(perfil.telegram_chat_id, vaga);
+        // Gera o currículo adaptado para a vaga e cria o PDF
+        const cvTailored = await gerarCurriculo(vaga, curriculo, perfilCV.nomeCompleto);
+        const pdfPath = join(tmpdir(), `CV_${perfil.id}_${vaga.job_id}.pdf`);
+        await gerarPdf(cvTailored, perfilCV, pdfPath);
+
+        const messageId = await notificarVaga(perfil.telegram_chat_id, vaga, pdfPath);
         await salvarMessageId(vaga.id, messageId);
         await marcarStatus(vaga.id, "notificada");
         return { tipo: "ok", vaga };
@@ -297,16 +305,23 @@ async function main() {
     }
 
     const TAMANHO_LOTE = 50;
-    const lastUserId = await getState("worker_last_user_id");
+    let lastUserId = await getState("worker_last_user_id");
     console.log(`Buscando usuários após: ${lastUserId || "(início)"}`);
 
-    const usuarios = await listarUsuariosAtivos(TAMANHO_LOTE, lastUserId);
+    let usuarios = await listarUsuariosAtivos(TAMANHO_LOTE, lastUserId);
+
+    if (usuarios.length === 0 && lastUserId) {
+      // Chegou no fim da lista normal. Reseta e busca do início na MESMA rodada!
+      console.log("Fim da lista de usuários. Resetando cursor para início e buscando novamente.");
+      await setState("worker_last_user_id", "");
+      lastUserId = "";
+      usuarios = await listarUsuariosAtivos(TAMANHO_LOTE, lastUserId);
+    }
+
     console.log(`Lote atual: ${usuarios.length} usuário(s) encontrados com Telegram vinculado.`);
 
     if (usuarios.length === 0) {
-      // Chegou no fim da lista (ou não tem ninguém). Reseta para a próxima rodada!
-      console.log("Fim da lista de usuários. Resetando cursor para início.");
-      await setState("worker_last_user_id", "");
+      console.log("Nenhum usuário ativo para processar.");
       return;
     }
 
@@ -340,12 +355,21 @@ async function main() {
 
     // Salva o último user_id processado como cursor pra próxima rodada
     if (usuarios.length > 0) {
-      const ultimoUserId = usuarios[usuarios.length - 1].pref.user_id;
-      await setState("worker_last_user_id", ultimoUserId);
-      console.log(`Cursor avançado para user_id: ${ultimoUserId}`);
+      // Ignora usuários de busca_solicitada para não bagunçar o cursor
+      const usuariosNormais = usuarios.filter(u => !u.pref.busca_solicitada);
+      
+      if (usuariosNormais.length > 0) {
+        // Ordena por ID pois a junção no db.js pode ter desordenado
+        const idsNormais = usuariosNormais.map(u => u.pref.user_id).sort();
+        const ultimoUserId = idsNormais[idsNormais.length - 1];
+        await setState("worker_last_user_id", ultimoUserId);
+        console.log(`Cursor avançado para user_id: ${ultimoUserId}`);
+      } else {
+        console.log(`Lote contendo apenas usuários prioritários. Cursor mantido em: ${lastUserId || "(início)"}`);
+      }
     } else {
       // Se lista vazia, reseta cursor
-      await setState("worker_last_user_id", null);
+      await setState("worker_last_user_id", "");
       console.log("Lista vazia, cursor resetado.");
     }
   } finally {
