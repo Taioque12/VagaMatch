@@ -139,6 +139,7 @@ export function Onboarding() {
           cargos_alvo: d.cargos_alvo || [],
           palavras_chave: d.palavras_chave || [],
           regioes: d.regioes || [],
+          busca_solicitada: true, // Aciona a busca prioritária automática no próximo ciclo do worker
           updated_at: new Date().toISOString(),
         },
         { onConflict: "user_id" }
