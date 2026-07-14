@@ -304,7 +304,22 @@ async function tratarMensagem(msg: any) {
   const texto = (msg.text ?? "").trim();
   const chatId = msg.chat.id;
 
-  if (texto === "/menu" || texto === "/start") {
+  if (texto.startsWith("/start")) {
+    const partes = texto.split(" ");
+    if (partes.length > 1) {
+      const userId = partes[1].trim();
+      const { error } = await supabase.from("profiles").update({ telegram_chat_id: String(chatId) }).eq("id", userId);
+      if (error) {
+        console.error("Erro ao vincular Telegram:", error);
+      } else {
+        await enviarMensagemSimples(chatId, "✅ Telegram conectado com sucesso ao seu perfil do VagaMatch!");
+      }
+    }
+    await enviarMenu(chatId);
+    return;
+  }
+
+  if (texto === "/menu") {
     await enviarMenu(chatId);
     return;
   }

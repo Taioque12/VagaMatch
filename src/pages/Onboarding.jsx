@@ -23,6 +23,9 @@ export function Onboarding() {
   const [telegramChatId, setTelegramChatId] = useState("");
   const [dadosExtraidos, setDadosExtraidos] = useState(null);
 
+  const [novoCargo, setNovoCargo] = useState("");
+  const [novaPalavra, setNovaPalavra] = useState("");
+
   useEffect(() => {
     if (!session) return;
     async function carregar() {
@@ -57,7 +60,52 @@ export function Onboarding() {
       setErro(e.message);
       setCarregando(false);
     });
+
+    // Configura o listener do Realtime para mudanças no telegram_chat_id
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${session.user.id}`
+        },
+        (payload) => {
+          if (payload.new.telegram_chat_id) {
+            setTelegramChatId(payload.new.telegram_chat_id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session]);
+
+  function handleAddCargo(e) {
+    if (e.key === "Enter" && novoCargo.trim()) {
+      e.preventDefault();
+      setDadosExtraidos(d => ({ ...d, cargos_alvo: [...(d.cargos_alvo || []), novoCargo.trim()] }));
+      setNovoCargo("");
+    }
+  }
+  function handleRemCargo(idx) {
+    setDadosExtraidos(d => ({ ...d, cargos_alvo: d.cargos_alvo.filter((_, i) => i !== idx) }));
+  }
+  
+  function handleAddPalavra(e) {
+    if (e.key === "Enter" && novaPalavra.trim()) {
+      e.preventDefault();
+      setDadosExtraidos(d => ({ ...d, palavras_chave: [...(d.palavras_chave || []), novaPalavra.trim()] }));
+      setNovaPalavra("");
+    }
+  }
+  function handleRemPalavra(idx) {
+    setDadosExtraidos(d => ({ ...d, palavras_chave: d.palavras_chave.filter((_, i) => i !== idx) }));
+  }
 
   async function handleUploadPdf(e) {
     const file = e.target.files?.[0];
@@ -147,6 +195,9 @@ export function Onboarding() {
       if (e3) throw e3;
 
       setSalvo(true);
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 3000);
     } catch (err) {
       setErro(err.message);
     } finally {
@@ -233,15 +284,45 @@ export function Onboarding() {
             <h2>{dadosExtraidos.nome_completo || "Nome não identificado"}</h2>
             {dadosExtraidos.localizacao && <p className="ajuda">{dadosExtraidos.localizacao}</p>}
 
-            {!!dadosExtraidos.cargos_alvo?.length && (
-              <div className="tags">
-                {dadosExtraidos.cargos_alvo.map((c, i) => (
-                  <span className="tag" key={i}>
+            <div style={{ marginTop: "1rem" }}>
+              <strong style={{ display: "block", marginBottom: 8, fontSize: "0.9rem", color: "var(--fg)" }}>Cargos-alvo:</strong>
+              <div className="tags" style={{ marginBottom: 8 }}>
+                {(dadosExtraidos.cargos_alvo || []).map((c, i) => (
+                  <span className="tag" key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     {c}
+                    <button type="button" onClick={() => handleRemCargo(i)} style={{ background: "none", border: "none", color: "currentColor", cursor: "pointer", padding: 0, fontSize: "0.9rem" }}>×</button>
                   </span>
                 ))}
               </div>
-            )}
+              <input 
+                type="text" 
+                value={novoCargo} 
+                onChange={e => setNovoCargo(e.target.value)} 
+                onKeyDown={handleAddCargo}
+                placeholder="Adicionar cargo (pressione Enter)" 
+                style={{ fontSize: "0.85rem", padding: "6px 12px", width: "100%", maxWidth: 300 }}
+              />
+            </div>
+
+            <div style={{ marginTop: "1rem", marginBottom: "1.5rem" }}>
+              <strong style={{ display: "block", marginBottom: 8, fontSize: "0.9rem", color: "var(--fg)" }}>Palavras-chave (Tecnologias):</strong>
+              <div className="tags" style={{ marginBottom: 8 }}>
+                {(dadosExtraidos.palavras_chave || []).map((p, i) => (
+                  <span className="tag" key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                    {p}
+                    <button type="button" onClick={() => handleRemPalavra(i)} style={{ background: "none", border: "none", color: "currentColor", cursor: "pointer", padding: 0, fontSize: "0.9rem" }}>×</button>
+                  </span>
+                ))}
+              </div>
+              <input 
+                type="text" 
+                value={novaPalavra} 
+                onChange={e => setNovaPalavra(e.target.value)} 
+                onKeyDown={handleAddPalavra}
+                placeholder="Adicionar tecnologia (pressione Enter)" 
+                style={{ fontSize: "0.85rem", padding: "6px 12px", width: "100%", maxWidth: 300 }}
+              />
+            </div>
 
             {dadosExtraidos.resumo_profissional && (
               <p className="resumo-preview">{dadosExtraidos.resumo_profissional}</p>
@@ -262,36 +343,35 @@ export function Onboarding() {
         {pronto && (
           <section className="cartao-telegram">
             <h2>Notificações no Telegram</h2>
-            <p className="ajuda" style={{ marginBottom: 8 }}>
-              Para receber vagas no Telegram, siga esses 2 passos:
+            <p className="ajuda" style={{ marginBottom: 12 }}>
+              Receba as vagas no seu celular assim que a IA aprovar.
             </p>
-            <ol className="ajuda" style={{ paddingLeft: 20, lineHeight: 1.8, marginBottom: 12 }}>
-              <li>
-                <strong>Abra nosso bot</strong>{" "}
-                <a href="https://t.me/vagamatchbr_bot" target="_blank" rel="noreferrer">
-                  👉 @vagamatchbr_bot
-                </a>{" "}
-                e clique em <strong>"Começar"</strong> (ou digite <code>/start</code>).
-              </li>
-              <li>
-                <strong>Pegue seu Chat ID:</strong> abra{" "}
-                <a href="https://t.me/userinfobot" target="_blank" rel="noreferrer">
-                  @userinfobot
-                </a>{" "}
-                no Telegram e copie o número <strong>Id</strong> que ele mostrar. Cole abaixo:
-              </li>
-            </ol>
-            <input
-              value={telegramChatId}
-              onChange={(e) => setTelegramChatId(e.target.value)}
-              placeholder="Cole seu Telegram Chat ID (ex: 123456789)"
-            />
+            {telegramChatId ? (
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, background: "rgba(0,255,0,0.1)", borderRadius: 8, color: "#4caf50", fontWeight: 600 }}>
+                <span>✅ Telegram Conectado!</span>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <a 
+                  href={`https://t.me/vagamatchbr_bot?start=${session.user.id}`} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="botao-principal"
+                  style={{ textDecoration: "none", textAlign: "center", display: "inline-block" }}
+                >
+                  Conectar Telegram (1-clique)
+                </a>
+                <p className="ajuda" style={{ fontSize: "0.85rem", textAlign: "center", margin: 0 }}>
+                  Clique no botão, depois em "Começar" lá no Telegram. Essa tela vai atualizar sozinha!
+                </p>
+              </div>
+            )}
           </section>
         )}
 
         {erro && <p className="erro" style={{ textAlign: "center" }}>{erro}</p>}
         {pdfBaixado && <p className="sucesso" style={{ textAlign: "center" }}>✓ PDF baixado com sucesso! Verifique sua pasta de downloads.</p>}
-        {salvo && <p className="sucesso" style={{ textAlign: "center" }}>✓ Salvo com sucesso.</p>}
+        {salvo && <p className="sucesso" style={{ textAlign: "center" }}>✓ Preparando suas vagas exclusivas... Redirecionando para o painel em instantes.</p>}
 
         {pronto && (
           <button
