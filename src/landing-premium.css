@@ -19,8 +19,8 @@
   background-color: var(--bg-base);
   color: var(--text-body);
   min-height: 100dvh;
-  overflow-x: hidden;
   position: relative;
+  overflow: visible !important;
 }
 
 /* Ambient Glows */

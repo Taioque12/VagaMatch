@@ -40,6 +40,8 @@ body.theme-light {
 
 html {
   scroll-behavior: smooth;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
 }
 
 body {
@@ -49,6 +51,12 @@ body {
   background: var(--bg-main);
   transition: background 0.3s ease, color 0.3s ease;
   -webkit-font-smoothing: antialiased;
+  overflow-y: visible !important;
+  overflow-x: hidden !important;
+}
+
+#root {
+  overflow: visible !important;
 }
 
 ::selection {
@@ -722,7 +730,7 @@ button:disabled {
 
 .lp {
   max-width: 100%;
-  overflow-x: hidden;
+  overflow: visible !important;
   font-family: "Plus Jakarta Sans", sans-serif;
   color: #211f1c;
   background: #f6f3ee;
