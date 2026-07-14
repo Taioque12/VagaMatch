@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
@@ -10,6 +10,8 @@ export function Cadastro() {
   const [sucesso, setSucesso] = useState(false);
   const [carregando, setCarregando] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const codigoIndicacao = searchParams.get("ref");
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -20,6 +22,14 @@ export function Cadastro() {
     if (error) {
       setErro(error.message);
       return;
+    }
+    if (codigoIndicacao) {
+      if (data.session) {
+        await supabase.rpc("registrar_indicacao", { p_codigo: codigoIndicacao });
+      } else {
+        // Confirmação de e-mail ativa: guarda pra registrar no primeiro login.
+        localStorage.setItem("vagamatch_ref_pendente", codigoIndicacao);
+      }
     }
     // Se confirmação de e-mail estiver desligada, já vem com sessão ativa
     if (data.session) {

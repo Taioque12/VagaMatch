@@ -359,6 +359,39 @@
   border-radius: 12px;
 }
 
+.market-value-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.4rem 1.6rem;
+  margin-bottom: 1.5rem;
+  border-radius: 16px;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(245, 197, 66, 0.18));
+  border: 1px solid rgba(245, 197, 66, 0.35);
+  box-shadow: 0 10px 30px -15px rgba(16, 185, 129, 0.35);
+}
+
+.market-value-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.market-value-card strong {
+  font-size: 1.1rem;
+  color: var(--text-main);
+}
+
+.market-value-dica {
+  margin: 0.4rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted, var(--text-main));
+}
+
+.market-value-dica a {
+  color: var(--primary);
+  font-weight: 600;
+}
+
 @keyframes skeleton-shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }

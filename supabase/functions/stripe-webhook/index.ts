@@ -54,10 +54,36 @@ Deno.serve(async (req) => {
               assinatura_proxima_cobranca: new Date(subscription.current_period_end * 1000).toISOString(),
             })
             .eq("id", userId);
+
+          // Primeira mensalidade paga: credita quem indicou (evita fraude de conta fake, só paga de verdade).
+          const { data: indicacao } = await supabaseAdmin
+            .from("indicacoes")
+            .select("id, indicador_id")
+            .eq("indicado_id", userId)
+            .eq("status", "pendente")
+            .maybeSingle();
+
+          if (indicacao) {
+            await supabaseAdmin
+              .from("indicacoes")
+              .update({ status: "pago", pago_em: new Date().toISOString() })
+              .eq("id", indicacao.id);
+
+            const { data: indicadorProfile } = await supabaseAdmin
+              .from("profiles")
+              .select("creditos_indicacao")
+              .eq("id", indicacao.indicador_id)
+              .maybeSingle();
+
+            await supabaseAdmin
+              .from("profiles")
+              .update({ creditos_indicacao: (indicadorProfile?.creditos_indicacao ?? 0) + 1 })
+              .eq("id", indicacao.indicador_id);
+          }
         }
         break;
       }
-      
+
       case "invoice.payment_succeeded": {
         const invoice = event.data.object as Stripe.Invoice;
         const subscriptionId = invoice.subscription as string;

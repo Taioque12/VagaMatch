@@ -30,6 +30,9 @@ export function Dashboard() {
   const [ehAdmin, setEhAdmin] = useState(false);
   const [plano, setPlano] = useState("gratis");
   const [processandoCheckout, setProcessandoCheckout] = useState(false);
+  const [codigoIndicacao, setCodigoIndicacao] = useState(null);
+  const [creditosIndicacao, setCreditosIndicacao] = useState(0);
+  const [linkCopiado, setLinkCopiado] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -55,14 +58,23 @@ export function Dashboard() {
 
     supabase
       .from("profiles")
-      .select("role, plano")
+      .select("role, plano, codigo_indicacao, creditos_indicacao")
       .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => {
         setEhAdmin(data?.role === "admin");
         setPlano(data?.plano || "gratis");
+        setCodigoIndicacao(data?.codigo_indicacao ?? null);
+        setCreditosIndicacao(data?.creditos_indicacao ?? 0);
       });
   }, [session]);
+
+  function copiarLinkIndicacao() {
+    const link = `${window.location.origin}/cadastro?ref=${codigoIndicacao}`;
+    navigator.clipboard.writeText(link);
+    setLinkCopiado(true);
+    setTimeout(() => setLinkCopiado(false), 2000);
+  }
 
   const stats = useMemo(() => {
     if (!vagas) return null;
@@ -72,6 +84,14 @@ export function Dashboard() {
       candidatadas: vagas.filter((v) => v.status === "candidatado").length,
       descartadas: vagas.filter((v) => v.status === "descartada").length,
     };
+  }, [vagas]);
+
+  const marketValue = useMemo(() => {
+    if (!vagas) return null;
+    const comSalario = vagas.filter((v) => v.salario_min != null && v.salario_max != null);
+    if (!comSalario.length) return null;
+    const soma = comSalario.reduce((acc, v) => acc + (Number(v.salario_min) + Number(v.salario_max)) / 2, 0);
+    return Math.round(soma / comSalario.length);
   }, [vagas]);
 
   const vagasFiltradas = useMemo(() => {
@@ -214,10 +234,36 @@ export function Dashboard() {
               </button>
             )}
           </div>
+
+          {codigoIndicacao && (
+            <div style={{ marginTop: "1.5rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
+              <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Indique e ganhe</h3>
+              <p style={{ margin: "0.3rem 0 0.8rem", fontSize: "0.85rem" }}>
+                Ganhe 1 mês grátis a cada amigo que assinar pelo seu link.
+                {creditosIndicacao > 0 && (
+                  <> Você já indicou <strong>{creditosIndicacao}</strong> {creditosIndicacao === 1 ? "assinante" : "assinantes"}.</>
+                )}
+              </p>
+              <button className="acao secundaria" style={{ width: "100%" }} onClick={copiarLinkIndicacao}>
+                {linkCopiado ? "Link copiado!" : "Copiar link de indicação"}
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* Área Principal: Lista de Vagas */}
         <main className="dashboard-main">
+          {marketValue != null && (
+            <div className="market-value-card">
+              <span className="market-value-icon">💰</span>
+              <div>
+                <strong>O mercado está pagando em média R$ {marketValue.toLocaleString("pt-BR")}</strong> para o seu perfil.
+                <p className="market-value-dica">
+                  💡 Dica para subir de nível: adicione novas tecnologias no seu <Link to="/onboarding">perfil</Link> para atingir vagas melhores.
+                </p>
+              </div>
+            </div>
+          )}
           {erro && <p className="erro">{erro}</p>}
           {vagasFiltradas === null && !erro && (
             <div className="grid-vagas" aria-busy="true" aria-label="Carregando vagas">

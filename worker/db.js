@@ -139,6 +139,8 @@ export async function deduplicarParaUsuario(userId, vagas) {
         status: "pendente_processamento",
         score: v.score ?? 0,
         motivo_ia: v.motivo_ia ?? null,
+        salario_min: v.salario_min ?? null,
+        salario_max: v.salario_max ?? null,
       })),
       { onConflict: 'user_id,job_id' }
     )
