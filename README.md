@@ -55,6 +55,8 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 ### 🛡️ Segurança & Robustez
 - **RLS reforçado**: triggers bloqueiam usuário comum de alterar colunas privilegiadas (`role`, `plano`, etc.)
 - **Gemini API key fora do bundle**: chamadas passam pela Edge Function `gemini-proxy` (autenticada via JWT)
+- **Webhook do Telegram autenticado**: `telegram-webhook` valida o header `X-Telegram-Bot-Api-Secret-Token` (env `TELEGRAM_WEBHOOK_SECRET`) — sem isso, updates forjados conseguiam alterar preferências de qualquer usuário
+- **Whitelist de modelo Gemini**: `gemini-proxy` só aceita modelos pré-aprovados (o campo `model` ia direto pro path da URL da API)
 - **Rate limiting**: 10 requisições/minuto por usuário (HTTP 429)
 - **Request timeout**: chamadas Gemini com timeout 30s (AbortController)
 - **Schema validation**: extração de currículo valida campos obrigatórios
@@ -105,11 +107,22 @@ As migrations estão em `supabase/migrations/`, em ordem:
 
 ### Supabase Edge Functions
 Secrets necessários (`supabase secrets set`):
-`TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+`TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_WEBHOOK_SECRET`
 
 ### Telegram Webhook
-O webhook é registrado via script `worker/test-webhook.js` apontando para:
-`https://<project-ref>.supabase.co/functions/v1/telegram-webhook`
+Registrado via `setWebhook` apontando para `https://<project-ref>.supabase.co/functions/v1/telegram-webhook`, com `secret_token` igual ao `TELEGRAM_WEBHOOK_SECRET` configurado nas secrets:
+```
+curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"<SUPABASE_URL>/functions/v1/telegram-webhook","secret_token":"<TELEGRAM_WEBHOOK_SECRET>"}'
+```
+Depois de trocar o secret, é preciso redeployar `telegram-webhook` e re-registrar o webhook com o novo valor.
+
+## Testes
+
+- `npm test` (vitest) — `src/lib/gemini.test.js`: extração de currículo, validação de schema, timeout do Gemini
+- `gemini-proxy/index.test.ts` roda com `deno test`, não com vitest (excluído em `vite.config.js`)
+- `worker/test-*.js` são scripts manuais de diagnóstico (sem assertions), rodam com `node worker/test-<nome>.js`
 
 ## Regras do Projeto
 
