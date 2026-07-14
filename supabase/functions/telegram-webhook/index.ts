@@ -34,6 +34,7 @@ async function enviarMenu(chatId: string | number) {
       inline_keyboard: [
         [{ text: "🔍 Buscar vagas agora", callback_data: "busca:agora" }],
         [{ text: "📍 Configurar região", callback_data: "menu:regiao" }],
+        [{ text: "🔄 Atualizar Perfil (Site)", url: "https://vaga-match-coral.vercel.app/onboarding" }],
       ],
     },
   });
@@ -353,6 +354,19 @@ async function tratarMensagem(msg: any) {
   
   if (texto === "/regiao") {
     await enviarMenuRegiao(chatId);
+    return;
+  }
+  
+  if (texto.toLowerCase() === "/atualizar") {
+    await chamarApi("sendMessage", {
+      chat_id: chatId,
+      text: "Para atualizar suas preferências, enviar um novo currículo ou editar os cargos que a IA deduziu, acesse nosso site:",
+      reply_markup: {
+        inline_keyboard: [
+          [{ text: "🔄 Atualizar Perfil no Site", url: "https://vaga-match-coral.vercel.app/onboarding" }]
+        ]
+      }
+    });
     return;
   }
 }
