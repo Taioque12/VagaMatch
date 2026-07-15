@@ -247,12 +247,52 @@ export async function similaridadeVagaCurriculo(userId, vagaId) {
   return typeof data === "number" ? data : null;
 }
 
-// Config V3 calibrável a quente via app_state (defaults semeados na migration 017).
+// Fase C (V3): similaridade da vaga com descartes/candidaturas recentes do
+// usuário. Retorna { simDescartes, simCandidaturas } (cada um pode ser null)
+// ou null em erro/sem embedding — fail-open.
+export async function ajusteFeedbackVetorial(userId, vagaId) {
+  const { data, error } = await supabase.rpc("ajuste_feedback_vetorial", {
+    p_user_id: userId,
+    p_vaga_id: vagaId,
+  });
+  if (error) {
+    console.warn(`RPC ajuste_feedback_vetorial falhou (${vagaId}): ${error.message}`);
+    return null;
+  }
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return null;
+  return {
+    simDescartes: typeof row.sim_descartes === "number" ? row.sim_descartes : null,
+    simCandidaturas: typeof row.sim_candidaturas === "number" ? row.sim_candidaturas : null,
+  };
+}
+
+// Fase C (V3): feedback recente do usuário pro resumo semanal (esboço da
+// resumirFeedbackSemanal em swarm.js). Retorna títulos/empresas, não embeddings.
+export async function listarFeedbackRecente(userId, dias = 7) {
+  const cutoff = new Date(Date.now() - dias * 24 * 60 * 60 * 1000).toISOString();
+  const { data, error } = await supabase
+    .from("vagas_vistas")
+    .select("titulo, empresa, local, status")
+    .eq("user_id", userId)
+    .in("status", ["descartada", "candidatado"])
+    .gte("feedback_em", cutoff)
+    .order("feedback_em", { ascending: false })
+    .limit(60);
+  if (error) throw new Error(`Supabase select (feedback recente): ${error.message}`);
+  return {
+    descartes: (data || []).filter((v) => v.status === "descartada"),
+    candidaturas: (data || []).filter((v) => v.status === "candidatado"),
+  };
+}
+
+// Config V3 calibrável a quente via app_state (defaults semeados nas migrations 017/018).
 export async function lerConfigV3() {
-  const [prefiltro, threshold, pesosRaw] = await Promise.all([
+  const [prefiltro, threshold, pesosRaw, fator] = await Promise.all([
     getState("v3_prefiltro"),
     getState("v3_threshold_similaridade"),
     getState("v3_pesos_score"),
+    getState("v3_fator_feedback"),
   ]);
   let pesos = { vetor: 0.5, tecnico: 0.3, fit: 0.2 };
   try {
@@ -261,10 +301,12 @@ export async function lerConfigV3() {
     console.warn(`v3_pesos_score inválido em app_state, usando defaults: ${e.message}`);
   }
   const thresholdNum = Number(threshold);
+  const fatorNum = Number(fator);
   return {
     prefiltroAtivo: prefiltro === "on",
     threshold: Number.isFinite(thresholdNum) ? thresholdNum : 0.55,
     pesos,
+    fatorFeedback: Number.isFinite(fatorNum) ? fatorNum : 0.15,
   };
 }
 

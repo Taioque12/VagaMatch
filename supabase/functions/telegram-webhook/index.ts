@@ -333,7 +333,11 @@ async function tratarCallback(cq: any) {
       await responderCallback("Vaga não encontrada (registro antigo).");
       return;
     }
-    await supabase.from('vagas_vistas').update({ status }).eq('id', vaga.id);
+    // feedback_em alimenta a Fase C (V3): memória vetorial de descartes e
+    // candidaturas — a RPC ajuste_feedback_vetorial só olha feedback recente.
+    await supabase.from('vagas_vistas')
+      .update({ status, feedback_em: new Date().toISOString() })
+      .eq('id', vaga.id);
     await responderCallback(TEXTOS_STATUS[tipo]);
 
     // chat_id vem do próprio callback (vagas_vistas não tem coluna telegram_chat_id)

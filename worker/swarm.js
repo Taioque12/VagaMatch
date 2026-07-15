@@ -99,6 +99,39 @@ Experiências: ${(curriculo.experiencias || [])
   }
 }
 
+// ─── Fase C (V3, esboço): refino de perfil semanal ──────────────────────────
+// Extrai um padrão em texto do feedback recente do usuário. AINDA NÃO tem cron:
+// será chamada por um job semanal que envia o resumo ao Telegram perguntando
+// "Notei isso no seu perfil, quer que eu atualize suas palavras-chave?" —
+// ajuste só com confirmação do usuário (nunca automático, evita feedback-loop).
+export async function resumirFeedbackSemanal(userId) {
+  const { listarFeedbackRecente } = await import("./db.js");
+  const { descartes, candidaturas } = await listarFeedbackRecente(userId, 7);
+
+  if (!ai) return null;
+  if (descartes.length + candidaturas.length < 5) return null; // pouco sinal, resumo seria chute
+
+  const linha = (v) => `- ${v.titulo} | ${v.empresa} | ${v.local || "?"}`;
+  const prompt = `Você é um analista de comportamento de busca de emprego.
+Abaixo, as vagas que um usuário DESCARTOU e nas quais SE CANDIDATOU na última semana.
+Extraia o padrão em 1-3 frases curtas e acionáveis, em português (ex: "Descarta vagas PJ
+e de outra cidade; prefere backend remoto"). Se não houver padrão claro, responda "sem padrão claro".
+Não invente — cite só o que os dados sustentam.
+
+DESCARTOU (${descartes.length}):
+${descartes.map(linha).join("\n") || "(nenhuma)"}
+
+CANDIDATOU-SE (${candidaturas.length}):
+${candidaturas.map(linha).join("\n") || "(nenhuma)"}`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: prompt,
+  });
+  const resumo = response.text?.trim();
+  return resumo && !/sem padrão claro/i.test(resumo) ? resumo : null;
+}
+
 // Score final da V3: média ponderada com pesos do app_state.
 // scoreVetor ∈ [0..1] ou null (sem embedding) — quando null, os pesos são
 // renormalizados sobre técnico+fit pra não punir a vaga por falta de vetor.

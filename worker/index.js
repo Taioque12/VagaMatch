@@ -19,6 +19,7 @@ import {
   registrarBuscaRealizada,
   salvarEmbeddingsVagas,
   similaridadeVagaCurriculo,
+  ajusteFeedbackVetorial,
   lerConfigV3,
 } from "./db.js";
 import { gerarEmbeddingsVagas } from "./embeddings.js";
@@ -192,7 +193,27 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca, c
         // ─── Camada 0 (V3): pré-filtro vetorial ANTES de gastar chamada Gemini ──
         // Similaridade coseno currículo×vaga via pgvector (RPC). null = sem
         // embedding de um dos lados ou erro → sem sinal, segue fluxo normal.
-        const scoreVetor = await similaridadeVagaCurriculo(perfil.id, vaga.id);
+        let scoreVetor = await similaridadeVagaCurriculo(perfil.id, vaga.id);
+
+        // ─── Fase C (V3): ajuste por memória de feedback ──────────────────
+        // Vaga parecida com descartes recentes → penalidade; parecida com
+        // candidaturas → bônus. Só com flag ON: fluxo legado nem consulta a RPC.
+        if (configV3.prefiltroAtivo && scoreVetor !== null) {
+          const aj = await ajusteFeedbackVetorial(perfil.id, vaga.id);
+          if (aj) {
+            const delta = configV3.fatorFeedback *
+              ((aj.simCandidaturas ?? 0) - (aj.simDescartes ?? 0));
+            if (delta !== 0) {
+              const antes = scoreVetor;
+              scoreVetor = Math.max(0, Math.min(1, scoreVetor + delta));
+              console.log(
+                `  🧠 [V3] Feedback ajustou vaga ${vaga.job_id}: ${antes.toFixed(2)} → ${scoreVetor.toFixed(2)} ` +
+                `(desc=${aj.simDescartes?.toFixed(2) ?? "—"}, cand=${aj.simCandidaturas?.toFixed(2) ?? "—"}, fator=${configV3.fatorFeedback}).`
+              );
+            }
+          }
+        }
+
         if (scoreVetor !== null && scoreVetor < configV3.threshold) {
           if (configV3.prefiltroAtivo) {
             // Flag ON: descarta de verdade, economizando a chamada Gemini.
