@@ -13,6 +13,17 @@ const STATUS_LABEL = {
   erro: "Erro",
 };
 
+// V3 grava os sub-scores dentro do motivo_ia:
+// "⚙️ Técnico (85): ... 🤝 Fit (70): ...". Sem colunas dedicadas (ainda) —
+// parse tolerante: vaga do fluxo legado (sem o padrão) simplesmente não mostra barras.
+function parseScoresV3(motivo) {
+  if (!motivo) return null;
+  const tec = motivo.match(/Técnico \((\d{1,3})\)/);
+  const fit = motivo.match(/Fit \((\d{1,3})\)/);
+  if (!tec || !fit) return null;
+  return { tecnico: Math.min(100, +tec[1]), fit: Math.min(100, +fit[1]) };
+}
+
 const FILTROS = [
   { valor: "todas", label: "Todas" },
   { valor: "notificada", label: "Notificadas" },
@@ -79,11 +90,21 @@ export function Dashboard() {
 
   const stats = useMemo(() => {
     if (!vagas) return null;
+    const candidatadas = vagas.filter((v) => v.status === "candidatado").length;
+    const descartadas = vagas.filter((v) => v.status === "descartada").length;
+    const naFila = vagas.filter((v) =>
+      ["pendente_processamento", "descoberta"].includes(v.status)
+    ).length;
+    const comFeedback = candidatadas + descartadas;
     return {
       total: vagas.length,
       notificadas: vagas.filter((v) => v.status === "notificada").length,
-      candidatadas: vagas.filter((v) => v.status === "candidatado").length,
-      descartadas: vagas.filter((v) => v.status === "descartada").length,
+      candidatadas,
+      descartadas,
+      naFila,
+      // Taxa de sucesso do match: das vagas em que o usuário deu feedback,
+      // quantas ele aprovou (candidatou). Sem feedback ainda → null ("—").
+      taxaSucesso: comFeedback > 0 ? Math.round((candidatadas / comFeedback) * 100) : null,
     };
   }, [vagas]);
 
@@ -249,6 +270,24 @@ export function Dashboard() {
 
         {/* Área Principal: Lista de Vagas */}
         <main className="dashboard-main">
+          {stats && (
+            <div className="top-metrics">
+              <div className="metric-card">
+                <span className="metric-valor">
+                  {stats.taxaSucesso === null ? "—" : <>{stats.taxaSucesso}<span className="metric-unidade">%</span></>}
+                </span>
+                <span className="metric-label">Taxa de sucesso do match IA</span>
+              </div>
+              <div className="metric-card">
+                <span className="metric-valor">{stats.total}</span>
+                <span className="metric-label">Vagas processadas</span>
+              </div>
+              <div className="metric-card">
+                <span className="metric-valor">{stats.naFila}</span>
+                <span className="metric-label">Vagas na fila</span>
+              </div>
+            </div>
+          )}
           {marketValue != null && (
             <div className="market-value-card">
               <span className="market-value-icon">💰</span>
@@ -282,7 +321,9 @@ export function Dashboard() {
           )}
 
           <div className="grid-vagas">
-            {vagasFiltradas?.map((v) => (
+            {vagasFiltradas?.map((v) => {
+              const scoresV3 = parseScoresV3(v.motivo_ia);
+              return (
               <div key={v.id} className={`vaga-card status-${v.status}`}>
                 <div className="vaga-card-header">
                   <div className="vaga-card-title-group">
@@ -293,16 +334,40 @@ export function Dashboard() {
                       {v.empresa} • {v.fonte} • {new Date(v.data_encontrada).toLocaleDateString("pt-BR")}
                     </p>
                   </div>
-                  <div className="match-badge">
-                    <span className="match-icon">🎯</span>
-                    {v.score} Match
+                  <div
+                    className="score-ring"
+                    style={{ "--score": v.score ?? 0 }}
+                    role="img"
+                    aria-label={`Score da IA: ${v.score ?? 0} de 100`}
+                  >
+                    <span className="score-ring-valor">{v.score ?? 0}</span>
+                    <span className="score-ring-sub">match</span>
                   </div>
                 </div>
-                  
+
                 {v.motivo_ia && (
                   <div className="vaga-motivo">
                     <span className="motivo-icon">✨</span>
                     <p>{v.motivo_ia}</p>
+                  </div>
+                )}
+
+                {scoresV3 && (
+                  <div className="subscores">
+                    <div className="subscore">
+                      <span>Técnico</span>
+                      <div className="subscore-trilha">
+                        <div className="subscore-barra" style={{ width: `${scoresV3.tecnico}%` }} />
+                      </div>
+                      <span className="subscore-valor">{scoresV3.tecnico}</span>
+                    </div>
+                    <div className="subscore">
+                      <span>Fit</span>
+                      <div className="subscore-trilha">
+                        <div className="subscore-barra fit" style={{ width: `${scoresV3.fit}%` }} />
+                      </div>
+                      <span className="subscore-valor">{scoresV3.fit}</span>
+                    </div>
                   </div>
                 )}
 
@@ -332,7 +397,8 @@ export function Dashboard() {
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </main>
       </div>
