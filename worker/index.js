@@ -17,7 +17,9 @@ import {
   limparCacheVencido,
   registrarFalhaVaga,
   registrarBuscaRealizada,
+  salvarEmbeddingsVagas,
 } from "./db.js";
+import { gerarEmbeddingsVagas } from "./embeddings.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
 import { processarFeedback } from "./feedback.js";
@@ -162,6 +164,19 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
   );
 
   if (!novas.length) return { processadas: 0, falhas: 0 };
+
+  // ─── Fase A (V3): embeddings em batch das vagas novas ───────────────────
+  // Best-effort: falha aqui não bloqueia o pipeline — vaga sem embedding
+  // simplesmente não participa do pré-filtro vetorial (fail-open).
+  try {
+    const pares = await gerarEmbeddingsVagas(novas);
+    if (pares.length) {
+      const salvos = await salvarEmbeddingsVagas(pares);
+      console.log(`  🧠 Embeddings: ${salvos}/${novas.length} vagas vetorizadas.`);
+    }
+  } catch (e) {
+    console.warn(`Embeddings de vagas falharam (seguindo sem vetor): ${e.message}`);
+  }
 
   // ─── Passo 4: Processamento paralelo com semáforo (concorrência 3) ──────
   const sem = criarSemaforo(3);

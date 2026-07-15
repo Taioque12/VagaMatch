@@ -46,6 +46,35 @@ async function chamarGemini({ contents, config }) {
   }
 }
 
+// ─── Fase A (V3): embedding do currículo-base via gemini-proxy ──────────────
+// Retorna vetor de 768 floats (text-embedding-004). Lança em erro — quem chama
+// decide se é fatal (no onboarding é best-effort: perfil salva mesmo sem vetor).
+export async function gerarEmbedding(texto) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const token = sessionData?.session?.access_token;
+  if (!token) throw new Error("Você precisa estar logado.");
+
+  const { data, error } = await supabase.functions.invoke('gemini-proxy', {
+    body: { task: "embed", texts: [String(texto).slice(0, 20000)] },
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (error) {
+    let detalhe = null;
+    try {
+      const corpo = await error.context?.json();
+      detalhe = corpo?.error || corpo?.message || corpo?.msg;
+    } catch { /* usa mensagem genérica */ }
+    throw new Error(detalhe || error.message || "Falha ao gerar embedding.");
+  }
+  if (data?.error) throw new Error(data.error);
+  const embedding = data?.embeddings?.[0];
+  if (!Array.isArray(embedding) || embedding.length !== 768) {
+    throw new Error("Embedding inválido retornado pelo serviço.");
+  }
+  return embedding;
+}
+
 export async function gerarDocumentoIA(tipo, vaga, perfil) {
   const promptCV = `Você é um especialista em recrutamento.
 Crie um currículo sob medida, em Markdown puro (sem blocos de código usando crases), para a vaga abaixo usando os dados do perfil do candidato. Seja profissional e destaque os pontos do candidato que mais se alinham à vaga.

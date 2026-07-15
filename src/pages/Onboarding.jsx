@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
-import { extrairDadosCurriculo } from "../lib/gemini.js";
+import { extrairDadosCurriculo, gerarEmbedding } from "../lib/gemini.js";
 import { gerarCurriculoPdf } from "../lib/curriculoPdf.js";
 
 export function Onboarding() {
@@ -208,6 +208,32 @@ export function Onboarding() {
         { onConflict: "user_id" }
       );
       if (e3) throw e3;
+
+      // ─── Fase A (V3): embedding do currículo-base (best-effort) ─────────
+      // Falha aqui não bloqueia o onboarding — o pré-filtro vetorial é
+      // fail-open no worker (currículo sem embedding = fluxo normal).
+      try {
+        const textoConsolidado = [
+          d.resumo_profissional,
+          (d.habilidades || []).join(", "),
+          ...(d.experiencias || []).map(
+            (exp) => `${exp.cargo} | ${exp.empresa} | ${(exp.bullets || []).join("; ")}`
+          ),
+          ...(d.formacao || []),
+          (d.cargos_alvo || []).join(", "),
+        ].filter(Boolean).join("\n");
+
+        if (textoConsolidado.trim()) {
+          const embedding = await gerarEmbedding(textoConsolidado);
+          const { error: eEmb } = await supabase
+            .from("curriculos")
+            .update({ embedding })
+            .eq("user_id", userId);
+          if (eEmb) throw eEmb;
+        }
+      } catch (embErr) {
+        console.warn("Embedding do currículo falhou (perfil salvo mesmo assim):", embErr.message);
+      }
 
       setSalvo(true);
       setTimeout(() => {

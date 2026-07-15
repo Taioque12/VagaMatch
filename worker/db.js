@@ -213,6 +213,46 @@ export async function setState(key, value) {
   if (error) throw new Error(`Supabase upsert (app_state): ${error.message}`);
 }
 
+// ─── Fase A (V3): embeddings de vagas ────────────────────────────────────────
+// Grava embeddings gerados em batch. Update por linha (upsert exigiria todas as
+// colunas NOT NULL); falha em uma vaga não derruba as demais.
+export async function salvarEmbeddingsVagas(pares) {
+  const resultados = await Promise.allSettled(
+    pares.map(({ id, embedding }) =>
+      supabase.from("vagas_vistas").update({ embedding }).eq("id", id)
+        .then(({ error }) => {
+          if (error) throw new Error(error.message);
+        })
+    )
+  );
+  const falhas = resultados.filter((r) => r.status === "rejected");
+  if (falhas.length) {
+    console.warn(`salvarEmbeddingsVagas: ${falhas.length}/${pares.length} updates falharam (${falhas[0].reason?.message}).`);
+  }
+  return pares.length - falhas.length;
+}
+
+// Config V3 calibrável a quente via app_state (defaults semeados na migration 017).
+export async function lerConfigV3() {
+  const [prefiltro, threshold, pesosRaw] = await Promise.all([
+    getState("v3_prefiltro"),
+    getState("v3_threshold_similaridade"),
+    getState("v3_pesos_score"),
+  ]);
+  let pesos = { vetor: 0.5, tecnico: 0.3, fit: 0.2 };
+  try {
+    if (pesosRaw) pesos = { ...pesos, ...JSON.parse(pesosRaw) };
+  } catch (e) {
+    console.warn(`v3_pesos_score inválido em app_state, usando defaults: ${e.message}`);
+  }
+  const thresholdNum = Number(threshold);
+  return {
+    prefiltroAtivo: prefiltro === "on",
+    threshold: Number.isFinite(thresholdNum) ? thresholdNum : 0.55,
+    pesos,
+  };
+}
+
 // GC do cache de buscas: remove só chaves 'cache_busca:*' vencidas.
 // O filtro .like no prefixo garante que chaves de lock (worker_running,
 // worker_last_user_id etc.) nunca são tocadas.

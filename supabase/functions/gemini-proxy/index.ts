@@ -75,6 +75,44 @@ Deno.serve(async (req) => {
     return json({ error: `Payload excede limite (${Math.round(payloadSize / 1024 / 1024)}MB > 20MB).` }, 413);
   }
 
+  // ─── Fase A (V3): rota de embeddings (text-embedding-004, 768 dims) ───────
+  if (payload.task === "embed") {
+    const texts = payload.texts;
+    if (!Array.isArray(texts) || texts.length === 0 || texts.length > 10) {
+      return json({ error: "Campo 'texts' deve ser array de 1 a 10 strings." }, 400);
+    }
+    if (texts.some((t) => typeof t !== "string" || !t.trim() || t.length > 20000)) {
+      return json({ error: "Cada texto deve ser string não-vazia de até 20k chars." }, 400);
+    }
+    try {
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            requests: texts.map((t) => ({
+              model: "models/text-embedding-004",
+              content: { parts: [{ text: t }] },
+            })),
+          }),
+        },
+      );
+      if (!res.ok) {
+        const corpo = (await res.text()).slice(0, 300);
+        return json({ error: `Gemini embed ${res.status}: ${corpo}` }, 502);
+      }
+      const data = await res.json();
+      const embeddings = (data.embeddings ?? []).map((e: any) => e.values);
+      if (embeddings.length !== texts.length) {
+        return json({ error: "Gemini embed retornou quantidade inesperada de embeddings." }, 502);
+      }
+      return json({ embeddings });
+    } catch (error) {
+      return json({ error: `Falha ao gerar embedding: ${error.message}` }, 500);
+    }
+  }
+
   const { model = "gemini-2.5-flash", contents, config } = payload;
   if (!contents) return json({ error: "Campo 'contents' obrigatório." }, 400);
 
