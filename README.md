@@ -40,9 +40,26 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - **Webhook em tempo real** via Supabase Edge Function — respostas instantâneas
 - Comandos: `/start`, `/menu`, `/buscar`, `/status`, `/regiao`
 - Botões inline: **✅ Candidatei-me** / **🗑️ Descartar** (gravam direto no banco)
-- Notificações trazem: currículo em **PDF exclusivo e ajustado para a vaga**, Score IA e justificativa, enviados diretamente no chat
+- Notificações trazem Score IA e justificativa; o **currículo ajustado é gerado on-demand** só quando o usuário clica "Candidatei-me" (corta o custo Gemini pela metade no pipeline)
 - Link clicável para a vaga original na Adzuna
 - Configuração de raio de busca (100km, 500km ou Brasil todo)
+
+### 🎤 Entrevista Simulada por IA (MVP em texto)
+- Após receber o currículo ajustado, o bot oferece treinar a entrevista daquela vaga
+- A IA faz papel de recrutador: 1 pergunta por vez (técnica ou comportamental), baseada na descrição da vaga + currículo do candidato
+- Feedback construtivo a cada resposta; ao final (5 perguntas), avaliação geral com nota
+- `/parar` encerra a sessão a qualquer momento
+- Anti-abuso: máximo de 3 entrevistas por usuário por semana, 1 sessão ativa por vez
+
+### 💰 Market Value & Gamificação
+- Card no dashboard mostra a média salarial das vagas encontradas para o perfil do usuário
+- Salários (`salario_min`/`salario_max`) persistidos das APIs Adzuna/JSearch
+- Dica de upsell incentivando adicionar habilidades para subir de nível
+
+### 🤝 Sistema de Indicação (anti-fraude)
+- Código de indicação único por usuário; link `cadastro?ref=<codigo>` no dashboard
+- Crédito só é liberado quando o indicado **paga a primeira mensalidade** (via webhook Stripe) — contas fake não geram recompensa
+- Contador de créditos visível no dashboard
 
 ### 💎 Dashboard Premium
 - Painel Web principal (`/dashboard`) com Glassmorphism, grid de vagas, e filtros rápidos (acessado automaticamente após o onboarding)
@@ -56,7 +73,8 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Controle de plano (`free` / `premium`) no perfil do usuário
 
 ### 🛡️ Segurança & Robustez
-- **RLS reforçado**: triggers bloqueiam usuário comum de alterar colunas privilegiadas (`role`, `plano`, etc.)
+- **RLS reforçado**: triggers bloqueiam usuário comum de alterar colunas privilegiadas (`role`, `plano`, créditos de indicação, salários); status de vaga só aceita `candidatado`/`descartada` vindos do usuário
+- **Preço server-side**: `stripe-checkout` define o price via env (`STRIPE_PRICE_ID_MENSAL`/`ANUAL`) — o client escolhe só o plano, nunca o priceId
 - **Gemini API key fora do bundle**: chamadas passam pela Edge Function `gemini-proxy` (autenticada via JWT)
 - **Webhook do Telegram autenticado**: `telegram-webhook` valida o header `X-Telegram-Bot-Api-Secret-Token` (env `TELEGRAM_WEBHOOK_SECRET`) — sem isso, updates forjados conseguiam alterar preferências de qualquer usuário
 - **Whitelist de modelo Gemini**: `gemini-proxy` só aceita modelos pré-aprovados (o campo `model` ia direto pro path da URL da API)
@@ -80,6 +98,11 @@ As migrations estão em `supabase/migrations/`, em ordem:
 | 007 | `007_stripe_billing.sql` | Campos de billing Stripe no perfil |
 | 008 | `008_fix_status_constraint.sql` | Fix constraint de status `pendente_processamento` |
 | 009 | `009_default_raio_500.sql` | Raio padrão alterado para 500km |
+| 010 | `010_salarios_vagas.sql` | Colunas `salario_min`/`salario_max` em `vagas_vistas` |
+| 011 | `011_indicacoes.sql` | Sistema de indicação: código único, tabela `indicacoes`, RPC `registrar_indicacao` |
+| 012 | `012_fix_protecao_colunas.sql` | Protege colunas de indicação/salário; destrava status `candidatado`/`descartada` pro usuário |
+| 013 | `013_descricao_vaga.sql` | Coluna `descricao` em `vagas_vistas` (CV on-demand e entrevista) |
+| 014 | `014_entrevistas.sql` | Tabela `entrevistas` (sessões da entrevista simulada, cota e histórico) |
 
 ## Setup Local — Frontend
 
@@ -110,7 +133,7 @@ As migrations estão em `supabase/migrations/`, em ordem:
 
 ### Supabase Edge Functions
 Secrets necessários (`supabase secrets set`):
-`TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_WEBHOOK_SECRET`
+`TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_MENSAL` (e opcional `STRIPE_PRICE_ID_ANUAL`), `SITE_URL`
 
 ### Telegram Webhook
 Registrado via `setWebhook` apontando para `https://<project-ref>.supabase.co/functions/v1/telegram-webhook`, com `secret_token` igual ao `TELEGRAM_WEBHOOK_SECRET` configurado nas secrets:
@@ -126,6 +149,24 @@ Depois de trocar o secret, é preciso redeployar `telegram-webhook` e re-registr
 - `npm test` (vitest) — `src/lib/gemini.test.js`: extração de currículo, validação de schema, timeout do Gemini
 - `gemini-proxy/index.test.ts` roda com `deno test`, não com vitest (excluído em `vite.config.js`)
 - `worker/test-*.js` são scripts manuais de diagnóstico (sem assertions), rodam com `node worker/test-<nome>.js`
+
+## Próximos Passos
+
+### Pendências imediatas (bloqueiam testes fim-a-fim)
+- [ ] Configurar secret `STRIPE_PRICE_ID_MENSAL` nas Edge Functions (sem ele o botão "Assinar Premium" falha)
+- [ ] Testar worker com `.env` real (`node worker/index.js --limit 3`) — validar salários e `descricao` populando
+- [ ] Testar fluxo completo no Telegram: "Candidatei-me" → CV on-demand → oferta de entrevista → sessão completa
+- [ ] Testar indicação fim-a-fim: cadastro com `?ref=`, checkout test do Stripe, crédito no indicador
+- [ ] Revisão visual do dashboard com prints (aguardando `.env` do frontend)
+
+### Roadmap v2 (ver `docs/plano_gamificacao.md` e análise de escala)
+- [ ] **Resgate de créditos de indicação** — hoje só contabiliza; decidir: cupom Stripe automático ou resgate manual
+- [ ] **Market Value global** — média de mercado agregada (Materialized View / cache 12h) além da média pessoal
+- [ ] **Viralização** — imagens compartilháveis (Vercel OG) com o market value do usuário
+- [ ] **Entrevista por voz** — evoluir o MVP de texto (requer fila + cotas por plano premium)
+- [ ] **Extensão Chrome** ("assassino da Gupy") — auto-preenchimento local, token de curta duração
+- [ ] **B2B Painel de Recrutadores** — perfis anonimizados, opt-in de contato, RLS dedicada (LGPD)
+- [ ] **Gate premium na entrevista simulada** — hoje cota única (3/semana) pra todos; ligar por plano quando houver tração
 
 ## Regras do Projeto
 
