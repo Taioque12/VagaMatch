@@ -14,9 +14,6 @@ const STATUS_LABEL = {
   erro: "Erro",
 };
 
-// V3 grava os sub-scores dentro do motivo_ia:
-// "⚙️ Técnico (85): ... 🤝 Fit (70): ...". Sem colunas dedicadas (ainda) —
-// parse tolerante: vaga do fluxo legado (sem o padrão) simplesmente não mostra barras.
 function parseScoresV3(motivo) {
   if (!motivo) return null;
   const tec = motivo.match(/Técnico \((\d{1,3})\)/);
@@ -44,7 +41,6 @@ export function Dashboard() {
   const [assinaturaStatus, setAssinaturaStatus] = useState(null);
   const [codigoIndicacao, setCodigoIndicacao] = useState(null);
   const [creditosIndicacao, setCreditosIndicacao] = useState(0);
-  const [linkCopiado, setLinkCopiado] = useState(false);
 
   useEffect(() => {
     if (!session) return;
@@ -82,13 +78,6 @@ export function Dashboard() {
       });
   }, [session]);
 
-  function copiarLinkIndicacao() {
-    const link = `${window.location.origin}/cadastro?ref=${codigoIndicacao}`;
-    navigator.clipboard.writeText(link);
-    setLinkCopiado(true);
-    setTimeout(() => setLinkCopiado(false), 2000);
-  }
-
   const stats = useMemo(() => {
     if (!vagas) return null;
     const candidatadas = vagas.filter((v) => v.status === "candidatado").length;
@@ -103,8 +92,6 @@ export function Dashboard() {
       candidatadas,
       descartadas,
       naFila,
-      // Taxa de sucesso do match: das vagas em que o usuário deu feedback,
-      // quantas ele aprovou (candidatou). Sem feedback ainda → null ("—").
       taxaSucesso: comFeedback > 0 ? Math.round((candidatadas / comFeedback) * 100) : null,
     };
   }, [vagas]);
@@ -123,8 +110,6 @@ export function Dashboard() {
     return vagas.filter((v) => v.status === filtro);
   }, [vagas, filtro]);
 
-  // Médias dos sub-scores V3 das vagas visíveis (parseScoresV3 lê o motivo_ia).
-  // Radar precisa de >= 3 eixos pra formar área: Técnico + Fit + Match geral.
   const mediasRadar = useMemo(() => {
     if (!vagasFiltradas?.length) return null;
     let somaTec = 0, somaFit = 0, nV3 = 0;
@@ -134,7 +119,7 @@ export function Dashboard() {
       if (s) { somaTec += s.tecnico; somaFit += s.fit; nV3++; }
       if (v.score != null) { somaMatch += v.score; nMatch++; }
     }
-    if (!nV3) return null; // nenhuma vaga com sub-scores V3 ainda
+    if (!nV3) return null;
     return [
       { eixo: "Técnico", valor: Math.round(somaTec / nV3) },
       { eixo: "Fit", valor: Math.round(somaFit / nV3) },
@@ -143,8 +128,6 @@ export function Dashboard() {
   }, [vagasFiltradas]);
 
   async function mudarStatus(vaga, novoStatus) {
-    // feedback_em alimenta a memória vetorial da V3 (Fase C) — carimbo só nos
-    // status que são feedback real do usuário, igual ao webhook do Telegram.
     const patch = ["candidatado", "descartada"].includes(novoStatus)
       ? { status: novoStatus, feedback_em: new Date().toISOString() }
       : { status: novoStatus };
@@ -182,33 +165,24 @@ export function Dashboard() {
     !(plano === "match" || plano === "match_plus") || assinaturaStatus !== "ativa";
 
   return (
-    <div className="lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav className="lp-nav">
-        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: 'none' }}>
-          <span className="lp-logo-marca" />
-          VagaMatch
-        </Link>
-        <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-          <ThemeToggle />
-          <div className="user-info">
-            <span className="user-email">{session?.user?.email}</span>
+    <div className="app-shell">
+      {/* SIDEBAR ESQUERDA FIXA */}
+      <aside className="sidebar-app">
+        <div className="sidebar-header">
+          <Link to="/dashboard" className="lp-logo" style={{ textDecoration: 'none' }}>
+            <span className="lp-logo-marca" />
+            VagaMatch
+          </Link>
+          <div className="sidebar-user-controls">
+            <ThemeToggle />
+            <div className="user-info-sidebar">
+              <span className="user-email" title={session?.user?.email}>{session?.user?.email}</span>
+            </div>
+            <button className="btn-sair-icone" onClick={sair} title="Sair">Sair</button>
           </div>
-          <Link to="/onboarding" className="lp-botao-claro">Meu perfil</Link>
-          {ehAdmin && <Link to="/admin" className="lp-botao-claro">Painel admin</Link>}
-          <button className="btn-sair" onClick={sair}>Sair</button>
         </div>
-      </nav>
-      
-      {false && ehFree && (
-        <div style={{ backgroundColor: "var(--bg-glass)", border: "1px solid var(--border-glass)", padding: "12px 20px", margin: "16px auto 0", width: "calc(100% - 32px)", maxWidth: "1200px", borderRadius: "12px", color: "var(--text-main)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", fontSize: "0.92rem" }}>
-          <span><strong>Plano gratuito:</strong> 1 busca automática por dia.</span>
-          <Link to="/upgrade" className="acao" style={{ padding: "6px 16px", fontSize: "0.9rem", margin: 0, textDecoration: "none" }}>Fazer upgrade</Link>
-        </div>
-      )}
 
-      <div className="dashboard-container">
-        {/* Sidebar Esquerda: Controles e Stats */}
-        <aside className="dashboard-sidebar">
+        <div className="sidebar-content">
           <div className="painel-busca">
             <div>
               <strong style={{display: 'block', marginBottom: '0.4rem', fontSize: '1.05rem', letterSpacing: '-0.01em'}}>Busca automática</strong>
@@ -243,6 +217,29 @@ export function Dashboard() {
             </div>
           )}
 
+          {mediasRadar && (
+            <>
+              <h3 className="sidebar-titulo">Perfil de Match</h3>
+              <div className="radar-wrap">
+                <RadarChart width={240} height={200} data={mediasRadar} outerRadius="70%">
+                  <PolarGrid stroke="var(--border-glass)" />
+                  <PolarAngleAxis
+                    dataKey="eixo"
+                    tick={{ fill: "var(--text-muted)", fontSize: 11, fontWeight: 600 }}
+                  />
+                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar
+                    dataKey="valor"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    fill="var(--primary)"
+                    fillOpacity={0.4}
+                  />
+                </RadarChart>
+              </div>
+            </>
+          )}
+
           <h3 className="sidebar-titulo">Filtros</h3>
           <div className="filtros-vertical">
             {FILTROS.map((f) => (
@@ -256,110 +253,74 @@ export function Dashboard() {
             ))}
           </div>
 
-          {mediasRadar && (
-            <>
-              <h3 className="sidebar-titulo">Perfil do match (médias)</h3>
-              <div className="radar-wrap">
-                <RadarChart width={250} height={250} data={mediasRadar} outerRadius="70%">
-                  <PolarGrid stroke="var(--border-glass)" />
-                  <PolarAngleAxis
-                    dataKey="eixo"
-                    tick={{ fill: "var(--text-muted)", fontSize: 12, fontWeight: 600 }}
-                  />
-                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar
-                    dataKey="valor"
-                    stroke="var(--primary)"
-                    strokeWidth={2}
-                    fill="var(--primary)"
-                    fillOpacity={0.35}
-                  />
-                </RadarChart>
+          <div className="sidebar-footer">
+            <Link to="/onboarding" className="acao secundaria" style={{ width: '100%', justifyContent: 'center' }}>Meu Perfil</Link>
+            {ehAdmin && <Link to="/admin" className="acao secundaria" style={{ width: '100%', justifyContent: 'center' }}>Painel Admin</Link>}
+            
+            {ehFree && (
+              <div className="sidebar-promo">
+                <strong>Plano Gratuito</strong>
+                <p>1 busca diária.</p>
+                <Link to="/upgrade" className="acao" style={{ width: "100%", marginTop: "0.8rem", padding: "8px", justifyContent: 'center' }}>Fazer Upgrade</Link>
               </div>
-            </>
-          )}
+            )}
+          </div>
+        </div>
+      </aside>
 
-          {false && (
-            <div style={{ marginTop: "2rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
-              <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Seu Plano</h3>
-              <p style={{ margin: "0.5rem 0", fontWeight: "800", textTransform: "capitalize", fontSize: "1.2rem", color: "var(--text-main)" }}>{plano}</p>
-              {ehFree && (
-                <Link
-                  to="/upgrade"
-                  className="acao"
-                  style={{ width: "100%", marginTop: "0.5rem", display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}
-                >
-                  Fazer upgrade
-                </Link>
-              )}
-            </div>
-          )}
-
-          {false && codigoIndicacao && (
-            <div style={{ marginTop: "1.5rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
-              <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Indique e ganhe</h3>
-              <p style={{ margin: "0.3rem 0 0.8rem", fontSize: "0.85rem" }}>
-                Ganhe 1 mês grátis a cada amigo que assinar pelo seu link.
-                {creditosIndicacao > 0 && (
-                  <> Você já indicou <strong>{creditosIndicacao}</strong> {creditosIndicacao === 1 ? "assinante" : "assinantes"}.</>
-                )}
-              </p>
-              <button className="acao secundaria" style={{ width: "100%" }} onClick={copiarLinkIndicacao}>
-                {linkCopiado ? "Link copiado!" : "Copiar link de indicação"}
-              </button>
-            </div>
-          )}
-        </aside>
-
-        {/* Área Principal: Lista de Vagas */}
-        <main className="dashboard-main">
+      {/* ÁREA PRINCIPAL (DIREITA) */}
+      <main className="main-content">
+        <div className="main-content-inner">
           {stats && (
-            <div className="top-metrics">
-              <div className="metric-card">
+            <div className="top-metrics-hero">
+              <div className="metric-card hero-metric">
                 <span className="metric-valor">
                   {stats.taxaSucesso === null ? "—" : <>{stats.taxaSucesso}<span className="metric-unidade">%</span></>}
                 </span>
-                <span className="metric-label">Taxa de sucesso do match IA</span>
+                <span className="metric-label">Taxa de Sucesso IA</span>
               </div>
               <div className="metric-card">
                 <span className="metric-valor">{stats.total}</span>
-                <span className="metric-label">Vagas processadas</span>
+                <span className="metric-label">Vagas Processadas</span>
               </div>
               <div className="metric-card">
                 <span className="metric-valor">{stats.naFila}</span>
-                <span className="metric-label">Vagas na fila</span>
+                <span className="metric-label">Vagas na Fila</span>
               </div>
             </div>
           )}
+
           {marketValue != null && (
             <div className="market-value-card">
               <span className="market-value-icon">💰</span>
               <div>
-                <strong>O mercado está pagando em média R$ {marketValue.toLocaleString("pt-BR")}</strong> para o seu perfil.
+                <strong>O mercado está pagando em média R$ {marketValue.toLocaleString("pt-BR")}</strong>
                 <p className="market-value-dica">
-                  💡 Dica para subir de nível: adicione novas tecnologias no seu <Link to="/onboarding">perfil</Link> para atingir vagas melhores.
+                  Dica: atualize seu <Link to="/onboarding">perfil</Link> para atingir vagas mais sêniores.
                 </p>
               </div>
             </div>
           )}
+
           {erro && <p className="erro">{erro}</p>}
+
           {vagasFiltradas === null && !erro && (
-            <div className="grid-vagas" aria-busy="true" aria-label="Carregando vagas">
+            <div className="grid-vagas">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="vaga-card skeleton-card">
                   <div className="skeleton skeleton-titulo" />
                   <div className="skeleton skeleton-linha" />
                   <div className="skeleton skeleton-bloco" />
-                  <div className="skeleton skeleton-linha curta" />
                 </div>
               ))}
             </div>
           )}
+
           {vagasFiltradas?.length === 0 && (
             <div className="estado-vazio">
               <div className="estado-vazio-icone">✨</div>
               <p>Nenhuma vaga aqui ainda.</p>
-              <span>O robô está escaneando a web. Se demorar, confira seu <Link to="/onboarding" style={{color: 'var(--primary)', fontWeight: 600}}>perfil</Link>.</span>
+              <span>A IA está trabalhando no plano de fundo.</span>
             </div>
           )}
 
@@ -380,8 +341,7 @@ export function Dashboard() {
                   <div
                     className="score-ring"
                     style={{ "--score": v.score ?? 0 }}
-                    role="img"
-                    aria-label={`Score da IA: ${v.score ?? 0} de 100`}
+                    title={`Score da IA: ${v.score ?? 0} de 100`}
                   >
                     <span className="score-ring-valor">{v.score ?? 0}</span>
                     <span className="score-ring-sub">match</span>
@@ -421,16 +381,16 @@ export function Dashboard() {
                   )}
                   {v.url && (
                     <a href={v.url} target="_blank" rel="noreferrer" className="link-vaga">
-                      <span>🔗</span> Ver vaga original
+                      <span>🔗</span> Ver original
                     </a>
                   )}
                   <span className="espaco" style={{flex: 1}} />
                   <Link to={`/gerador/${v.id}`} className="acao secundaria" style={{marginRight: '8px'}}>
-                    Gerar Documentos
+                    Documentos
                   </Link>
                   {v.status !== "candidatado" && (
                     <button className="acao" onClick={() => mudarStatus(v, "candidatado")} style={{marginRight: '8px'}}>
-                      Me candidatei
+                      Candidatar
                     </button>
                   )}
                   {v.status !== "descartada" && (
@@ -443,8 +403,8 @@ export function Dashboard() {
               );
             })}
           </div>
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   );
 }
