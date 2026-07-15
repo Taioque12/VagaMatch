@@ -1,44 +1,23 @@
 /* Dark mode é o padrão absoluto (:root). theme-light continua opt-in via toggle. */
-:root, body.theme-dark {
-  --bg-main: #0c0f0d;
-  --bg-hero: #0c0f0d;
-  --bg-glass: rgba(18, 24, 21, 0.55);
-  --bg-glass-hover: rgba(236, 253, 245, 0.08);
-  --bg-input: rgba(236, 253, 245, 0.05);
-  --border-glass: rgba(236, 253, 245, 0.09);
-  --border-input: rgba(236, 253, 245, 0.12);
-  --text-main: #f0fdf6;
-  --text-muted: #94a39b;
+:root, body.theme-dark, body.theme-light {
+  --bg-main: #0a0e11;
+  --bg-hero: #0a0e11;
+  --bg-glass: rgba(10, 14, 17, 0.6);
+  --bg-glass-hover: rgba(255, 255, 255, 0.05);
+  --bg-input: rgba(255, 255, 255, 0.04);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-input: rgba(255, 255, 255, 0.1);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
   --primary: #10b981;
-  --primary-hover: #34d399;
-  --primary-light: rgba(16, 185, 129, 0.14);
+  --primary-hover: #059669;
+  --primary-light: rgba(16, 185, 129, 0.15);
   --primary-border: rgba(16, 185, 129, 0.4);
-  --primary-text: #6ee7b7;
-  --primary-glow: rgba(16, 185, 129, 0.45);
-  --error: #e74c3c;
-  --error-light: rgba(231, 76, 60, 0.12);
-  --error-border: rgba(231, 76, 60, 0.35);
-}
-
-body.theme-light {
-  --bg-main: #f6f3ee;
-  --bg-hero: #f6f3ee;
-  --bg-glass: rgba(255, 255, 255, 0.7);
-  --bg-glass-hover: rgba(0, 0, 0, 0.05);
-  --bg-input: rgba(255, 255, 255, 0.8);
-  --border-glass: rgba(0, 0, 0, 0.08);
-  --border-input: rgba(0, 0, 0, 0.15);
-  --text-main: #1a1815;
-  --text-muted: #6b665a;
-  --primary: #059669;
-  --primary-hover: #047857;
-  --primary-light: rgba(5, 150, 105, 0.12);
-  --primary-border: rgba(5, 150, 105, 0.35);
-  --primary-text: #047857;
-  --primary-glow: rgba(5, 150, 105, 0.25);
-  --error: #e74c3c;
-  --error-light: rgba(231, 76, 60, 0.12);
-  --error-border: rgba(231, 76, 60, 0.35);
+  --primary-text: #34d399;
+  --primary-glow: rgba(16, 185, 129, 0.4);
+  --error: #ef4444;
+  --error-light: rgba(239, 68, 68, 0.12);
+  --error-border: rgba(239, 68, 68, 0.35);
 }
 
 /* Um único scroller: a página (html). Nada de overflow forçado em body/#root —

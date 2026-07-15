@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
@@ -122,6 +123,25 @@ export function Dashboard() {
     return vagas.filter((v) => v.status === filtro);
   }, [vagas, filtro]);
 
+  // Médias dos sub-scores V3 das vagas visíveis (parseScoresV3 lê o motivo_ia).
+  // Radar precisa de >= 3 eixos pra formar área: Técnico + Fit + Match geral.
+  const mediasRadar = useMemo(() => {
+    if (!vagasFiltradas?.length) return null;
+    let somaTec = 0, somaFit = 0, nV3 = 0;
+    let somaMatch = 0, nMatch = 0;
+    for (const v of vagasFiltradas) {
+      const s = parseScoresV3(v.motivo_ia);
+      if (s) { somaTec += s.tecnico; somaFit += s.fit; nV3++; }
+      if (v.score != null) { somaMatch += v.score; nMatch++; }
+    }
+    if (!nV3) return null; // nenhuma vaga com sub-scores V3 ainda
+    return [
+      { eixo: "Técnico", valor: Math.round(somaTec / nV3) },
+      { eixo: "Fit", valor: Math.round(somaFit / nV3) },
+      { eixo: "Match", valor: nMatch ? Math.round(somaMatch / nMatch) : 0 },
+    ];
+  }, [vagasFiltradas]);
+
   async function mudarStatus(vaga, novoStatus) {
     // feedback_em alimenta a memória vetorial da V3 (Fase C) — carimbo só nos
     // status que são feedback real do usuário, igual ao webhook do Telegram.
@@ -235,6 +255,29 @@ export function Dashboard() {
               </button>
             ))}
           </div>
+
+          {mediasRadar && (
+            <>
+              <h3 className="sidebar-titulo">Perfil do match (médias)</h3>
+              <div className="radar-wrap">
+                <RadarChart width={250} height={250} data={mediasRadar} outerRadius="70%">
+                  <PolarGrid stroke="var(--border-glass)" />
+                  <PolarAngleAxis
+                    dataKey="eixo"
+                    tick={{ fill: "var(--text-muted)", fontSize: 12, fontWeight: 600 }}
+                  />
+                  <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
+                  <Radar
+                    dataKey="valor"
+                    stroke="var(--primary)"
+                    strokeWidth={2}
+                    fill="var(--primary)"
+                    fillOpacity={0.35}
+                  />
+                </RadarChart>
+              </div>
+            </>
+          )}
 
           {false && (
             <div style={{ marginTop: "2rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
