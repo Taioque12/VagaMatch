@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import { jsPDF } from "https://esm.sh/jspdf@2.5.1"
 import { oferecerEntrevista, processarMensagemEntrevista } from "./interview.ts"
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
@@ -20,6 +21,134 @@ async function chamarApi(metodo: string, body: any) {
   const data = await res.json();
   if (!res.ok || data.ok === false) {
     console.error(`Telegram ${metodo} error:`, data);
+  }
+  return data;
+}
+
+// ─── Funções de Desenho de PDF (jsPDF) ──────────────────────────────────────
+const MARGEM = 50;
+const LARGURA_UTIL_PT = 595.28 - MARGEM * 2;
+
+function novaPagina(doc: any, y: number) {
+  const alturaPagina = doc.internal.pageSize.getHeight();
+  if (y > alturaPagina - MARGEM) {
+    doc.addPage();
+    return MARGEM;
+  }
+  return y;
+}
+
+function secaoPdf(doc: any, y: number, titulo: string) {
+  y += 10;
+  y = novaPagina(doc, y);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(26, 26, 26);
+  doc.text(titulo, MARGEM, y);
+  y += 4;
+  doc.setDrawColor(204, 204, 204);
+  doc.line(MARGEM, y, MARGEM + LARGURA_UTIL_PT, y);
+  y += 14;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(26, 26, 26);
+  return y;
+}
+
+function paragrafoPdf(doc: any, y: number, texto: string) {
+  const linhas = doc.splitTextToSize(texto || "", LARGURA_UTIL_PT);
+  linhas.forEach((linha: string) => {
+    y = novaPagina(doc, y);
+    doc.text(linha, MARGEM, y);
+    y += 13;
+  });
+  return y;
+}
+
+function bulletPdf(doc: any, y: number, texto: string) {
+  const linhas = doc.splitTextToSize(`•  ${texto}`, LARGURA_UTIL_PT - 10);
+  linhas.forEach((linha: string, i: number) => {
+    y = novaPagina(doc, y);
+    doc.text(linha, MARGEM + (i === 0 ? 0 : 10), y);
+    y += 13;
+  });
+  return y;
+}
+
+function gerarPdfBytes(cvJson: string, nomeCompleto: string, localizacao?: string): Uint8Array {
+  const doc = new jsPDF({ unit: "pt", format: "a4" });
+  let cv;
+  try { cv = JSON.parse(cvJson); } catch { cv = {}; }
+
+  let y = MARGEM;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(0, 0, 0);
+  doc.text(nomeCompleto, MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
+  y += 20;
+
+  if (localizacao) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+    doc.setTextColor(85, 85, 85);
+    doc.text(localizacao, MARGEM + LARGURA_UTIL_PT / 2, y, { align: "center" });
+    y += 16;
+  }
+  doc.setTextColor(26, 26, 26);
+
+  if (cv.resumo_profissional) {
+    y = secaoPdf(doc, y, "Resumo Profissional");
+    y = paragrafoPdf(doc, y, cv.resumo_profissional);
+  }
+
+  if (cv.habilidades?.length) {
+    y = secaoPdf(doc, y, "Habilidades Técnicas");
+    y = paragrafoPdf(doc, y, cv.habilidades.join(" · "));
+  }
+
+  if (cv.experiencias?.length) {
+    y = secaoPdf(doc, y, "Experiência Profissional");
+    for (const exp of cv.experiencias) {
+      y = novaPagina(doc, y);
+      doc.setFont("helvetica", "bold");
+      doc.text(`${exp.cargo || ""} | ${exp.empresa || ""} | ${exp.periodo || ""}`, MARGEM, y);
+      y += 13;
+      doc.setFont("helvetica", "normal");
+      for (const b of exp.bullets ?? []) y = bulletPdf(doc, y, b);
+      y += 4;
+    }
+  }
+
+  if (cv.formacao?.length) {
+    y = secaoPdf(doc, y, "Formação Acadêmica");
+    for (const f of cv.formacao) y = bulletPdf(doc, y, f);
+  }
+
+  if (cv.cursos?.length) {
+    y = secaoPdf(doc, y, "Cursos Complementares");
+    for (const c of cv.cursos) y = bulletPdf(doc, y, c);
+  }
+
+  if (cv.projetos?.length) {
+    y = secaoPdf(doc, y, "Projetos");
+    for (const pr of cv.projetos) y = bulletPdf(doc, y, pr);
+  }
+
+  return new Uint8Array(doc.output('arraybuffer'));
+}
+
+async function enviarDocumento(chatId: string | number, pdfBytes: Uint8Array, filename: string) {
+  const form = new FormData();
+  form.append("chat_id", String(chatId));
+  form.append("document", new Blob([pdfBytes], { type: "application/pdf" }), filename);
+
+  const res = await fetch(API("sendDocument"), {
+    method: "POST",
+    body: form,
+  });
+  const data = await res.json();
+  if (!res.ok || data.ok === false) {
+    console.error(`Telegram sendDocument error:`, data);
   }
   return data;
 }
@@ -258,6 +387,11 @@ async function tratarCallback(cq: any) {
         // Gerar currículo ajustado via Gemini
         const cvJson = await gerarCurriculoOnDemand(vaga, curriculo, nomeCompleto);
         const textoFormatado = formatarCurriculoTelegram(cvJson, nomeCompleto);
+
+        // Gera e envia o PDF
+        const pdfBytes = gerarPdfBytes(cvJson, nomeCompleto, perfil?.localizacao);
+        const filename = `Curriculo_${nomeCompleto.replace(/\s+/g, "_")}_${vaga.empresa.replace(/\s+/g, "_")}.pdf`;
+        await enviarDocumento(chatId, pdfBytes, filename);
 
         // Enviar o currículo formatado como mensagem no Telegram
         await chamarApi("sendMessage", {
