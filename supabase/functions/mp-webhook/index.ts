@@ -44,7 +44,8 @@ async function validarAssinatura(req: Request, dataId: string): Promise<boolean>
   const v1 = partes.get("v1");
   if (!ts || !v1) return false;
 
-  let manifest = `id:${dataId};`;
+  // Doc do MP: data.id alfanumérico entra em minúsculas no manifest
+  let manifest = `id:${dataId.toLowerCase()};`;
   if (xRequestId) manifest += `request-id:${xRequestId};`;
   manifest += `ts:${ts};`;
 

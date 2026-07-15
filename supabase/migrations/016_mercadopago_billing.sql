@@ -11,6 +11,43 @@ comment on column public.profiles.mp_payer_id is 'ID do pagador no Mercado Pago'
 alter table public.preferencias
   add column if not exists ultima_busca_em timestamptz;
 
+-- CHECK constraints antigos (001/004) não aceitam os valores novos do billing
+-- ('match'/'match_plus'/'free' e 'pausada') — sem isso o webhook falha silencioso
+-- ao ativar plano pago.
+alter table public.profiles
+  drop constraint if exists profiles_plano_check;
+alter table public.profiles
+  add constraint profiles_plano_check
+  check (plano in ('gratis', 'free', 'pago', 'match', 'match_plus'));
+
+alter table public.profiles
+  drop constraint if exists profiles_assinatura_status_check;
+alter table public.profiles
+  add constraint profiles_assinatura_status_check
+  check (assinatura_status in ('gratis', 'ativa', 'cancelada', 'pendente', 'pausada'));
+
+-- Protege a quota free: sem isso o usuário edita as próprias preferencias e
+-- seta ultima_busca_em = null, zerando a quota de 24h quando quiser.
+create or replace function public.protect_preferencias_quota_columns()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.role() <> 'service_role' then
+    if new.ultima_busca_em is distinct from old.ultima_busca_em then
+      raise exception 'não é permitido alterar a quota de busca diretamente';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_preferencias_quota on public.preferencias;
+create trigger protect_preferencias_quota
+  before update on public.preferencias
+  for each row execute function public.protect_preferencias_quota_columns();
+
 comment on column public.preferencias.ultima_busca_em is 'Última rodada de busca processada pelo worker (quota do plano free: 1/24h)';
 
 -- Atualiza a proteção pra incluir as colunas mp_* na lista bloqueada

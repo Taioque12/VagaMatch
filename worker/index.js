@@ -373,7 +373,8 @@ async function main() {
           );
           // Limpa o pedido manual mesmo no skip — senão o usuário ficaria
           // preso na fila prioritária logando skip a cada rodada por 24h.
-          if (usuario.pref.disparo_manual) {
+          // (o bot/onboarding setam busca_solicitada, não disparo_manual)
+          if (usuario.pref.busca_solicitada) {
             await limparBuscaSolicitada(usuario.pref.user_id).catch((e) =>
               console.error(`Falha ao limpar busca_solicitada (${usuario.perfil.id}): ${e.message}`)
             );
@@ -399,7 +400,7 @@ async function main() {
           () => {}
         );
       } finally {
-        if (usuario.pref.disparo_manual) {
+        if (usuario.pref.busca_solicitada) {
           await limparBuscaSolicitada(usuario.pref.user_id).catch((e) =>
             console.error(`Falha ao limpar busca_solicitada (${usuario.perfil.id}): ${e.message}`)
           );
