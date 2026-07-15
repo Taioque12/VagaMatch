@@ -164,6 +164,23 @@ export function Landing() {
           <h2 className="lp-h2-p">Sua carreira no <span className="lp-text-gradient-green">automático</span></h2>
         </div>
 
+        <div className={`lp-billing-toggle ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.1s" }}>
+          <button
+            type="button"
+            className={`lp-billing-opt ${billing === "monthly" ? "active" : ""}`}
+            onClick={() => setBilling("monthly")}
+          >
+            Mensal
+          </button>
+          <button
+            type="button"
+            className={`lp-billing-opt ${billing === "annual" ? "active" : ""}`}
+            onClick={() => setBilling("annual")}
+          >
+            Anual <span className="lp-billing-badge">-18%</span>
+          </button>
+        </div>
+
         <div className={`lp-pricing-grid ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.2s" }}>
           {/* Basic Plan */}
           <div className="lp-pricing-card">

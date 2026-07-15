@@ -20,7 +20,8 @@
   color: var(--text-body);
   min-height: 100dvh;
   position: relative;
-  overflow: visible !important;
+  overflow-x: clip;
+  overflow-y: visible;
 }
 
 /* Ambient Glows */
@@ -537,4 +538,87 @@
 .animate-on-scroll.visible {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Mobile adjustments */
+@media (max-width: 640px) {
+  .lp-nav-p { padding: 1rem 1.25rem; }
+
+  .lp-hero-p { padding: 5rem 1.25rem 4rem; gap: 3rem; }
+
+  .lp-section-p { padding: 4.5rem 1.25rem; }
+
+  .lp-section-title-p { margin-bottom: 3rem; }
+
+  /* Flatten the 3D tilt so the mockup doesn't overflow narrow screens */
+  .lp-mockup-glass {
+    transform: none;
+    animation: float-flat 6s ease-in-out infinite alternate;
+    padding: 1.25rem;
+  }
+  .lp-hero-visual-p:hover .lp-mockup-glass { transform: translateY(-6px); }
+
+  .lp-pricing-card { padding: 2rem 1.5rem; }
+  .lp-pricing-card.premium { transform: none; }
+
+  .lp-price-val { font-size: 3rem; }
+}
+
+@keyframes float-flat {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-12px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-mockup-glass,
+  .lp-glow-1,
+  .lp-btn-primary::after,
+  .lp-pricing-card.premium::before {
+    animation: none;
+  }
+}
+
+/* Billing toggle (mensal/anual) */
+.lp-billing-toggle {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+  margin: 0 auto 2.5rem;
+  padding: 4px;
+  width: fit-content;
+  border: 1px solid var(--glass-border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.lp-billing-opt {
+  border: none;
+  background: transparent;
+  color: var(--text-body);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+
+.lp-billing-opt.active {
+  background: var(--neon-green);
+  color: #000;
+}
+
+.lp-billing-badge {
+  font-size: 0.75rem;
+  font-weight: 800;
+  margin-left: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.lp-billing-opt:not(.active) .lp-billing-badge {
+  background: rgba(57, 255, 20, 0.15);
+  color: var(--neon-green);
 }
