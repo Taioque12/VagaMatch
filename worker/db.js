@@ -10,7 +10,7 @@ export async function listarUsuariosAtivos(limite = 50, lastUserId = null) {
   // 1. Buscar prioritários (busca_solicitada = true) - ignoram o cursor
   const { data: prefsPrioritarios, error: err1 } = await supabase
     .from("preferencias")
-    .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada")
+    .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada, ultima_busca_em")
     .eq("ativo", true)
     .eq("busca_solicitada", true)
     .limit(limite);
@@ -24,7 +24,7 @@ export async function listarUsuariosAtivos(limite = 50, lastUserId = null) {
   if (limiteRestante > 0) {
     let queryNormal = supabase
       .from("preferencias")
-      .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada")
+      .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada, ultima_busca_em")
       .eq("ativo", true)
       .eq("disparo_manual", false)
       .order("user_id", { ascending: true });
@@ -52,7 +52,7 @@ export async function listarUsuariosAtivos(limite = 50, lastUserId = null) {
   const userIds = prefs.map((p) => p.user_id);
 
   const [{ data: perfis, error: e2 }, { data: curriculos, error: e3 }] = await Promise.all([
-    supabase.from("profiles").select("id, nome_completo, localizacao, telegram_chat_id").in("id", userIds),
+    supabase.from("profiles").select("id, nome_completo, localizacao, telegram_chat_id, plano, assinatura_status").in("id", userIds),
     supabase.from("curriculos").select("*").in("user_id", userIds),
   ]);
   if (e2) throw new Error(`Supabase select (profiles): ${e2.message}`);
@@ -253,4 +253,14 @@ export async function atualizarScoreIA(id, scoreIA, motivoIA) {
     .update({ score: scoreIA, motivo_ia: motivoIA })
     .eq("id", id);
   if (error) throw new Error(`Supabase update (score_ia): ${error.message}`);
+}
+
+// Quota do plano free (1 busca/24h): marca o timestamp da última busca
+// processada com sucesso. Só chamado pra usuários free.
+export async function registrarBuscaRealizada(userId) {
+  const { error } = await supabase
+    .from("preferencias")
+    .update({ ultima_busca_em: new Date().toISOString() })
+    .eq("user_id", userId);
+  if (error) throw new Error(`Supabase update (ultima_busca_em): ${error.message}`);
 }

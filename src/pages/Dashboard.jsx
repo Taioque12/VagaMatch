@@ -29,7 +29,7 @@ export function Dashboard() {
   const [salvandoAtivo, setSalvandoAtivo] = useState(false);
   const [ehAdmin, setEhAdmin] = useState(false);
   const [plano, setPlano] = useState("gratis");
-  const [processandoCheckout, setProcessandoCheckout] = useState(false);
+  const [assinaturaStatus, setAssinaturaStatus] = useState(null);
   const [codigoIndicacao, setCodigoIndicacao] = useState(null);
   const [creditosIndicacao, setCreditosIndicacao] = useState(0);
   const [linkCopiado, setLinkCopiado] = useState(false);
@@ -58,12 +58,13 @@ export function Dashboard() {
 
     supabase
       .from("profiles")
-      .select("role, plano, codigo_indicacao, creditos_indicacao")
+      .select("role, plano, assinatura_status, codigo_indicacao, creditos_indicacao")
       .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => {
         setEhAdmin(data?.role === "admin");
         setPlano(data?.plano || "gratis");
+        setAssinaturaStatus(data?.assinatura_status ?? null);
         setCodigoIndicacao(data?.codigo_indicacao ?? null);
         setCreditosIndicacao(data?.creditos_indicacao ?? 0);
       });
@@ -131,26 +132,8 @@ export function Dashboard() {
     await supabase.auth.signOut();
   }
 
-  async function handleUpgrade() {
-    setProcessandoCheckout(true);
-    setErro(null);
-    try {
-      const { data, error } = await supabase.functions.invoke("stripe-checkout", {
-        body: { plano: "mensal" },
-      });
-
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-
-      if (data?.url) {
-        window.location.href = data.url;
-      }
-    } catch (e) {
-      setErro("Falha ao iniciar checkout: " + e.message);
-    } finally {
-      setProcessandoCheckout(false);
-    }
-  }
+  const ehFree =
+    !(plano === "match" || plano === "match_plus") || assinaturaStatus !== "ativa";
 
   return (
     <div className="lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -170,6 +153,13 @@ export function Dashboard() {
         </div>
       </nav>
       
+      {ehFree && (
+        <div style={{ backgroundColor: "var(--bg-glass)", border: "1px solid var(--border-glass)", padding: "12px 20px", margin: "16px auto 0", width: "calc(100% - 32px)", maxWidth: "1200px", borderRadius: "12px", color: "var(--text-main)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", fontSize: "0.92rem" }}>
+          <span><strong>Plano gratuito:</strong> 1 busca automática por dia.</span>
+          <Link to="/upgrade" className="acao" style={{ padding: "6px 16px", fontSize: "0.9rem", margin: 0, textDecoration: "none" }}>Fazer upgrade</Link>
+        </div>
+      )}
+
       <div className="dashboard-container">
         {/* Sidebar Esquerda: Controles e Stats */}
         <aside className="dashboard-sidebar">
@@ -223,15 +213,14 @@ export function Dashboard() {
           <div style={{ marginTop: "2rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
             <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Seu Plano</h3>
             <p style={{ margin: "0.5rem 0", fontWeight: "800", textTransform: "capitalize", fontSize: "1.2rem", color: "var(--text-main)" }}>{plano}</p>
-            {plano === "gratis" && (
-              <button 
-                className="acao" 
-                style={{ width: "100%", marginTop: "0.5rem" }}
-                onClick={handleUpgrade}
-                disabled={processandoCheckout}
+            {ehFree && (
+              <Link
+                to="/upgrade"
+                className="acao"
+                style={{ width: "100%", marginTop: "0.5rem", display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}
               >
-                {processandoCheckout ? "Processando..." : "Assinar Premium"}
-              </button>
+                Fazer upgrade
+              </Link>
             )}
           </div>
 

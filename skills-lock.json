@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "skills": {
+    "AgentDB Advanced Features": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "04b5c89a140a9f61756d6dd6e92268c0e0bac029ea02946d9e2423dd0a619f3a"
+    },
+    "AgentDB Learning Plugins": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "918dc4298a2f1cbd7b36ea317479d910c44df051d171fdcc3b218e2d524b63a2"
+    },
+    "AgentDB Memory Patterns": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "5b036bfcc0f9f9a63d0aac5b0e48c2139150013ec32f2a6b23e4a12288753e1a"
+    },
+    "AgentDB Performance Optimization": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "9787f53727429608d5694caa1780e9cd4641fdd14d12cc887c8b4eb7bfebe85e"
+    },
+    "AgentDB Vector Search": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "0056faea73bb519230ef9b02d031cd5c9c5f39db9a5690fe47100718e23c7345"
+    },
+    "Hooks Automation": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "d81d5c52ca032268e3c2fe81883cb6259e822f63336826539841f7c559d11cc8"
+    },
+    "Pair Programming": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "afdfb07ecb460411c1d8a4af5a875d1c7cd7fc2e2c2eea1e256ebd3924a4b06f"
+    },
+    "ReasoningBank Intelligence": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "376997a337b28f1f6220da8b5db95ebbd81de59e14bfa13c18f08155575afabe"
+    },
+    "ReasoningBank with AgentDB": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "b15aab20221c6c4052041579f47e5221ec44ec447e717beaafa86f12992f65e8"
+    },
+    "Skill Builder": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "178fef050b75a098eb5d09eafa6663bd7a509b335e681f7b86b08e71fe878d88"
+    },
+    "Swarm Orchestration": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "2ca65c4524b16e5dddd9054200e2fb85bdb10f630ccc1672d0f68654566e9986"
+    },
+    "V3 CLI Modernization": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "51bb951f64632dbecdd4295afb005985eda420726bff2721407282245c41450f"
+    },
+    "V3 Core Implementation": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "f61e5bd2762d85b133f61d5a9c552137cf8ef04c487e14942bb0b6f08c230169"
+    },
+    "V3 DDD Architecture": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "f72ad0ce2a76379aaff384727e616ba4dc0e02c254e32643dacf91b0809422df"
+    },
+    "V3 Deep Integration": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "82bad8390e5429c55d56e9ab74093c1bff82727645809374e321ee54068110a0"
+    },
+    "V3 MCP Optimization": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "ee00a194160d5a9100fd7021b218828f621cfb2b5fb33bfc43417a4faacba172"
+    },
+    "V3 Memory Unification": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "3946065e9987cd0763b80feca443a62cf41f7289812cc94d82c59effce657588"
+    },
+    "V3 Performance Optimization": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "05248f609ac1f6ec9c0fd5b0569eaf04b915ea5112ecabbdb226361f5a4ffbfb"
+    },
+    "V3 Security Overhaul": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "b05cf623b100021d369fb51eca001b04c7264af9a9cdcf2f8d01a7e17ba0a8d5"
+    },
+    "V3 Swarm Coordination": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "47f855e5786426a407d41b2b350e7891744a9e92757f242c8d9ba41dd97aeac0"
+    },
+    "Verification & Quality Assurance": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "53586d25a5ccba8df9b7da661c9dd2e1fe4b659de022401b2f2d397b631b7c58"
+    },
+    "browser": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "c2ea1018e3c96d97fe4bfdbc0811a5bdd1ef8321a40e300f3c6a33a744dc0121"
+    },
+    "github-code-review": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "3666aad47e6364a86def5d20ba6f965b61d6e6afc4f794a196b88c5de9db602a"
+    },
+    "github-multi-repo": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "5fb3507f0aeedcc44dc50a64276f69601c44edb520cc7ca0aa749ef6de5a7d8b"
+    },
+    "github-project-management": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "76361439472c3a5c4737780fcb683973a873fb1ad132d0e9b826b5e8d7a75ce3"
+    },
+    "github-release-management": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "5717f1c1fbc2afdb001f487598ed666971a974c94b5dbeb27a59975ca5c9e1f9"
+    },
+    "github-workflow-automation": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "386d4bdc59fa5e02f807c1da79aa131f7a3319f0bbed4b1ab14d08611ef1c428"
+    },
+    "sparc-methodology": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "8315ed30f1974163af378601a5db5a096c74b5bb9eb54818b38047d88b06bc3f"
+    },
+    "stream-chain": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "c03cb585c0a91e07d492f56696baee62dd879a8e33dc1abbb22aec642f93e074"
+    },
+    "swarm-advanced": {
+      "source": "C:\\Users\\LeonardoTaioqueMacha\\VagasMatch\\VagaMatch\\.claude\\skills",
+      "sourceType": "local",
+      "computedHash": "b64f4960ee6806c840d7d4c8d94df4d6ef0e87f5da931bc1d3a51df5739a9076"
+    }
+  }
+}

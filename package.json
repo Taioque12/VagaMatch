@@ -11,7 +11,7 @@
     "worker:test": "node worker/index.js --limit 2",
     "test": "vitest run",
     "setup:ia": "node scripts/setup-dev.mjs",
-    "postinstall": "npx skills add ./.agents/skills -y"
+    "postinstall": "npx skills add ./.claude/skills -y"
   },
   "dependencies": {
     "@google/genai": "^0.15.0",

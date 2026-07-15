@@ -16,6 +16,7 @@ import {
   atualizarScoreIA,
   limparCacheVencido,
   registrarFalhaVaga,
+  registrarBuscaRealizada,
 } from "./db.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
@@ -356,10 +357,41 @@ async function main() {
     const cacheBusca = new Map();
 
     for (const usuario of usuarios) {
+      // Regra de Billing: plano free tem quota de 1 busca a cada 24 horas.
+      // Free = plano null/'free' OU assinatura não ativa. Pagantes: sem limite.
+      const isFree =
+        !usuario.perfil.plano ||
+        usuario.perfil.plano === "free" ||
+        usuario.perfil.assinatura_status !== "ativa";
+      if (isFree && usuario.pref.ultima_busca_em) {
+        const horasDesdeUltimaBusca =
+          (Date.now() - new Date(usuario.pref.ultima_busca_em).getTime()) / (1000 * 60 * 60);
+        if (horasDesdeUltimaBusca < 24) {
+          // Vale também pro disparo manual: a busca manual conta como a busca do dia.
+          console.log(
+            `⏭️ Usuário free ${usuario.perfil.id}: quota de 24h (última busca há ${horasDesdeUltimaBusca.toFixed(1)}h). Pulando.`
+          );
+          // Limpa o pedido manual mesmo no skip — senão o usuário ficaria
+          // preso na fila prioritária logando skip a cada rodada por 24h.
+          if (usuario.pref.disparo_manual) {
+            await limparBuscaSolicitada(usuario.pref.user_id).catch((e) =>
+              console.error(`Falha ao limpar busca_solicitada (${usuario.perfil.id}): ${e.message}`)
+            );
+          }
+          continue;
+        }
+      }
+
       try {
         const { processadas, falhas } = await rodarPipelineDoUsuario(usuario, cacheBusca);
         totalProcessadas += processadas;
         totalFalhas += falhas;
+        // Só free precisa do carimbo de quota — falha aqui não derruba a rodada.
+        if (isFree) {
+          await registrarBuscaRealizada(usuario.pref.user_id).catch((e) =>
+            console.error(`Falha ao registrar ultima_busca_em (${usuario.perfil.id}): ${e.message}`)
+          );
+        }
       } catch (e) {
         console.error(`Falha fatal no pipeline do usuário ${usuario.perfil.id}: ${e.message}`);
         totalFalhas++;

@@ -12,6 +12,7 @@ import { Admin } from "./pages/Admin.jsx";
 import { Gerador } from "./pages/Gerador.jsx";
 import { Sucesso } from "./pages/Sucesso.jsx";
 import { Cancelado } from "./pages/Cancelado.jsx";
+import { Upgrade } from "./pages/Upgrade.jsx";
 
 export function App() {
   return (
@@ -24,6 +25,7 @@ export function App() {
           <Route path="/cadastro" element={<Cadastro />} />
           <Route path="/sucesso" element={<RotaProtegida><Sucesso /></RotaProtegida>} />
           <Route path="/cancelado" element={<RotaProtegida><Cancelado /></RotaProtegida>} />
+          <Route path="/upgrade" element={<RotaProtegida><Upgrade /></RotaProtegida>} />
           <Route
             path="/onboarding"
             element={
