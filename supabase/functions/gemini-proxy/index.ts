@@ -10,6 +10,7 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 // Rate limit: 10 requisições por minuto por usuário
@@ -108,6 +109,14 @@ Deno.serve(async (req) => {
 
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.map((p) => p.text).join("") ?? "";
+    if (!text) {
+      // Resposta vazia geralmente é bloqueio de safety ou finishReason anormal —
+      // devolver {text: ""} esconderia o motivo do frontend.
+      const finish = data?.candidates?.[0]?.finishReason;
+      // "STOP" é término normal — citar como motivo confundiria o usuário.
+      const motivo = data?.promptFeedback?.blockReason || (finish !== "STOP" ? finish : null);
+      return json({ error: `Gemini não retornou texto${motivo ? ` (motivo: ${motivo})` : ""}.` }, 502);
+    }
     return json({ text });
   } catch (error) {
     return json({ error: `Falha ao chamar Gemini: ${error.message}` }, 500);

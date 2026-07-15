@@ -121,21 +121,36 @@ export function Onboarding() {
       reader.onload = async (evt) => {
         try {
           const base64 = evt.target.result.split(",")[1];
-          const dados = await extrairDadosCurriculo(base64, file.type);
+          const mimeType = file.type || "application/pdf";
+
+          if (!base64) {
+            throw new Error("Arquivo PDF vazio ou inválido.");
+          }
+
+          const dados = await extrairDadosCurriculo(base64, mimeType);
           setDadosExtraidos(dados);
         } catch (err) {
-          setErro(err.message);
+          setErro(`Erro ao processar o PDF: ${err.message}`);
           setNomeArquivo(null);
         } finally {
           setAnalisandoPdf(false);
           e.target.value = null;
         }
       };
+      // Sem onerror o estado "analisandoPdf" nunca resolve se a leitura falhar
+      // (arquivo corrompido/removido) — spinner ficaria travado pra sempre.
+      reader.onerror = () => {
+        setErro(`Erro ao ler o arquivo: ${reader.error?.message || "falha desconhecida na leitura"}`);
+        setAnalisandoPdf(false);
+        setNomeArquivo(null);
+        e.target.value = null;
+      };
       reader.readAsDataURL(file);
     } catch (err) {
-      setErro(err.message);
+      setErro(`Erro ao processar o PDF: ${err.message}`);
       setAnalisandoPdf(false);
       setNomeArquivo(null);
+      e.target.value = null;
     }
   }
 

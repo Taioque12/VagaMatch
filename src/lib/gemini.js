@@ -17,8 +17,24 @@ async function chamarGemini({ contents, config }) {
       signal: controller.signal,
     });
 
-    if (error) throw new Error(error.message || "Falha ao chamar o serviço de IA.");
+    if (error) {
+      // Abort do timeout chega como FunctionsFetchError retornado (invoke não
+      // rejeita com AbortError) — detecta pelo próprio signal.
+      if (controller.signal.aborted) {
+        throw new Error("Requisição expirou (Gemini demorou muito). Tente de novo.");
+      }
+      // FunctionsHttpError traz só "Edge Function returned a non-2xx status code";
+      // o motivo real fica no Response em error.context. Proxy usa { error };
+      // erros do gateway do Supabase usam { message } / { msg }.
+      let detalhe = null;
+      try {
+        const corpo = await error.context?.json();
+        detalhe = corpo?.error || corpo?.message || corpo?.msg;
+      } catch { /* corpo não-JSON ou já consumido — usa a mensagem genérica */ }
+      throw new Error(detalhe || error.message || "Falha ao chamar o serviço de IA.");
+    }
     if (data?.error) throw new Error(data.error);
+    if (!data?.text) throw new Error("IA retornou resposta vazia. Tente novamente.");
     return data.text;
   } catch (err) {
     if (err.name === 'AbortError') {
@@ -71,8 +87,8 @@ Retorne apenas o texto da carta de apresentação formatada, sem introduções o
     return await chamarGemini({ contents: prompt });
   } catch (error) {
     console.error("Erro ao gerar conteúdo:", error.message);
-    if (error.message.includes("expirou")) throw error;
-    throw new Error("Falha ao gerar o documento com IA.");
+    // Propaga o motivo real (429, safety, 5xx) em vez de mascarar com genérico.
+    throw error;
   }
 }
 
@@ -131,6 +147,8 @@ Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
     }
   } catch (error) {
     console.error("Erro ao extrair dados do currículo:", error.message);
-    throw new Error("Falha ao ler o PDF com IA. Tente preencher manualmente.");
+    // Propaga o erro real sem re-prefixar — o UI (Onboarding) já adiciona o
+    // contexto "Erro ao processar o PDF:"; mascarar aqui esconderia 401/413/429.
+    throw error;
   }
 }
