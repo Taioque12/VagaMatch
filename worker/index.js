@@ -23,6 +23,7 @@ import {
 } from "./db.js";
 import { gerarEmbeddingsVagas } from "./embeddings.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
+import { avaliarMatchSwarm, calcularScoreFinal } from "./swarm.js";
 import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
 import { processarFeedback } from "./feedback.js";
 
@@ -213,8 +214,19 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca, c
         }
 
         // 1. Avalia o Match Real com IA (respeitando 15 RPM do Gemini)
+        // ─── Camada 1 (V3, Opção A — isolamento total) ───────────────────
+        // Flag OFF: prompt antigo (ai_filter.js), comportamento idêntico ao
+        // de produção hoje. Flag ON: swarm Técnico+Fit (1 chamada) + média
+        // ponderada com o score vetorial usando os pesos do app_state.
         await aguardarJanelaGemini();
-        const { score_ia, motivo_ia } = await avaliarMatchComIA(vaga, curriculo, palavrasChave);
+        let score_ia, motivo_ia;
+        if (configV3.prefiltroAtivo) {
+          const r = await avaliarMatchSwarm(vaga, curriculo, palavrasChave, pref);
+          score_ia = calcularScoreFinal(scoreVetor, r.score_tecnico, r.score_fit, configV3.pesos);
+          motivo_ia = `⚙️ Técnico (${r.score_tecnico}): ${r.motivo_tecnico} 🤝 Fit (${r.score_fit}): ${r.motivo_fit}`;
+        } else {
+          ({ score_ia, motivo_ia } = await avaliarMatchComIA(vaga, curriculo, palavrasChave));
+        }
         vaga.score = score_ia;
         vaga.motivo_ia = motivo_ia;
         await atualizarScoreIA(vaga.id, score_ia, motivo_ia);
