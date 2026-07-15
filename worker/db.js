@@ -232,6 +232,21 @@ export async function salvarEmbeddingsVagas(pares) {
   return pares.length - falhas.length;
 }
 
+// Camada 0 (V3): similaridade coseno currículo×vaga via RPC (migration 017).
+// Retorna número em [0..1] ou null (embedding faltando ou erro) — null = sem
+// sinal vetorial, chamador segue o fluxo normal (fail-open).
+export async function similaridadeVagaCurriculo(userId, vagaId) {
+  const { data, error } = await supabase.rpc("match_vaga_curriculo", {
+    p_user_id: userId,
+    p_vaga_id: vagaId,
+  });
+  if (error) {
+    console.warn(`RPC match_vaga_curriculo falhou (${vagaId}): ${error.message}`);
+    return null;
+  }
+  return typeof data === "number" ? data : null;
+}
+
 // Config V3 calibrável a quente via app_state (defaults semeados na migration 017).
 export async function lerConfigV3() {
   const [prefiltro, threshold, pesosRaw] = await Promise.all([

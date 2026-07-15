@@ -18,6 +18,8 @@ import {
   registrarFalhaVaga,
   registrarBuscaRealizada,
   salvarEmbeddingsVagas,
+  similaridadeVagaCurriculo,
+  lerConfigV3,
 } from "./db.js";
 import { gerarEmbeddingsVagas } from "./embeddings.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
@@ -134,7 +136,7 @@ async function buscarComCache(cacheMemoria, cargo, regiao, raioKm) {
 }
 
 // ─── Passo 2 + 4: Pipeline paralelo com tratamento de rate limit ────────────
-async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
+async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca, configV3) {
   const cargosAlvo = pref.cargos_alvo ?? [];
   const palavrasChave = pref.palavras_chave ?? [];
   const brasilTodo = pref.modo_regiao === "brasil";
@@ -186,6 +188,30 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
     vagasParaProcessar.map(async (vaga) => {
       await sem.adquirir();
       try {
+        // ─── Camada 0 (V3): pré-filtro vetorial ANTES de gastar chamada Gemini ──
+        // Similaridade coseno currículo×vaga via pgvector (RPC). null = sem
+        // embedding de um dos lados ou erro → sem sinal, segue fluxo normal.
+        const scoreVetor = await similaridadeVagaCurriculo(perfil.id, vaga.id);
+        if (scoreVetor !== null && scoreVetor < configV3.threshold) {
+          if (configV3.prefiltroAtivo) {
+            // Flag ON: descarta de verdade, economizando a chamada Gemini.
+            console.log(
+              `  ✂️ [V3] Vaga ${vaga.job_id} descartada pelo pré-filtro (score_vetor=${scoreVetor.toFixed(2)} < ${configV3.threshold}).`
+            );
+            await atualizarScoreIA(
+              vaga.id,
+              Math.round(scoreVetor * 100),
+              `Pré-filtro vetorial: similaridade ${scoreVetor.toFixed(2)} abaixo do limiar ${configV3.threshold}.`
+            );
+            await marcarStatus(vaga.id, "descartada");
+            return { tipo: "descartada", vaga };
+          }
+          // Flag OFF: dry-run — só loga o que ACONTECERIA, fluxo antigo intacto.
+          console.log(
+            `  🧪 [V3 DRY-RUN] Vaga ${vaga.job_id} seria descartada pois score_vetor=${scoreVetor.toFixed(2)} < ${configV3.threshold}.`
+          );
+        }
+
         // 1. Avalia o Match Real com IA (respeitando 15 RPM do Gemini)
         await aguardarJanelaGemini();
         const { score_ia, motivo_ia } = await avaliarMatchComIA(vaga, curriculo, palavrasChave);
@@ -371,6 +397,19 @@ async function main() {
     // não 1 por pessoa. Crítico pra escalar (ver ROADMAP: 1000+ usuários estourariam o free tier da Adzuna).
     const cacheBusca = new Map();
 
+    // ─── Camada 0 (V3): config calibrável a quente via app_state ────────────
+    // Lida 1x por rodada. Falha na leitura → defaults seguros com flag OFF
+    // (dry-run): produção nunca descarta vaga por problema de config.
+    let configV3 = { prefiltroAtivo: false, threshold: 0.55, pesos: { vetor: 0.5, tecnico: 0.3, fit: 0.2 } };
+    try {
+      configV3 = await lerConfigV3();
+    } catch (e) {
+      console.warn(`Falha ao ler config V3 (usando defaults, prefiltro OFF): ${e.message}`);
+    }
+    console.log(
+      `Config V3: prefiltro=${configV3.prefiltroAtivo ? "ON" : "OFF (dry-run)"}, threshold=${configV3.threshold}.`
+    );
+
     for (const usuario of usuarios) {
       // Regra de Billing: plano free tem quota de 1 busca a cada 24 horas.
       // Free = plano null/'free' OU assinatura não ativa. Pagantes: sem limite.
@@ -399,7 +438,7 @@ async function main() {
       }
 
       try {
-        const { processadas, falhas } = await rodarPipelineDoUsuario(usuario, cacheBusca);
+        const { processadas, falhas } = await rodarPipelineDoUsuario(usuario, cacheBusca, configV3);
         totalProcessadas += processadas;
         totalFalhas += falhas;
         // Só free precisa do carimbo de quota — falha aqui não derruba a rodada.
