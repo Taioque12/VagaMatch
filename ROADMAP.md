@@ -38,9 +38,19 @@ SaaS multi-tenant derivado do projeto pessoal `automacao-vagas`: monitora vagas,
   configuráveis por botões no Telegram (`/regiao`, `/buscar`)
 - Falta (fora do escopo da fase): deploy do frontend (Vercel) pra acesso público
 
-### Fase 4 — Billing / limites
-- Definir: grátis com limite (ex: 1 busca/dia, N vagas/mês) + plano pago sem limite, ou só pago
-- Necessário porque Gemini/Adzuna/JSearch têm tiers grátis que não escalam por usuário
+### Fase 4 — Billing / limites 🔄 em andamento (código no ar, falta configurar Mercado Pago)
+- Gateway escolhido: **Mercado Pago** (Pix/cartão, assinatura via preapproval)
+- Implementado e deployado (2026-07-15):
+  - Edge Functions `mp-checkout` (JWT, preços server-side) e `mp-webhook`
+    (validação x-signature HMAC + reconsulta à API do MP antes de escrever)
+  - Migration 016: colunas `mp_*`, `preferencias.ultima_busca_em`, CHECKs de
+    plano/assinatura atualizados, trigger anti-bypass da quota free
+  - Worker: plano free = 1 busca/24h (pagante sem limite)
+  - Frontend: `/upgrade`, banner free no Dashboard, `/sucesso` tratando retorno do MP
+  - Frontend em produção: https://vaga-match-taioques.vercel.app
+- Pendente: criar aplicação no painel do Mercado Pago, setar secrets
+  `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET`, cadastrar URL do webhook e testar
+  pagamento real ponta a ponta
 
 ## Decisão pendente
 
