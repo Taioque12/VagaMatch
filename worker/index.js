@@ -189,7 +189,7 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
         await marcarStatus(vaga.id, "descoberta");
 
         // Notificação simples, sem CV/PDF — a geração agora é on-demand no webhook
-        // do Telegram, só quando o usuário clica "Me candidatei" (corta custo Gemini).
+        // do Telegram, só quando o usuário clica "📄 Gerar PDF" (corta custo Gemini).
         const messageId = await notificarVaga(perfil.telegram_chat_id, vaga);
         await salvarMessageId(vaga.id, messageId);
         await marcarStatus(vaga.id, "notificada");

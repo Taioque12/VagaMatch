@@ -154,7 +154,7 @@ async function enviarDocumento(chatId: string | number, pdfBytes: Uint8Array, fi
 }
 
 const STATUS_POR_TIPO: Record<string, string> = { cand: "candidatado", desc: "descartada" };
-const TEXTOS_STATUS: Record<string, string> = { cand: "Marcado como candidatado ✅ Gerando currículo ajustado...", desc: "Vaga descartada 🗑️" };
+const TEXTOS_STATUS: Record<string, string> = { cand: "Marcado como candidatado ✅", desc: "Vaga descartada 🗑️" };
 
 async function enviarMenu(chatId: string | number) {
   await chamarApi("sendMessage", {
@@ -258,71 +258,6 @@ ${curriculoBase}`;
   return text;
 }
 
-// Formata o currículo gerado como texto Markdown legível no Telegram
-function formatarCurriculoTelegram(cvJson: string, nomeCompleto: string): string {
-  try {
-    const cv = JSON.parse(cvJson);
-    const linhas: string[] = [];
-
-    linhas.push(`📄 *Currículo Ajustado para a Vaga*`);
-    linhas.push(`👤 *${nomeCompleto}*`);
-    linhas.push("");
-
-    if (cv.resumo_profissional) {
-      linhas.push("*Resumo Profissional:*");
-      linhas.push(cv.resumo_profissional);
-      linhas.push("");
-    }
-
-    if (cv.habilidades?.length) {
-      linhas.push("*Habilidades Técnicas:*");
-      linhas.push(cv.habilidades.join(" · "));
-      linhas.push("");
-    }
-
-    if (cv.experiencias?.length) {
-      linhas.push("*Experiência Profissional:*");
-      for (const exp of cv.experiencias) {
-        linhas.push(`▸ *${exp.cargo}* | ${exp.empresa} | ${exp.periodo}`);
-        for (const b of exp.bullets ?? []) {
-          linhas.push(`  • ${b}`);
-        }
-      }
-      linhas.push("");
-    }
-
-    if (cv.formacao?.length) {
-      linhas.push("*Formação Acadêmica:*");
-      for (const f of cv.formacao) linhas.push(`  • ${f}`);
-      linhas.push("");
-    }
-
-    if (cv.cursos?.length) {
-      linhas.push("*Cursos Complementares:*");
-      for (const c of cv.cursos) linhas.push(`  • ${c}`);
-      linhas.push("");
-    }
-
-    if (cv.projetos?.length) {
-      linhas.push("*Projetos:*");
-      for (const pr of cv.projetos) linhas.push(`  • ${pr}`);
-      linhas.push("");
-    }
-
-    if (cv.palavras_chave_da_vaga_cobertas?.length) {
-      linhas.push(`✅ *Palavras-chave cobertas:* ${cv.palavras_chave_da_vaga_cobertas.join(", ")}`);
-    }
-
-    linhas.push("");
-    linhas.push("_Copie o texto acima para usar no seu currículo!_");
-
-    return linhas.join("\n");
-  } catch {
-    // Se não conseguir parsear, retorna o JSON cru
-    return `📄 *Currículo Ajustado:*\n\n${cvJson}`;
-  }
-}
-
 async function tratarCallback(cq: any) {
   const data = cq.data ?? "";
   const cqId = cq.id;
@@ -333,13 +268,64 @@ async function tratarCallback(cq: any) {
 
   if (data.startsWith("st:")) {
     const [, tipo, callbackId] = data.split(":");
+
+    // ─── Gerar PDF sob demanda (botão "📄 Gerar PDF") ──────────────────────
+    // Única porta de entrada para a chamada Gemini de currículo — o worker e o
+    // clique "Candidatei-me" não geram mais nada automaticamente.
+    if (tipo === "pdf") {
+      const { data: vaga } = await supabase
+        .from('vagas_vistas')
+        .select('id, user_id, job_id, titulo, empresa, url, descricao')
+        .eq('callback_id', callbackId)
+        .maybeSingle();
+
+      if (!vaga) {
+        await responderCallback("Vaga não encontrada (registro antigo).");
+        return;
+      }
+
+      // Tira o "reloginho" do botão imediatamente
+      await responderCallback("Gerando PDF... 📄");
+
+      if (!chatId) return;
+      if (!GEMINI_API_KEY) {
+        await enviarTextoPuro(chatId, "⚠️ Geração de currículo indisponível no momento. Tente novamente mais tarde.");
+        return;
+      }
+
+      try {
+        const [{ data: perfil }, { data: curriculo }] = await Promise.all([
+          supabase.from("profiles").select("nome_completo, localizacao").eq("id", vaga.user_id).maybeSingle(),
+          supabase.from("curriculos").select("*").eq("user_id", vaga.user_id).maybeSingle(),
+        ]);
+
+        if (!curriculo) {
+          await enviarTextoPuro(chatId, "⚠️ Currículo-base não encontrado. Cadastre seu currículo no painel para gerar versões ajustadas.");
+          return;
+        }
+
+        const nomeCompleto = perfil?.nome_completo || "Candidato";
+
+        // Aviso visível no chat (o answerCallback é só um toast efêmero)
+        await enviarTextoPuro(chatId, "⏳ Gerando seu currículo otimizado para esta vaga...");
+
+        const cvJson = await gerarCurriculoOnDemand(vaga, curriculo, nomeCompleto);
+        const pdfBytes = gerarPdfBytes(cvJson, nomeCompleto, perfil?.localizacao);
+        const filename = `Curriculo_${nomeCompleto.replace(/\s+/g, "_")}_${vaga.empresa.replace(/\s+/g, "_")}.pdf`;
+        await enviarDocumento(chatId, pdfBytes, filename);
+      } catch (e) {
+        console.error("Erro ao gerar currículo on-demand:", e);
+        await enviarTextoPuro(chatId, "⚠️ Não foi possível gerar o currículo ajustado agora. Tente novamente mais tarde.");
+      }
+      return;
+    }
+
     const status = STATUS_POR_TIPO[tipo];
     if (!status) return;
 
-    // Buscar dados completos da vaga (incluindo descrição para geração de CV)
     const { data: vaga } = await supabase
       .from('vagas_vistas')
-      .select('id, user_id, job_id, titulo, empresa, url, telegram_message_id, score, motivo_ia, descricao')
+      .select('id, user_id, job_id, titulo, empresa, url, telegram_message_id, score, motivo_ia')
       .eq('callback_id', callbackId)
       .maybeSingle();
 
@@ -351,64 +337,20 @@ async function tratarCallback(cq: any) {
     await responderCallback(TEXTOS_STATUS[tipo]);
 
     // chat_id vem do próprio callback (vagas_vistas não tem coluna telegram_chat_id)
+    // Ao candidatar-se, mantém o botão "📄 Gerar PDF" disponível; ao descartar, limpa tudo.
     if (vaga.telegram_message_id && chatId) {
       await chamarApi("editMessageReplyMarkup", {
         chat_id: chatId,
         message_id: vaga.telegram_message_id,
-        reply_markup: { inline_keyboard: [] },
+        reply_markup: tipo === "cand"
+          ? { inline_keyboard: [[{ text: "📄 Gerar PDF", callback_data: `st:pdf:${callbackId}` }]] }
+          : { inline_keyboard: [] },
       });
     }
 
-    // ─── Passo 5: Gerar currículo on-demand ao clicar "Candidatei-me" ─────
-    if (tipo === "cand" && chatId && GEMINI_API_KEY) {
-      try {
-        // Buscar perfil e currículo do usuário
-        const [{ data: perfil }, { data: curriculo }] = await Promise.all([
-          supabase.from("profiles").select("nome_completo, localizacao").eq("id", vaga.user_id).maybeSingle(),
-          supabase.from("curriculos").select("*").eq("user_id", vaga.user_id).maybeSingle(),
-        ]);
-
-        if (!curriculo) {
-          await chamarApi("sendMessage", {
-            chat_id: chatId,
-            text: "⚠️ Currículo-base não encontrado. Cadastre seu currículo no painel para gerar versões ajustadas.",
-          });
-          return;
-        }
-
-        const nomeCompleto = perfil?.nome_completo || "Candidato";
-
-        // Aviso visível no chat (o answerCallback é só um toast efêmero)
-        await chamarApi("sendMessage", {
-          chat_id: chatId,
-          text: "⏳ Estou gerando seu currículo otimizado para esta vaga...",
-        });
-
-        // Gerar currículo ajustado via Gemini
-        const cvJson = await gerarCurriculoOnDemand(vaga, curriculo, nomeCompleto);
-        const textoFormatado = formatarCurriculoTelegram(cvJson, nomeCompleto);
-
-        // Gera e envia o PDF
-        const pdfBytes = gerarPdfBytes(cvJson, nomeCompleto, perfil?.localizacao);
-        const filename = `Curriculo_${nomeCompleto.replace(/\s+/g, "_")}_${vaga.empresa.replace(/\s+/g, "_")}.pdf`;
-        await enviarDocumento(chatId, pdfBytes, filename);
-
-        // Enviar o currículo formatado como mensagem no Telegram
-        await chamarApi("sendMessage", {
-          chat_id: chatId,
-          text: textoFormatado,
-          parse_mode: "Markdown",
-        });
-
-        // Oferece a entrevista simulada logo após entregar o CV
-        await oferecerEntrevista(supabase, enviarTextoPuro, chatId, vaga.user_id, vaga.id);
-      } catch (e) {
-        console.error("Erro ao gerar currículo on-demand:", e);
-        await chamarApi("sendMessage", {
-          chat_id: chatId,
-          text: "⚠️ Não foi possível gerar o currículo ajustado agora. Tente novamente mais tarde.",
-        });
-      }
+    // Oferece a entrevista simulada logo após o usuário se candidatar
+    if (tipo === "cand" && chatId) {
+      await oferecerEntrevista(supabase, enviarTextoPuro, chatId, vaga.user_id, vaga.id);
     }
 
     return;
