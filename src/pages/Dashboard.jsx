@@ -153,7 +153,7 @@ export function Dashboard() {
         </div>
       </nav>
       
-      {ehFree && (
+      {false && ehFree && (
         <div style={{ backgroundColor: "var(--bg-glass)", border: "1px solid var(--border-glass)", padding: "12px 20px", margin: "16px auto 0", width: "calc(100% - 32px)", maxWidth: "1200px", borderRadius: "12px", color: "var(--text-main)", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px", fontSize: "0.92rem" }}>
           <span><strong>Plano gratuito:</strong> 1 busca automática por dia.</span>
           <Link to="/upgrade" className="acao" style={{ padding: "6px 16px", fontSize: "0.9rem", margin: 0, textDecoration: "none" }}>Fazer upgrade</Link>
@@ -210,21 +210,23 @@ export function Dashboard() {
             ))}
           </div>
 
-          <div style={{ marginTop: "2rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
-            <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Seu Plano</h3>
-            <p style={{ margin: "0.5rem 0", fontWeight: "800", textTransform: "capitalize", fontSize: "1.2rem", color: "var(--text-main)" }}>{plano}</p>
-            {ehFree && (
-              <Link
-                to="/upgrade"
-                className="acao"
-                style={{ width: "100%", marginTop: "0.5rem", display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}
-              >
-                Fazer upgrade
-              </Link>
-            )}
-          </div>
+          {false && (
+            <div style={{ marginTop: "2rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
+              <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Seu Plano</h3>
+              <p style={{ margin: "0.5rem 0", fontWeight: "800", textTransform: "capitalize", fontSize: "1.2rem", color: "var(--text-main)" }}>{plano}</p>
+              {ehFree && (
+                <Link
+                  to="/upgrade"
+                  className="acao"
+                  style={{ width: "100%", marginTop: "0.5rem", display: "block", textAlign: "center", textDecoration: "none", boxSizing: "border-box" }}
+                >
+                  Fazer upgrade
+                </Link>
+              )}
+            </div>
+          )}
 
-          {codigoIndicacao && (
+          {false && codigoIndicacao && (
             <div style={{ marginTop: "1.5rem", padding: "1.5rem", backgroundColor: "var(--bg-glass)", borderRadius: "16px", border: "1px solid var(--border-glass)" }}>
               <h3 className="sidebar-titulo" style={{ marginTop: 0 }}>Indique e ganhe</h3>
               <p style={{ margin: "0.3rem 0 0.8rem", fontSize: "0.85rem" }}>

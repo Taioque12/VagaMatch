@@ -157,73 +157,75 @@ export function Landing() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="planos" className="lp-section-p" ref={pricingRef}>
-        <div className={`lp-section-title-p ${animClass(pricingRevelado)}`}>
-          <div className="lp-section-tag-p">Investimento</div>
-          <h2 className="lp-h2-p">Sua carreira no <span className="lp-text-gradient-green">automático</span></h2>
-        </div>
-
-        <div className={`lp-billing-toggle ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.1s" }}>
-          <button
-            type="button"
-            className={`lp-billing-opt ${billing === "monthly" ? "active" : ""}`}
-            onClick={() => setBilling("monthly")}
-          >
-            Mensal
-          </button>
-          <button
-            type="button"
-            className={`lp-billing-opt ${billing === "annual" ? "active" : ""}`}
-            onClick={() => setBilling("annual")}
-          >
-            Anual <span className="lp-billing-badge">-18%</span>
-          </button>
-        </div>
-
-        <div className={`lp-pricing-grid ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.2s" }}>
-          {/* Basic Plan */}
-          <div className="lp-pricing-card">
-            <h3 style={{ fontSize: "1.5rem", color: "#fff", marginBottom: "0.5rem" }}>Match</h3>
-            <p style={{ color: "var(--text-body)", marginBottom: "2rem" }}>Para quem quer testar sem compromisso</p>
-            <div className="lp-price-val">
-              <span>R$</span>{preco}<span>/mês</span>
-            </div>
-            
-            <div className="lp-feature-list">
-              {PLANO_FEATURES.map((f, i) => (
-                <div key={i} className="lp-feature-item">
-                  <CheckIcon /> {f}
-                </div>
-              ))}
-            </div>
-            <Link to="/cadastro" className="lp-btn-ghost" style={{ display: "block", textAlign: "center", marginTop: "2.5rem", padding: "1rem", border: "1px solid var(--glass-border)", borderRadius: "999px" }}>
-              Assinar Match
-            </Link>
+      {/* Pricing - Oculto durante o Beta */}
+      {false && (
+        <section id="planos" className="lp-section-p" ref={pricingRef}>
+          <div className={`lp-section-title-p ${animClass(pricingRevelado)}`}>
+            <div className="lp-section-tag-p">Investimento</div>
+            <h2 className="lp-h2-p">Sua carreira no <span className="lp-text-gradient-green">automático</span></h2>
           </div>
 
-          {/* Premium Plan */}
-          <div className="lp-pricing-card premium">
-            <div style={{ position: "absolute", top: 0, left: "50%", transform: "translate(-50%, -50%)", background: "var(--neon-green)", color: "#000", fontWeight: 800, padding: "6px 20px", borderRadius: "999px", fontSize: "0.85rem", letterSpacing: "0.05em" }}>RECOMENDADO</div>
-            <h3 style={{ fontSize: "1.8rem", color: "#fff", marginBottom: "0.5rem" }}>Match Plus</h3>
-            <p style={{ color: "var(--text-body)", marginBottom: "2rem" }}>Mais fontes de vagas, velocidade máxima</p>
-            <div className="lp-price-val" style={{ color: "var(--neon-green)" }}>
-              <span style={{ color: "var(--text-body)" }}>R$</span>{precoPlus}<span style={{ color: "var(--text-body)" }}>/mês</span>
-            </div>
-            
-            <div className="lp-feature-list">
-              {PLANO_PLUS_FEATURES.map((f, i) => (
-                <div key={i} className="lp-feature-item" style={{ color: "#fff" }}>
-                  <CheckIcon /> {f}
-                </div>
-              ))}
-            </div>
-            <Link to="/cadastro" className="lp-btn-primary" style={{ display: "block", textAlign: "center", marginTop: "2.5rem", padding: "1rem" }}>
-              Ativar Match Plus 🚀
-            </Link>
+          <div className={`lp-billing-toggle ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.1s" }}>
+            <button
+              type="button"
+              className={`lp-billing-opt ${billing === "monthly" ? "active" : ""}`}
+              onClick={() => setBilling("monthly")}
+            >
+              Mensal
+            </button>
+            <button
+              type="button"
+              className={`lp-billing-opt ${billing === "annual" ? "active" : ""}`}
+              onClick={() => setBilling("annual")}
+            >
+              Anual <span className="lp-billing-badge">-18%</span>
+            </button>
           </div>
-        </div>
-      </section>
+
+          <div className={`lp-pricing-grid ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.2s" }}>
+            {/* Basic Plan */}
+            <div className="lp-pricing-card">
+              <h3 style={{ fontSize: "1.5rem", color: "#fff", marginBottom: "0.5rem" }}>Match</h3>
+              <p style={{ color: "var(--text-body)", marginBottom: "2rem" }}>Para quem quer testar sem compromisso</p>
+              <div className="lp-price-val">
+                <span>R$</span>{preco}<span>/mês</span>
+              </div>
+              
+              <div className="lp-feature-list">
+                {PLANO_FEATURES.map((f, i) => (
+                  <div key={i} className="lp-feature-item">
+                    <CheckIcon /> {f}
+                  </div>
+                ))}
+              </div>
+              <Link to="/cadastro" className="lp-btn-ghost" style={{ display: "block", textAlign: "center", marginTop: "2.5rem", padding: "1rem", border: "1px solid var(--glass-border)", borderRadius: "999px" }}>
+                Assinar Match
+              </Link>
+            </div>
+
+            {/* Premium Plan */}
+            <div className="lp-pricing-card premium">
+              <div style={{ position: "absolute", top: 0, left: "50%", transform: "translate(-50%, -50%)", background: "var(--neon-green)", color: "#000", fontWeight: 800, padding: "6px 20px", borderRadius: "999px", fontSize: "0.85rem", letterSpacing: "0.05em" }}>RECOMENDADO</div>
+              <h3 style={{ fontSize: "1.8rem", color: "#fff", marginBottom: "0.5rem" }}>Match Plus</h3>
+              <p style={{ color: "var(--text-body)", marginBottom: "2rem" }}>Mais fontes de vagas, velocidade máxima</p>
+              <div className="lp-price-val" style={{ color: "var(--neon-green)" }}>
+                <span style={{ color: "var(--text-body)" }}>R$</span>{precoPlus}<span style={{ color: "var(--text-body)" }}>/mês</span>
+              </div>
+              
+              <div className="lp-feature-list">
+                {PLANO_PLUS_FEATURES.map((f, i) => (
+                  <div key={i} className="lp-feature-item" style={{ color: "#fff" }}>
+                    <CheckIcon /> {f}
+                  </div>
+                ))}
+              </div>
+              <Link to="/cadastro" className="lp-btn-primary" style={{ display: "block", textAlign: "center", marginTop: "2.5rem", padding: "1rem" }}>
+                Ativar Match Plus 🚀
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Footer */}
       <footer style={{ borderTop: "1px solid var(--glass-border)", padding: "3rem 2rem", textAlign: "center", color: "var(--text-body)", position: "relative", zIndex: 10 }}>
