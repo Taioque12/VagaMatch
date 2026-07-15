@@ -213,6 +213,40 @@ export async function setState(key, value) {
   if (error) throw new Error(`Supabase upsert (app_state): ${error.message}`);
 }
 
+// GC do cache de buscas: remove só chaves 'cache_busca:*' vencidas.
+// O filtro .like no prefixo garante que chaves de lock (worker_running,
+// worker_last_user_id etc.) nunca são tocadas.
+export async function limparCacheVencido(maxIdadeMs) {
+  const cutoff = new Date(Date.now() - maxIdadeMs).toISOString();
+  const { error, count } = await supabase
+    .from("app_state")
+    .delete({ count: "exact" })
+    .like("key", "cache_busca:%")
+    .lt("updated_at", cutoff);
+  if (error) throw new Error(`Supabase delete (cache GC): ${error.message}`);
+  return count ?? 0;
+}
+
+// Registra falha não-429 numa vaga; ao atingir maxTentativas marca 'erro'
+// (status terminal — dedup para de reprocessar). Read-modify-write é seguro:
+// cada vaga é processada por no máximo 1 worker por vez (lock de execução).
+export async function registrarFalhaVaga(id, maxTentativas = 3) {
+  const { data, error } = await supabase
+    .from("vagas_vistas")
+    .select("tentativas")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw new Error(`Supabase select (tentativas): ${error.message}`);
+
+  const tentativas = (data?.tentativas ?? 0) + 1;
+  const patch = { tentativas };
+  if (tentativas >= maxTentativas) patch.status = "erro";
+
+  const { error: upErr } = await supabase.from("vagas_vistas").update(patch).eq("id", id);
+  if (upErr) throw new Error(`Supabase update (tentativas): ${upErr.message}`);
+  return tentativas;
+}
+
 export async function atualizarScoreIA(id, scoreIA, motivoIA) {
   const { error } = await supabase
     .from("vagas_vistas")

@@ -14,6 +14,8 @@ import {
   getStateWithTimestamp,
   setState,
   atualizarScoreIA,
+  limparCacheVencido,
+  registrarFalhaVaga,
 } from "./db.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
@@ -56,7 +58,10 @@ const CACHE_TTL_MS = 90 * 60 * 1000;
 // Chave única por combinação de busca (cargo + região + raio) — usada pra cachear
 // resultado entre usuários diferentes que buscam a mesma coisa, evitando 1 request por pessoa.
 function chaveBusca(cargo, regiao, raioKm) {
-  return `${cargo.toLowerCase()}|${(regiao || "").toLowerCase()}|${raioKm ?? ""}`;
+  // encodeURIComponent evita colisão se cargo/região contiver o delimitador "|"
+  return [cargo.toLowerCase(), (regiao || "").toLowerCase(), String(raioKm ?? "")]
+    .map(encodeURIComponent)
+    .join("|");
 }
 
 // ─── Passo 3: Cache de buscas persistido no app_state ───────────────────────
@@ -200,7 +205,7 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
   let rateLimitCount = 0;
   const vagasAprovadas = [];
 
-  for (const r of resultados) {
+  for (const [i, r] of resultados.entries()) {
     if (r.status === "fulfilled") {
       if (r.value.tipo === "ok") {
         processadas++;
@@ -210,15 +215,24 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
     } else {
       // rejected — erro
       const erro = r.reason;
+      const vaga = vagasParaProcessar[i];
       if (erro?.isRateLimit) {
         // ─── Passo 2: Não descartar por rate limit — manter como pendente ──
+        // 429 não incrementa tentativas: é quota nossa, não defeito da vaga.
         rateLimitCount++;
         console.warn(`⚠️ Vaga mantida como pendente (429): ${erro.message}`);
-        // Status já é "pendente_processamento" do upsert, não marcamos "erro"
       } else {
-        console.error(`Falha em vaga (usuário ${perfil.id}): ${erro?.message}`);
-        // Tenta marcar como erro (best-effort — pode não ter vaga.id em todos os casos)
+        console.error(`Falha em vaga ${vaga?.job_id} (usuário ${perfil.id}): ${erro?.message}`);
         falhas++;
+        // Max retries: após 3 falhas não-429 a vaga vira 'erro' (status terminal,
+        // dedup para de reprocessar) — evita retry infinito de falha persistente.
+        if (vaga?.id) {
+          await registrarFalhaVaga(vaga.id, 3)
+            .then((n) => {
+              if (n >= 3) console.warn(`🛑 Vaga ${vaga.job_id} marcada 'erro' após ${n} tentativas.`);
+            })
+            .catch((e) => console.error(`Falha ao registrar tentativa (${vaga.job_id}): ${e.message}`));
+        }
       }
     }
   }
@@ -298,6 +312,14 @@ async function main() {
   lockAdquirido = true;
 
   try {
+    // ─── GC do cache de buscas: remove chaves cache_busca:* mais velhas que 2×TTL ──
+    // Best-effort: falha aqui não pode derrubar a rodada.
+    try {
+      const removidas = await limparCacheVencido(CACHE_TTL_MS * 2);
+      if (removidas > 0) console.log(`🧹 Cache GC: ${removidas} chave(s) vencida(s) removida(s).`);
+    } catch (e) {
+      console.warn(`Cache GC falhou (seguindo normal): ${e.message}`);
+    }
 
     try {
       // Polling desativado. Agora é o Webhook que cuida do feedback!
