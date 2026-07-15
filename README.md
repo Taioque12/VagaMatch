@@ -106,17 +106,15 @@ As migrations estão em `supabase/migrations/`, em ordem:
 
 ## Ferramentas de Desenvolvimento (IA)
 
-Tooling usado nas sessões de desenvolvimento com Claude Code (por máquina, não versionado):
+Num PC novo, **um comando instala e configura tudo** (idempotente — nunca sobrescreve a config versionada):
 
 ```bash
-# Memória persistente entre sessões (constrói contexto do projeto automaticamente)
-npx claude-mem install && npx claude-mem start
-# UI: http://127.0.0.1:37777 · dados locais em ~/.claude-mem
-# Opcional: /learn-codebase numa sessão pra ingerir o repo inteiro de uma vez
-
-# Orquestração de agentes (swarms multi-agente, memória vetorial, MCP)
-npx ruflo@latest init
+npm run setup:ia
 ```
+
+Isso instala/inicia:
+- **claude-mem** — memória persistente entre sessões do Claude Code. UI: http://127.0.0.1:37777 · dados locais em `~/.claude-mem`. Opcional: `/learn-codebase` numa sessão pra ingerir o repo inteiro de uma vez.
+- **ruflo** — orquestração de agentes (swarms, memória vetorial, MCP). Os padrões do projeto (CLAUDE.md, `.claude/` com skills/commands/agents, `.mcp.json`) **já vêm do git** — é isso que mantém o mesmo comportamento em qualquer máquina; o script só cria o runtime local que falta.
 
 ## Setup Local — Frontend
 
