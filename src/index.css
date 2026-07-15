@@ -38,10 +38,11 @@ body.theme-light {
   --error-border: rgba(231, 76, 60, 0.35);
 }
 
+/* Um único scroller: a página (html). Nada de overflow forçado em body/#root —
+   dois elementos com overflow ativo = duas barras de rolagem. */
 html {
   scroll-behavior: smooth;
-  overflow-y: auto !important;
-  overflow-x: hidden !important;
+  overflow-x: hidden;
 }
 
 body {
@@ -51,12 +52,7 @@ body {
   background: var(--bg-main);
   transition: background 0.3s ease, color 0.3s ease;
   -webkit-font-smoothing: antialiased;
-  overflow-y: visible !important;
-  overflow-x: hidden !important;
-}
-
-#root {
-  overflow: visible !important;
+  overflow-x: hidden;
 }
 
 ::selection {

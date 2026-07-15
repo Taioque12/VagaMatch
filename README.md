@@ -104,6 +104,20 @@ As migrations estão em `supabase/migrations/`, em ordem:
 | 013 | `013_descricao_vaga.sql` | Coluna `descricao` em `vagas_vistas` (CV on-demand e entrevista) |
 | 014 | `014_entrevistas.sql` | Tabela `entrevistas` (sessões da entrevista simulada, cota e histórico) |
 
+## Ferramentas de Desenvolvimento (IA)
+
+Tooling usado nas sessões de desenvolvimento com Claude Code (por máquina, não versionado):
+
+```bash
+# Memória persistente entre sessões (constrói contexto do projeto automaticamente)
+npx claude-mem install && npx claude-mem start
+# UI: http://127.0.0.1:37777 · dados locais em ~/.claude-mem
+# Opcional: /learn-codebase numa sessão pra ingerir o repo inteiro de uma vez
+
+# Orquestração de agentes (swarms multi-agente, memória vetorial, MCP)
+npx ruflo@latest init
+```
+
 ## Setup Local — Frontend
 
 1. `npm install`
