@@ -165,7 +165,8 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
     vagasParaProcessar.map(async (vaga) => {
       await sem.adquirir();
       try {
-        // 1. Avalia o Match Real com IA
+        // 1. Avalia o Match Real com IA (respeitando 15 RPM do Gemini)
+        await aguardarJanelaGemini();
         const { score_ia, motivo_ia } = await avaliarMatchComIA(vaga, curriculo, palavrasChave);
         vaga.score = score_ia;
         vaga.motivo_ia = motivo_ia;
@@ -248,6 +249,23 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
 // ─── Passo 1: Lock de execução ──────────────────────────────────────────────
 const LOCK_TIMEOUT_MIN = 15; // Timeout de segurança — crash sem limpar lock
 
+// Só libera o lock no catch fatal se ESTA instância o adquiriu — crash antes
+// da aquisição (ex: requireEnv) não pode soltar o lock de outra instância viva.
+let lockAdquirido = false;
+
+// Espaçamento mínimo entre chamadas Gemini: free tier é 15 RPM (1 req/4s).
+// Concorrência 3 sozinha limita paralelismo, não taxa — sem isso uma rodada
+// grande estoura a quota e vira chuva de 429.
+const GEMINI_MIN_INTERVAL_MS = 4000;
+let proximoSlotGemini = 0;
+async function aguardarJanelaGemini() {
+  // Reserva síncrona do slot (single-thread) — sem corrida entre promessas paralelas
+  const agora = Date.now();
+  const slot = Math.max(agora, proximoSlotGemini);
+  proximoSlotGemini = slot + GEMINI_MIN_INTERVAL_MS;
+  if (slot > agora) await new Promise((r) => setTimeout(r, slot - agora));
+}
+
 async function main() {
   requireEnv([
     "adzunaAppId", "adzunaAppKey",
@@ -277,6 +295,7 @@ async function main() {
 
   await setState("worker_running", "true");
   await setState("worker_running_since", new Date().toISOString());
+  lockAdquirido = true;
 
   try {
 
@@ -365,8 +384,8 @@ async function main() {
 
 main().catch(async (e) => {
   console.error(e);
-  // Garante liberação do lock mesmo em crash fatal
-  await setState("worker_running", "false").catch(() => {});
+  // Garante liberação do lock mesmo em crash fatal — mas só se esta instância o pegou
+  if (lockAdquirido) await setState("worker_running", "false").catch(() => {});
   await alertarErro(ADMIN_CHAT_ID, `Falha fatal no worker: ${e.message}`).catch(() => {});
   process.exit(1);
 });

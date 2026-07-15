@@ -5,9 +5,18 @@ on:
     - cron: "*/10 * * * *" # a cada 10 min
   workflow_dispatch: {} # permite rodar manualmente pelo GitHub
 
+# Reforço GitHub-side do lock app_state: nunca duas instâncias simultâneas,
+# mesmo com workflow_dispatch manual colidindo com o cron.
+concurrency:
+  group: worker
+  cancel-in-progress: false
+
 jobs:
   rodar-worker:
     runs-on: ubuntu-latest
+    # Menor que LOCK_TIMEOUT_MIN (15min) — job pendurado morre antes do
+    # takeover do lock, evitando dois workers vivos ao mesmo tempo.
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
 

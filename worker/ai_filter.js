@@ -65,7 +65,11 @@ Cargos-alvo: ${(curriculo.cargos_alvo || []).join(", ")}
       throw err;
     }
 
+    // Erro transitório (500, rede, JSON malformado do modelo): rethrow em vez de
+    // retornar score 0 — score 0 faria o index marcar 'descartada' permanente e
+    // uma vaga boa sumiria por causa de falha momentânea. Rejeitada no allSettled,
+    // a vaga fica 'pendente_processamento' e é reprocessada na próxima rodada.
     console.error("Erro ao avaliar match com IA:", error.message);
-    return { score_ia: 0, motivo_ia: "Falha na avaliação da IA." };
+    throw error;
   }
 }
