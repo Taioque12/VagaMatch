@@ -52,7 +52,7 @@ SaaS multi-tenant derivado do projeto pessoal `automacao-vagas`: monitora vagas,
   `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET`, cadastrar URL do webhook e testar
   pagamento real ponta a ponta
 
-### Fase 5 — V3: Agentes Inteligentes (vetorização + swarm + aprendizado) 📐 em design
+### Fase 5 — V3: Agentes Inteligentes (vetorização + swarm + aprendizado) ✅ implementada (rollout pendente: virar `v3_prefiltro` pra `on` no app_state)
 
 Objetivo: substituir o score linear de `worker/ai_filter.js` (1 chamada Gemini por vaga,
 gargalo de 15 RPM) por um pipeline em 3 camadas: pré-filtro vetorial barato, avaliação

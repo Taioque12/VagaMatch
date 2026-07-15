@@ -102,9 +102,14 @@ export function Dashboard() {
   }, [vagas, filtro]);
 
   async function mudarStatus(vaga, novoStatus) {
+    // feedback_em alimenta a memória vetorial da V3 (Fase C) — carimbo só nos
+    // status que são feedback real do usuário, igual ao webhook do Telegram.
+    const patch = ["candidatado", "descartada"].includes(novoStatus)
+      ? { status: novoStatus, feedback_em: new Date().toISOString() }
+      : { status: novoStatus };
     const { error } = await supabase
       .from("vagas_vistas")
-      .update({ status: novoStatus })
+      .update(patch)
       .eq("id", vaga.id);
     if (error) {
       setErro(error.message);
