@@ -4,7 +4,7 @@ Contexto: hoje aguenta confortável ~20-30 usuários ativos no padrão de volume
 
 Arquivos-chave: `worker/index.js`, `worker/ai_filter.js`, `worker/db.js`, `.github/workflows/worker.yml`.
 
-## 1. Lock de execução (baixo risco, fazer primeiro)
+## 1. Lock de execução ✅ (concluído)
 
 **Problema**: cron roda a cada 10min sem trava. Se uma rodada demorar mais que isso, a próxima dispara em cima, duas instâncias mexem no mesmo cursor `worker_last_user_id` ao mesmo tempo — corrida de dados.
 
@@ -15,7 +15,7 @@ Arquivos-chave: `worker/index.js`, `worker/ai_filter.js`, `worker/db.js`, `.gith
 
 **Teste**: rodar duas instâncias do worker manualmente ao mesmo tempo (`npm run worker:test` em dois terminais) e confirmar que a segunda aborta sem mexer no cursor.
 
-## 2. Cache de busca entre rodadas (maior impacto em quota de API externa)
+## 2. Cache de busca entre rodadas ✅ (concluído)
 
 **Problema**: `cacheBusca` em `worker/index.js:215` é um `Map()` recriado a cada `main()` — só vive dentro da rodada. Toda rodada de 10min rebusca do zero pra cada combinação cargo+região, mesmo sem nada ter mudado. Adzuna free tier é limitado (~250-1000/dia).
 
@@ -26,7 +26,7 @@ Arquivos-chave: `worker/index.js`, `worker/ai_filter.js`, `worker/db.js`, `.gith
 
 **Teste**: rodar o worker 2x seguidas (`npm run worker:test`) e confirmar no log/rede que a segunda rodada não bate nas APIs externas pros mesmos cargo+região.
 
-## 3. Paralelismo com limite de concorrência
+## 3. Paralelismo com limite de concorrência ✅ (concluído)
 
 **Problema**: loop 100% sequencial em `rodarPipelineDoUsuario` (`worker/index.js:128`) — vaga por vaga, `await` puro. Rodadas grandes demoram demais, aumentando o risco do item 1.
 
@@ -37,7 +37,7 @@ Arquivos-chave: `worker/index.js`, `worker/ai_filter.js`, `worker/db.js`, `.gith
 
 **Teste**: comparar tempo de execução de uma rodada com volume real (ex: usuário com 30+ vagas novas) antes/depois.
 
-## 4. Alertar em vez de descartar silencioso
+## 4. Alertar em vez de descartar silencioso ✅ (concluído)
 
 **Problema**: `avaliarMatchComIA` (`worker/ai_filter.js`) cai no catch e retorna `score_ia: 0` em qualquer erro — incluindo rate limit 429 do Gemini. Vaga é descartada como se fosse mau match, usuário nunca sabe que perdeu por causa de quota.
 
@@ -48,7 +48,7 @@ Arquivos-chave: `worker/index.js`, `worker/ai_filter.js`, `worker/db.js`, `.gith
 
 **Teste**: forçar erro 429 manualmente (mock ou key inválida temporária) e confirmar que a vaga fica `pendente_processamento` em vez de `descartada`.
 
-## 5. Reduzir de 2 chamadas Gemini pra 1 por vaga (fazer só se 1-4 não bastarem)
+## 5. Reduzir de 2 chamadas Gemini pra 1 por vaga ✅ (concluído)
 
 **Problema**: cada vaga aprovada gera 2 chamadas — score (`ai_filter.js`) e currículo ajustado (`curriculo.js`). É o maior consumidor de quota.
 
