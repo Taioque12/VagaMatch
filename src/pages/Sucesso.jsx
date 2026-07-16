@@ -1,5 +1,4 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import "../dashboard-premium-v2.css";
 
 export function Sucesso() {
@@ -21,7 +20,6 @@ export function Sucesso() {
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
-        <ThemeToggle />
       </nav>
 
       <div

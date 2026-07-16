@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
-import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import "../dashboard-premium-v2.css";
 
 export function Admin() {
@@ -125,7 +124,6 @@ export function Admin() {
           VagaMatch (Admin)
         </Link>
         <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-          <ThemeToggle />
           <Link to="/dashboard" className="dbv2-btn-ghost">Voltar ao dashboard</Link>
         </div>
       </nav>

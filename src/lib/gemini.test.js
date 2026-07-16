@@ -89,7 +89,7 @@ describe('gemini.js', () => {
         await extrairDadosCurriculo('base64data');
         expect(false).toBe(true);
       } catch (err) {
-        expect(err.message).toContain('Falha ao ler o PDF');
+        expect(err.message).toContain('Falha ao processar resposta da IA');
       }
     });
 
@@ -110,7 +110,7 @@ describe('gemini.js', () => {
         await extrairDadosCurriculo('base64data');
         expect(false).toBe(true);
       } catch (err) {
-        expect(err.message).toContain('Falha ao ler o PDF');
+        expect(err.message).toContain('Falha ao processar resposta da IA');
       }
     });
 

@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import "../dashboard-premium-v2.css";
 
 export function Cancelado() {
@@ -10,7 +9,6 @@ export function Cancelado() {
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
-        <ThemeToggle />
       </nav>
 
       <div

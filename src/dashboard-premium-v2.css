@@ -552,6 +552,70 @@
   50% { border-color: rgba(16, 185, 129, 0.35); }
 }
 
+/* ─── Resgatados do dashboard-premium.css (v1, deletado) ─────────────────── */
+/* .acao: botões legados ainda usados no Upgrade */
+.acao {
+  font-family: 'Manrope', sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  padding: 0.6rem 1.4rem;
+  border-radius: 999px;
+  transition: all 0.2s;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: #052e21 !important;
+  border: none;
+  box-shadow: 0 6px 20px -4px var(--primary-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.acao:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px -4px var(--primary-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.acao.secundaria {
+  background: transparent;
+  border: 1px solid var(--border-input);
+  color: var(--text-main) !important;
+  box-shadow: none;
+}
+
+.acao.secundaria:hover {
+  background: var(--bg-glass-hover);
+  border-color: var(--border-glass);
+}
+
+/* Skeleton loading (formato dos cards, não spinner genérico) */
+.skeleton-card {
+  pointer-events: none;
+}
+
+.skeleton {
+  border-radius: 8px;
+  background: linear-gradient(
+    90deg,
+    var(--bg-input) 25%,
+    var(--bg-glass-hover) 50%,
+    var(--bg-input) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-titulo { height: 1.4rem; width: 65%; margin-bottom: 0.8rem; }
+.skeleton-linha { height: 0.9rem; width: 40%; margin-bottom: 1.2rem; }
+.skeleton-linha.curta { width: 30%; margin-bottom: 0; }
+.skeleton-bloco { height: 4.5rem; width: 100%; margin-bottom: 1.2rem; border-radius: 12px; }
+
+@keyframes skeleton-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 /* ─── Responsivo ─────────────────────────────────────────────────────────── */
 @media (max-width: 860px) {
   .dbv2-metrics { grid-template-columns: 1fr; }

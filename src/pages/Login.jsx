@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
-import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 const authPageStyle = {
   minHeight: '100vh',
@@ -46,7 +45,6 @@ export function Login() {
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
-        <ThemeToggle />
       </nav>
       <div className="tela-auth" style={{ position: 'relative', zIndex: 1 }}>
         <p style={authKickerStyle}>Área do candidato</p>
