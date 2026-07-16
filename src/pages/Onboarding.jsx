@@ -6,6 +6,7 @@ import { ThemeToggle } from "../components/ThemeToggle.jsx";
 
 import { extrairDadosCurriculo, gerarEmbedding } from "../lib/gemini.js";
 import { gerarCurriculoPdf } from "../lib/curriculoPdf.js";
+import "../dashboard-premium-v2.css";
 
 export function Onboarding() {
   const { session } = useAuth();
@@ -274,7 +275,7 @@ export function Onboarding() {
   const pronto = !!dadosExtraidos;
 
   return (
-    <div className="lp lp-hero-bloco" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+    <div className="pv2-fundo" style={{ display: "flex", flexDirection: "column" }}>
       <nav className="lp-nav">
         <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
           <span className="lp-logo-marca" />
@@ -326,7 +327,7 @@ export function Onboarding() {
             {dadosExtraidos.localizacao && <p className="ajuda">{dadosExtraidos.localizacao}</p>}
 
             <div style={{ marginTop: "1rem" }}>
-              <strong style={{ display: "block", marginBottom: 8, fontSize: "0.9rem", color: "var(--fg)" }}>Cargos-alvo:</strong>
+              <strong className="pv2-label">Cargos-alvo</strong>
               <div className="tags" style={{ marginBottom: 8 }}>
                 {(dadosExtraidos.cargos_alvo || []).map((c, i) => (
                   <span className="tag" key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -346,7 +347,7 @@ export function Onboarding() {
             </div>
 
             <div style={{ marginTop: "1rem", marginBottom: "1.5rem" }}>
-              <strong style={{ display: "block", marginBottom: 8, fontSize: "0.9rem", color: "var(--fg)" }}>Palavras-chave (Tecnologias):</strong>
+              <strong className="pv2-label">Palavras-chave (Tecnologias)</strong>
               <div className="tags" style={{ marginBottom: 8 }}>
                 {(dadosExtraidos.palavras_chave || []).map((p, i) => (
                   <span className="tag" key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
@@ -373,7 +374,7 @@ export function Onboarding() {
               type="button"
               onClick={handleBaixarPdf}
               disabled={baixandoPdf}
-              className="acao"
+              className="dbv2-btn-ghost"
               style={{ marginTop: "1rem" }}
             >
               {baixandoPdf ? "Gerando PDF..." : "Baixar currículo em PDF"}
@@ -388,7 +389,7 @@ export function Onboarding() {
               Receba as vagas no seu celular assim que a IA aprovar.
             </p>
             {telegramChatId ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: 12, background: "rgba(0,255,0,0.1)", borderRadius: 8, color: "#4caf50", fontWeight: 600 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 18px", background: "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(255,255,255,0.02))", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 14, color: "#34d399", fontWeight: 700 }}>
                 <span>✅ Telegram Conectado!</span>
               </div>
             ) : (

@@ -3,8 +3,7 @@ import { Link } from "react-router-dom";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
-import { ThemeToggle } from "../components/ThemeToggle.jsx";
-import "../dashboard-premium.css";
+import "../dashboard-premium-v2.css";
 
 const STATUS_LABEL = {
   descoberta: "Descoberta",
@@ -14,6 +13,9 @@ const STATUS_LABEL = {
   erro: "Erro",
 };
 
+// V3 grava os sub-scores dentro do motivo_ia:
+// "⚙️ Técnico (85): ... 🤝 Fit (70): ...". Sem colunas dedicadas (ainda) —
+// parse tolerante: vaga do fluxo legado (sem o padrão) simplesmente não mostra barras.
 function parseScoresV3(motivo) {
   if (!motivo) return null;
   const tec = motivo.match(/Técnico \((\d{1,3})\)/);
@@ -37,10 +39,6 @@ export function Dashboard() {
   const [buscaAtiva, setBuscaAtiva] = useState(null);
   const [salvandoAtivo, setSalvandoAtivo] = useState(false);
   const [ehAdmin, setEhAdmin] = useState(false);
-  const [plano, setPlano] = useState("gratis");
-  const [assinaturaStatus, setAssinaturaStatus] = useState(null);
-  const [codigoIndicacao, setCodigoIndicacao] = useState(null);
-  const [creditosIndicacao, setCreditosIndicacao] = useState(0);
 
   useEffect(() => {
     if (!session) return;
@@ -66,16 +64,10 @@ export function Dashboard() {
 
     supabase
       .from("profiles")
-      .select("role, plano, assinatura_status, codigo_indicacao, creditos_indicacao")
+      .select("role")
       .eq("id", userId)
       .maybeSingle()
-      .then(({ data }) => {
-        setEhAdmin(data?.role === "admin");
-        setPlano(data?.plano || "gratis");
-        setAssinaturaStatus(data?.assinatura_status ?? null);
-        setCodigoIndicacao(data?.codigo_indicacao ?? null);
-        setCreditosIndicacao(data?.creditos_indicacao ?? 0);
-      });
+      .then(({ data }) => setEhAdmin(data?.role === "admin"));
   }, [session]);
 
   const stats = useMemo(() => {
@@ -88,10 +80,11 @@ export function Dashboard() {
     const comFeedback = candidatadas + descartadas;
     return {
       total: vagas.length,
-      notificadas: vagas.filter((v) => v.status === "notificada").length,
       candidatadas,
       descartadas,
       naFila,
+      // Taxa de sucesso do match: das vagas em que o usuário deu feedback,
+      // quantas ele aprovou (candidatou). Sem feedback ainda → null ("—").
       taxaSucesso: comFeedback > 0 ? Math.round((candidatadas / comFeedback) * 100) : null,
     };
   }, [vagas]);
@@ -110,6 +103,8 @@ export function Dashboard() {
     return vagas.filter((v) => v.status === filtro);
   }, [vagas, filtro]);
 
+  // Médias dos sub-scores V3 das vagas visíveis (parseScoresV3 lê o motivo_ia).
+  // Radar precisa de >= 3 eixos pra formar área: Técnico + Fit + Match geral.
   const mediasRadar = useMemo(() => {
     if (!vagasFiltradas?.length) return null;
     let somaTec = 0, somaFit = 0, nV3 = 0;
@@ -119,7 +114,7 @@ export function Dashboard() {
       if (s) { somaTec += s.tecnico; somaFit += s.fit; nV3++; }
       if (v.score != null) { somaMatch += v.score; nMatch++; }
     }
-    if (!nV3) return null;
+    if (!nV3) return null; // nenhuma vaga com sub-scores V3 ainda
     return [
       { eixo: "Técnico", valor: Math.round(somaTec / nV3) },
       { eixo: "Fit", valor: Math.round(somaFit / nV3) },
@@ -128,6 +123,8 @@ export function Dashboard() {
   }, [vagasFiltradas]);
 
   async function mudarStatus(vaga, novoStatus) {
+    // feedback_em alimenta a memória vetorial da V3 (Fase C) — carimbo só nos
+    // status que são feedback real do usuário, igual ao webhook do Telegram.
     const patch = ["candidatado", "descartada"].includes(novoStatus)
       ? { status: novoStatus, feedback_em: new Date().toISOString() }
       : { status: novoStatus };
@@ -161,250 +158,229 @@ export function Dashboard() {
     await supabase.auth.signOut();
   }
 
-  const ehFree =
-    !(plano === "match" || plano === "match_plus") || assinaturaStatus !== "ativa";
-
   return (
-    <div className="app-shell">
-      {/* SIDEBAR ESQUERDA FIXA */}
-      <aside className="sidebar-app">
-        <div className="sidebar-header">
-          <Link to="/dashboard" className="lp-logo" style={{ textDecoration: 'none' }}>
-            <span className="lp-logo-marca" />
-            VagaMatch
-          </Link>
-          <div className="sidebar-user-controls">
-            <ThemeToggle />
-            <div className="user-info-sidebar">
-              <span className="user-email" title={session?.user?.email}>{session?.user?.email}</span>
+    <div className="dbv2-page">
+      <nav className="lp-nav">
+        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
+          <span className="lp-logo-marca" />
+          VagaMatch
+        </Link>
+        <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
+          <span className="dbv2-metric-sub">{session?.user?.email}</span>
+          <Link to="/onboarding" className="dbv2-btn-ghost">Meu perfil</Link>
+          {ehAdmin && <Link to="/admin" className="dbv2-btn-ghost">Painel admin</Link>}
+          <button className="dbv2-btn-ghost" onClick={sair}>Sair</button>
+        </div>
+      </nav>
+
+      <div className="dbv2-coluna" style={{ marginTop: 36 }}>
+        {/* ===== Top metrics: hero Taxa de Sucesso + Processadas + Fila ===== */}
+        {stats && (
+          <div className="dbv2-metrics">
+            <div className="dbv2-metric dbv2-metric-hero">
+              <div className="dbv2-hero-topo">
+                <div className="dbv2-hero-chip">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <polyline points="3 17 9 11 13 15 21 7" />
+                    <polyline points="15 7 21 7 21 13" />
+                  </svg>
+                </div>
+                <span className="dbv2-metric-label">Taxa de Sucesso IA</span>
+              </div>
+              <div className="dbv2-hero-valor">
+                {stats.taxaSucesso === null ? "—" : <>{stats.taxaSucesso}<span className="unidade">%</span></>}
+              </div>
+              <div className="dbv2-pulse-row">
+                <span className={buscaAtiva ? "dbv2-pulse" : "dbv2-pulse pausado"} />
+                {buscaAtiva === null
+                  ? "Verificando busca automática..."
+                  : buscaAtiva
+                  ? "Busca automática em andamento"
+                  : "Busca automática pausada"}
+              </div>
             </div>
-            <button className="btn-sair-icone" onClick={sair} title="Sair">Sair</button>
+
+            <div className="dbv2-metric">
+              <span className="dbv2-metric-label">Vagas Processadas</span>
+              <span className="dbv2-metric-valor">{stats.total}</span>
+              <span className="dbv2-metric-sub">últimas 200 vagas</span>
+            </div>
+
+            <div className="dbv2-metric">
+              <span className="dbv2-metric-label">Vagas na Fila</span>
+              <span className="dbv2-metric-valor">{stats.naFila}</span>
+              <span className="dbv2-metric-sub">processando agora</span>
+            </div>
           </div>
+        )}
+
+        {/* ===== Toolbar: toggle da busca + filtros (ex-sidebar) ===== */}
+        <div className="dbv2-toolbar">
+          <button
+            className="dbv2-btn-ghost"
+            onClick={alternarBusca}
+            disabled={salvandoAtivo || buscaAtiva === null}
+          >
+            {buscaAtiva === null ? "..." : buscaAtiva ? "⏸ Pausar busca" : "▶ Retomar busca"}
+          </button>
+          <span style={{ flex: 1 }} />
+          {FILTROS.map((f) => (
+            <button
+              key={f.valor}
+              className={filtro === f.valor ? "dbv2-filtro ativo" : "dbv2-filtro"}
+              onClick={() => setFiltro(f.valor)}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
-        <div className="sidebar-content">
-          <div className="painel-busca">
-            <div>
-              <strong style={{display: 'block', marginBottom: '0.4rem', fontSize: '1.05rem', letterSpacing: '-0.01em'}}>Busca automática</strong>
-              <span className={`status-busca ${buscaAtiva ? 'ativo' : 'pausado'}`}>
-                {buscaAtiva === null ? "..." : buscaAtiva ? "Em andamento" : "Pausada"}
-              </span>
-            </div>
-            <button className="acao secundaria" onClick={alternarBusca} disabled={salvandoAtivo || buscaAtiva === null} style={{marginTop: '1rem', width: '100%'}}>
-              {buscaAtiva ? "Pausar Busca" : "Retomar Busca"}
-            </button>
-          </div>
-
-          <h3 className="sidebar-titulo">Resumo</h3>
-          {stats && (
-            <div className="cartoes-stats-vertical">
-              <div className="stat">
-                <span className="stat-numero">{stats.total}</span>
-                <span className="stat-label">Encontradas</span>
+        {/* ===== Faixa horizontal: mercado + radar (ex-sidebar) ===== */}
+        {(marketValue != null || mediasRadar) && (
+          <div className="dbv2-radar-row">
+            {marketValue != null ? (
+              <div className="dbv2-metric" style={{ justifyContent: "center" }}>
+                <span className="dbv2-metric-label">Média salarial do seu perfil</span>
+                <span className="dbv2-metric-valor" style={{ fontSize: 44 }}>
+                  R$ {marketValue.toLocaleString("pt-BR")}
+                </span>
+                <span className="dbv2-metric-sub">
+                  Adicione tecnologias no seu <Link to="/onboarding" className="dbv2-link" style={{ color: "#10b981" }}>perfil</Link> para atingir vagas melhores.
+                </span>
               </div>
-              <div className="stat">
-                <span className="stat-numero">{stats.notificadas}</span>
-                <span className="stat-label">Notificadas</span>
-              </div>
-              <div className="stat">
-                <span className="stat-numero">{stats.candidatadas}</span>
-                <span className="stat-label">Candidatadas</span>
-              </div>
-              <div className="stat">
-                <span className="stat-numero">{stats.descartadas}</span>
-                <span className="stat-label">Descartadas</span>
-              </div>
-            </div>
-          )}
-
-          {mediasRadar && (
-            <>
-              <h3 className="sidebar-titulo">Perfil de Match</h3>
-              <div className="radar-wrap">
-                <RadarChart width={240} height={200} data={mediasRadar} outerRadius="70%">
-                  <PolarGrid stroke="var(--border-glass)" />
-                  <PolarAngleAxis
-                    dataKey="eixo"
-                    tick={{ fill: "var(--text-muted)", fontSize: 11, fontWeight: 600 }}
-                  />
+            ) : <span />}
+            {mediasRadar && (
+              <div className="dbv2-radar-card">
+                <span className="dbv2-metric-label" style={{ padding: "8px 0 0" }}>Perfil do match</span>
+                <RadarChart width={230} height={190} data={mediasRadar} outerRadius="70%">
+                  <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                  <PolarAngleAxis dataKey="eixo" tick={{ fill: "#94a3b8", fontSize: 11, fontWeight: 700 }} />
                   <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-                  <Radar
-                    dataKey="valor"
-                    stroke="var(--primary)"
-                    strokeWidth={2}
-                    fill="var(--primary)"
-                    fillOpacity={0.4}
-                  />
+                  <Radar dataKey="valor" stroke="#10b981" strokeWidth={2} fill="#10b981" fillOpacity={0.35} />
                 </RadarChart>
-              </div>
-            </>
-          )}
-
-          <h3 className="sidebar-titulo">Filtros</h3>
-          <div className="filtros-vertical">
-            {FILTROS.map((f) => (
-              <button
-                key={f.valor}
-                className={filtro === f.valor ? "filtro ativo" : "filtro"}
-                onClick={() => setFiltro(f.valor)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="sidebar-footer">
-            <Link to="/onboarding" className="acao secundaria" style={{ width: '100%', justifyContent: 'center' }}>Meu Perfil</Link>
-            {ehAdmin && <Link to="/admin" className="acao secundaria" style={{ width: '100%', justifyContent: 'center' }}>Painel Admin</Link>}
-            
-            {ehFree && (
-              <div className="sidebar-promo">
-                <strong>Plano Gratuito</strong>
-                <p>1 busca diária.</p>
-                <Link to="/upgrade" className="acao" style={{ width: "100%", marginTop: "0.8rem", padding: "8px", justifyContent: 'center' }}>Fazer Upgrade</Link>
               </div>
             )}
           </div>
-        </div>
-      </aside>
+        )}
 
-      {/* ÁREA PRINCIPAL (DIREITA) */}
-      <main className="main-content">
-        <div className="main-content-inner">
-          {stats && (
-            <div className="top-metrics-hero">
-              <div className="metric-card hero-metric">
-                <span className="metric-valor">
-                  {stats.taxaSucesso === null ? "—" : <>{stats.taxaSucesso}<span className="metric-unidade">%</span></>}
-                </span>
-                <span className="metric-label">Taxa de Sucesso IA</span>
-              </div>
-              <div className="metric-card">
-                <span className="metric-valor">{stats.total}</span>
-                <span className="metric-label">Vagas Processadas</span>
-              </div>
-              <div className="metric-card">
-                <span className="metric-valor">{stats.naFila}</span>
-                <span className="metric-label">Vagas na Fila</span>
-              </div>
-            </div>
-          )}
-
-          {marketValue != null && (
-            <div className="market-value-card">
-              <span className="market-value-icon">💰</span>
-              <div>
-                <strong>O mercado está pagando em média R$ {marketValue.toLocaleString("pt-BR")}</strong>
-                <p className="market-value-dica">
-                  Dica: atualize seu <Link to="/onboarding">perfil</Link> para atingir vagas mais sêniores.
-                </p>
-              </div>
-            </div>
-          )}
+        {/* ===== Lista de vagas ===== */}
+        <div className="dbv2-vagas">
+          <h2 className="dbv2-titulo-secao">Vagas encontradas pela IA</h2>
 
           {erro && <p className="erro">{erro}</p>}
 
           {vagasFiltradas === null && !erro && (
-            <div className="grid-vagas">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="vaga-card skeleton-card">
+            <div aria-busy="true" aria-label="Carregando vagas" className="dbv2-vagas">
+              {[1, 2].map((i) => (
+                <div key={i} className="dbv2-card skeleton-card">
                   <div className="skeleton skeleton-titulo" />
                   <div className="skeleton skeleton-linha" />
                   <div className="skeleton skeleton-bloco" />
+                  <div className="skeleton skeleton-linha curta" />
                 </div>
               ))}
             </div>
           )}
 
           {vagasFiltradas?.length === 0 && (
-            <div className="estado-vazio">
-              <div className="estado-vazio-icone">✨</div>
-              <p>Nenhuma vaga aqui ainda.</p>
-              <span>A IA está trabalhando no plano de fundo.</span>
+            <div className="dbv2-card" style={{ alignItems: "center", textAlign: "center", padding: "48px 32px" }}>
+              <div style={{ fontSize: 40 }}>✨</div>
+              <p style={{ margin: 0, fontWeight: 700 }}>Nenhuma vaga aqui ainda.</p>
+              <span className="dbv2-metric-sub">
+                O robô está escaneando a web. Se demorar, confira seu{" "}
+                <Link to="/onboarding" className="dbv2-link" style={{ color: "#10b981" }}>perfil</Link>.
+              </span>
             </div>
           )}
 
-          <div className="grid-vagas">
-            {vagasFiltradas?.map((v) => {
-              const scoresV3 = parseScoresV3(v.motivo_ia);
-              return (
-              <div key={v.id} className={`vaga-card status-${v.status}`}>
-                <div className="vaga-card-header">
-                  <div className="vaga-card-title-group">
-                    <div className="vaga-cabecalho">
-                      <strong>{v.titulo}</strong>
-                    </div>
-                    <p className="vaga-empresa">
-                      {v.empresa} • {v.fonte} • {new Date(v.data_encontrada).toLocaleDateString("pt-BR")}
-                    </p>
+          {vagasFiltradas?.map((v) => {
+            const scoresV3 = parseScoresV3(v.motivo_ia);
+            return (
+              <div key={v.id} className="dbv2-card">
+                <div className="dbv2-card-header">
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0 }}>
+                    <strong className="dbv2-card-titulo">{v.titulo}</strong>
+                    <span className="dbv2-card-meta">
+                      {v.empresa}
+                      <span className="dbv2-dot" />
+                      {v.fonte}
+                      <span className="dbv2-dot" />
+                      {new Date(v.data_encontrada).toLocaleDateString("pt-BR")}
+                    </span>
                   </div>
                   <div
-                    className="score-ring"
+                    className="dbv2-ring"
                     style={{ "--score": v.score ?? 0 }}
-                    title={`Score da IA: ${v.score ?? 0} de 100`}
+                    role="img"
+                    aria-label={`Score da IA: ${v.score ?? 0} de 100`}
                   >
-                    <span className="score-ring-valor">{v.score ?? 0}</span>
-                    <span className="score-ring-sub">match</span>
+                    <div className="dbv2-ring-miolo">
+                      <span className="dbv2-ring-num">{v.score ?? 0}</span>
+                      <span className="dbv2-ring-sub">match</span>
+                    </div>
                   </div>
                 </div>
 
                 {v.motivo_ia && (
-                  <div className="vaga-motivo">
-                    <span className="motivo-icon">✨</span>
-                    <p>{v.motivo_ia}</p>
+                  <div className="dbv2-insight">
+                    <div className="dbv2-insight-chip">
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />
+                      </svg>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
+                      <span className="dbv2-insight-label">Insight da IA</span>
+                      <p>{v.motivo_ia}</p>
+                    </div>
                   </div>
                 )}
 
                 {scoresV3 && (
-                  <div className="subscores">
-                    <div className="subscore">
-                      <span>Técnico</span>
-                      <div className="subscore-trilha">
-                        <div className="subscore-barra" style={{ width: `${scoresV3.tecnico}%` }} />
+                  <div className="dbv2-subscores">
+                    <div className="dbv2-subscore">
+                      <span className="dbv2-subscore-label">Técnico</span>
+                      <div className="dbv2-trilha">
+                        <div className="dbv2-barra" style={{ width: `${scoresV3.tecnico}%` }} />
                       </div>
-                      <span className="subscore-valor">{scoresV3.tecnico}</span>
+                      <span className="dbv2-subscore-num">{scoresV3.tecnico}</span>
                     </div>
-                    <div className="subscore">
-                      <span>Fit</span>
-                      <div className="subscore-trilha">
-                        <div className="subscore-barra fit" style={{ width: `${scoresV3.fit}%` }} />
+                    <div className="dbv2-subscore">
+                      <span className="dbv2-subscore-label">Fit</span>
+                      <div className="dbv2-trilha">
+                        <div className="dbv2-barra fit" style={{ width: `${scoresV3.fit}%` }} />
                       </div>
-                      <span className="subscore-valor">{scoresV3.fit}</span>
+                      <span className="dbv2-subscore-num">{scoresV3.fit}</span>
                     </div>
                   </div>
                 )}
 
-                <div className="vaga-rodape">
-                  <span className="badge">{STATUS_LABEL[v.status] ?? v.status}</span>
-                  {v.feedback && (
-                    <span className="badge">{v.feedback === "positivo" ? "👍" : "👎"}</span>
-                  )}
+                <div className="dbv2-card-rodape">
+                  <span className="dbv2-pill-status">{STATUS_LABEL[v.status] ?? v.status}</span>
                   {v.url && (
-                    <a href={v.url} target="_blank" rel="noreferrer" className="link-vaga">
-                      <span>🔗</span> Ver original
+                    <a href={v.url} target="_blank" rel="noreferrer" className="dbv2-link">
+                      Ver original ↗
                     </a>
                   )}
-                  <span className="espaco" style={{flex: 1}} />
-                  <Link to={`/gerador/${v.id}`} className="acao secundaria" style={{marginRight: '8px'}}>
-                    Documentos
+                  <span style={{ flex: 1 }} />
+                  <Link to={`/gerador/${v.id}`} className="dbv2-btn-ghost">
+                    Gerar documentos
                   </Link>
-                  {v.status !== "candidatado" && (
-                    <button className="acao" onClick={() => mudarStatus(v, "candidatado")} style={{marginRight: '8px'}}>
-                      Candidatar
+                  {v.status !== "descartada" && (
+                    <button className="dbv2-btn-ghost" onClick={() => mudarStatus(v, "descartada")}>
+                      Descartar
                     </button>
                   )}
-                  {v.status !== "descartada" && (
-                    <button className="acao secundaria" onClick={() => mudarStatus(v, "descartada")}>
-                      Descartar
+                  {v.status !== "candidatado" && (
+                    <button className="dbv2-btn-primario" onClick={() => mudarStatus(v, "candidatado")}>
+                      Candidatar
                     </button>
                   )}
                 </div>
               </div>
-              );
-            })}
-          </div>
+            );
+          })}
         </div>
-      </main>
+      </div>
     </div>
   );
 }

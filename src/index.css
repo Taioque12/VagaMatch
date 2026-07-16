@@ -29,7 +29,7 @@ html {
 
 body {
   margin: 0;
-  font-family: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: "Manrope", "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text-main);
   background: var(--bg-main);
   transition: background 0.3s ease, color 0.3s ease;
@@ -44,7 +44,8 @@ body {
 
 h1, h2, h3 {
   margin: 0 0 0.5rem;
-  font-family: "Manrope", sans-serif;
+  font-family: "Outfit", "Manrope", sans-serif;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
@@ -68,12 +69,31 @@ p {
   width: calc(100% - 2rem);
   margin: 2rem auto;
   padding: 1.5rem;
-  background: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  border-radius: 12px;
-  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px);
+  background: rgba(10, 14, 17, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(236, 253, 245, 0.07);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   color: var(--text-main);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.tela-auth:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(236, 253, 245, 0.07);
+}
+
+.tela-auth h1 {
+  font-family: "Outfit", "Manrope", sans-serif;
+}
+
+.tela-auth label {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #94a3b8;
 }
 
 @media (min-width: 600px) {
@@ -103,7 +123,7 @@ input, textarea, select {
   font: inherit;
   padding: 0.8rem 1rem;
   border: 1px solid var(--border-input);
-  border-radius: 6px;
+  border-radius: 12px;
   background: var(--bg-input);
   color: var(--text-main);
   font-size: 15px;
@@ -125,18 +145,18 @@ button {
   font-family: "Manrope", sans-serif;
   font-weight: 700;
   font-size: 15px;
-  padding: 14px;
+  padding: 12px 24px;
   border: none;
-  border-radius: 6px;
-  background: var(--primary);
-  color: #fff;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-hover));
+  color: #052e21;
   cursor: pointer;
+  box-shadow: 0 6px 20px -4px var(--primary-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
   transition: background 0.2s ease-out, transform 0.15s ease-out, box-shadow 0.2s ease-out;
 }
 button:hover {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px -8px rgba(46, 125, 91, 0.55);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px -4px var(--primary-glow), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 button:active {
   transform: translateY(0) scale(0.98);
@@ -173,15 +193,37 @@ button:disabled {
 
 .erro {
   color: var(--error);
+  background: var(--error-light);
+  border: 1px solid var(--error-border);
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .sucesso {
-  color: var(--primary);
+  color: var(--primary-text);
+  background: var(--primary-light);
+  border: 1px solid var(--primary-border);
+  border-radius: 12px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.9rem;
+  margin: 0;
 }
 
 .ajuda {
   color: var(--text-muted);
   font-size: 0.9rem;
+}
+
+/* Fundo de página Premium V2 (glows radiais esmeralda no dark base) */
+.pv2-fundo {
+  min-height: 100vh;
+  background-color: #0a0e11;
+  background-image:
+    radial-gradient(ellipse 900px 500px at 85% -10%, rgba(16, 185, 129, 0.10), transparent 60%),
+    radial-gradient(ellipse 700px 500px at -10% 110%, rgba(16, 185, 129, 0.06), transparent 55%);
+  color: var(--text-main);
 }
 
 .onboarding {
@@ -192,7 +234,7 @@ button:disabled {
 }
 
 .onboarding h1 {
-  font-family: "Manrope", sans-serif;
+  font-family: "Outfit", "Manrope", sans-serif;
   font-weight: 800;
   font-size: 36px;
   letter-spacing: -0.03em;
@@ -203,32 +245,59 @@ button:disabled {
 }
 
 .onboarding section {
-  background: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  backdrop-filter: blur(10px);
+  background: rgba(10, 14, 17, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
   padding: 2rem;
-  border-radius: 12px;
+  border-radius: 24px;
   margin-bottom: 1.5rem;
-  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(236, 253, 245, 0.07);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.onboarding section:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(236, 253, 245, 0.1);
 }
 
 .onboarding section h2 {
-  font-family: "Manrope", sans-serif;
+  font-family: "Outfit", "Manrope", sans-serif;
   font-size: 20px;
   border-bottom: 1px solid var(--border-glass);
   padding-bottom: 0.8rem;
   margin-bottom: 1.5rem;
 }
 
+/* Label pequeno Premium V2 */
+.pv2-label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #94a3b8;
+}
+
 .cartao-experiencia {
-  background: var(--bg-input);
-  border: 1px solid var(--border-input);
-  border-radius: 6px;
-  padding: 1.2rem;
+  background: rgba(10, 14, 17, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-radius: 22px;
+  padding: 1.6rem 1.8rem;
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
   margin-bottom: 1rem;
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(236, 253, 245, 0.07);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cartao-experiencia:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(236, 253, 245, 0.1);
 }
 
 .linha-dupla {
@@ -265,16 +334,21 @@ button:disabled {
 }
 
 .zona-upload {
-  background: var(--primary-light);
-  border: 2px dashed var(--primary-border);
-  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(255, 255, 255, 0.02)),
+    rgba(10, 14, 17, 0.6);
+  border: 2px dashed rgba(16, 185, 129, 0.35);
+  border-radius: 22px;
   margin: 2.5rem 0 1.5rem;
-  transition: border-color 0.2s ease, background 0.2s ease;
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(236, 253, 245, 0.07);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .zona-upload:hover {
   border-color: var(--primary);
-  background: var(--bg-glass-hover);
+  box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(236, 253, 245, 0.1);
 }
 
 .zona-upload-label {
@@ -306,29 +380,38 @@ button:disabled {
 }
 
 .cartao-resumo {
-  background: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 1.8rem;
+  background: rgba(10, 14, 17, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-radius: 24px;
+  padding: 1.8rem 2rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(236, 253, 245, 0.07);
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cartao-resumo:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(236, 253, 245, 0.1);
 }
 
 .cartao-resumo-check {
   display: inline-block;
-  color: var(--primary-text);
-  background: var(--primary-light);
-  border: 1px solid var(--primary-border);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 0.3rem 0.7rem;
+  color: #10b981;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 0.4rem 0.8rem;
   border-radius: 999px;
   margin-bottom: 1rem;
 }
 
 .cartao-resumo h2 {
-  font-family: "Manrope", sans-serif;
+  font-family: "Outfit", "Manrope", sans-serif;
   font-size: 22px;
 }
 
@@ -359,20 +442,27 @@ button:disabled {
 }
 
 .cartao-telegram {
-  background: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 1.8rem;
+  background: rgba(10, 14, 17, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-radius: 24px;
+  padding: 1.8rem 2rem;
   margin-bottom: 1.5rem;
-  box-shadow: 0 20px 40px -20px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(236, 253, 245, 0.07);
   display: flex;
   flex-direction: column;
   gap: 0.8rem;
+  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cartao-telegram:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 10px 40px -10px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(236, 253, 245, 0.1);
 }
 
 .cartao-telegram h2 {
-  font-family: "Manrope", sans-serif;
+  font-family: "Outfit", "Manrope", sans-serif;
   font-size: 18px;
 }
 

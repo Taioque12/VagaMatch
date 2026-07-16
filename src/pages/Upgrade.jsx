@@ -4,40 +4,55 @@ import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
 import { PRECOS, PLANO_FEATURES, PLANO_PLUS_FEATURES } from "../lib/planos.js";
+import "../dashboard-premium-v2.css";
 
 const PLANO_LABEL = {
   match: "Match",
   match_plus: "Match Plus",
 };
 
-const cardStyle = {
+const cardBase = {
   flex: "1 1 280px",
   maxWidth: 380,
-  padding: "1.8rem",
-  backgroundColor: "var(--bg-glass)",
-  borderRadius: "16px",
-  border: "1px solid var(--border-glass)",
-  display: "flex",
-  flexDirection: "column",
   textAlign: "left",
+  gap: 0,
+};
+
+const cardDestaque = {
+  border: "1px solid rgba(16, 185, 129, 0.35)",
+  boxShadow:
+    "0 20px 60px -18px rgba(16, 185, 129, 0.4), 0 8px 32px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(236, 253, 245, 0.12), inset 0 0 60px -20px rgba(16, 185, 129, 0.18)",
+};
+
+const precoStyle = {
+  margin: "0 0 1.2rem",
+  fontFamily: "'Outfit', sans-serif",
+  fontSize: "2.4rem",
+  fontWeight: 800,
+  letterSpacing: "-0.03em",
+  fontVariantNumeric: "tabular-nums",
+  color: "#f8fafc",
 };
 
 function PlanoCard({ nome, descricao, preco, features, destaque, onAssinar, loading, loadingPlano }) {
   const esteCarregando = loading && loadingPlano;
   return (
-    <div style={{ ...cardStyle, ...(destaque ? { border: "1.5px solid var(--brand-green, #22c55e)" } : {}) }}>
+    <div className="dbv2-card" style={{ ...cardBase, ...(destaque ? cardDestaque : {}) }}>
       {destaque && (
         <span className="badge" style={{ alignSelf: "flex-start", marginBottom: "0.6rem" }}>Recomendado</span>
       )}
-      <h2 style={{ margin: "0 0 0.3rem", fontSize: "1.4rem" }}>{nome}</h2>
-      <p className="ajuda" style={{ margin: "0 0 1rem" }}>{descricao}</p>
-      <p style={{ margin: "0 0 1.2rem", fontSize: "2rem", fontWeight: 800 }}>
+      <h2 className="dbv2-card-titulo" style={{ margin: "0 0 0.3rem" }}>{nome}</h2>
+      <p className="dbv2-metric-sub" style={{ margin: "0 0 1rem" }}>{descricao}</p>
+      <p style={precoStyle}>
         R$ {preco}
-        <span style={{ fontSize: "0.9rem", fontWeight: 500 }}>/mês</span>
+        <span style={{ fontSize: "0.9rem", fontWeight: 600, letterSpacing: 0, color: "#94a3b8" }}>/mês</span>
       </p>
-      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1.5rem", display: "grid", gap: "0.5rem", fontSize: "0.92rem" }}>
+      <ul style={{ listStyle: "none", padding: 0, margin: "0 0 1.5rem", display: "grid", gap: "0.6rem", fontSize: "0.92rem" }}>
         {features.map((f) => (
-          <li key={f}>✓ {f}</li>
+          <li key={f} style={{ display: "flex", gap: "0.5rem", alignItems: "baseline" }}>
+            <span style={{ color: "#10b981", fontWeight: 700 }}>✓</span>
+            <span>{f}</span>
+          </li>
         ))}
       </ul>
       <button
@@ -103,38 +118,42 @@ export function Upgrade() {
   }
 
   return (
-    <div className="lp lp-hero-bloco" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <nav className="lp-nav">
+    <div className="dbv2-page">
+      <nav className="lp-nav" style={{ width: "100%" }}>
         <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
         <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
           <ThemeToggle />
-          <Link to="/dashboard" className="lp-botao-claro">Voltar ao dashboard</Link>
+          <Link to="/dashboard" className="dbv2-btn-ghost">Voltar ao dashboard</Link>
         </div>
       </nav>
 
-      <div className="onboarding onboarding-simples" style={{ textAlign: "center", marginTop: "4vh", paddingBottom: "4rem" }}>
-        <h1>Faça upgrade do seu plano</h1>
-        <p className="ajuda" style={{ maxWidth: 520, margin: "0.8rem auto 2rem" }}>
-          Deixe o robô buscar vagas para você o dia inteiro, com currículo e mensagem prontos para cada oportunidade.
-        </p>
+      <div className="dbv2-coluna" style={{ marginTop: "4vh", textAlign: "center", alignItems: "center" }}>
+        <div>
+          <h1 style={{ margin: 0, fontFamily: "'Outfit', sans-serif", fontWeight: 800, letterSpacing: "-0.02em", fontSize: "clamp(28px, 6vw, 40px)", color: "#f8fafc" }}>
+            Faça upgrade do seu plano
+          </h1>
+          <p className="dbv2-metric-sub" style={{ maxWidth: 520, margin: "0.8rem auto 0", fontSize: 15 }}>
+            Deixe o robô buscar vagas para você o dia inteiro, com currículo e mensagem prontos para cada oportunidade.
+          </p>
+        </div>
 
         {erro && <p className="erro">{erro}</p>}
 
-        {perfil === null && !erro && <p className="ajuda">Carregando...</p>}
+        {perfil === null && !erro && <p className="dbv2-metric-sub">Carregando...</p>}
 
         {assinanteAtivo && (
-          <div style={{ ...cardStyle, margin: "0 auto", textAlign: "center" }}>
-            <h2 style={{ margin: "0 0 0.5rem" }}>Você já é assinante 🎉</h2>
+          <div className="dbv2-card" style={{ maxWidth: 420, width: "100%", textAlign: "center", gap: 0 }}>
+            <h2 className="dbv2-card-titulo" style={{ margin: "0 0 0.5rem" }}>Você já é assinante 🎉</h2>
             <p style={{ margin: 0, fontSize: "1.1rem" }}>
-              Plano atual: <strong>{PLANO_LABEL[perfil.plano] ?? perfil.plano}</strong>
+              Plano atual: <strong style={{ color: "#10b981" }}>{PLANO_LABEL[perfil.plano] ?? perfil.plano}</strong>
             </p>
-            <p className="ajuda" style={{ margin: "0.4rem 0 1.2rem" }}>
+            <p className="dbv2-metric-sub" style={{ margin: "0.4rem 0 1.2rem" }}>
               Status da assinatura: <strong>{perfil.assinatura_status}</strong>
             </p>
-            <Link to="/dashboard" className="botao-principal" style={{ textDecoration: "none", display: "inline-block" }}>
+            <Link to="/dashboard" className="botao-principal" style={{ textDecoration: "none", display: "inline-block", alignSelf: "center" }}>
               Ir para o Dashboard
             </Link>
           </div>
@@ -142,24 +161,24 @@ export function Upgrade() {
 
         {perfil !== null && !assinanteAtivo && (
           <>
-            <div style={{ display: "inline-flex", gap: "0.5rem", marginBottom: "2rem" }}>
+            <div style={{ display: "inline-flex", gap: "0.5rem" }}>
               <button
                 type="button"
-                className={recorrencia === "mensal" ? "filtro ativo" : "filtro"}
+                className={recorrencia === "mensal" ? "dbv2-filtro ativo" : "dbv2-filtro"}
                 onClick={() => setRecorrencia("mensal")}
               >
                 Mensal
               </button>
               <button
                 type="button"
-                className={recorrencia === "anual" ? "filtro ativo" : "filtro"}
+                className={recorrencia === "anual" ? "dbv2-filtro ativo" : "dbv2-filtro"}
                 onClick={() => setRecorrencia("anual")}
               >
                 Anual (-18%)
               </button>
             </div>
 
-            <div style={{ display: "flex", gap: "1.5rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: "1.5rem", justifyContent: "center", flexWrap: "wrap", width: "100%" }}>
               <PlanoCard
                 nome="Match"
                 descricao="Para quem quer testar sem compromisso"

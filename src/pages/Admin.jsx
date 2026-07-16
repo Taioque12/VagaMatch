@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 import { ThemeToggle } from "../components/ThemeToggle.jsx";
+import "../dashboard-premium-v2.css";
 
 export function Admin() {
   const { session } = useAuth();
@@ -90,64 +91,94 @@ export function Admin() {
   }, [session, navigate]);
 
   if (!session || !isAdmin) return null; // Aguarda validação
-  if (carregando) return <p className="carregando">Carregando métricas...</p>;
-  if (erro) return <p className="erro">Erro ao carregar métricas: {erro}</p>;
+  if (carregando) {
+    return (
+      <div className="dbv2-page" style={{ justifyContent: "center" }}>
+        <p className="dbv2-metric-sub">Carregando métricas...</p>
+      </div>
+    );
+  }
+  if (erro) {
+    return (
+      <div className="dbv2-page" style={{ justifyContent: "center" }}>
+        <p className="erro">Erro ao carregar métricas: {erro}</p>
+      </div>
+    );
+  }
 
   const m = metricas;
 
+  const linhaLista = {
+    padding: "10px 0",
+    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: "12px",
+  };
+
   return (
-    <div className="lp lp-hero-bloco" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <nav className="lp-nav" style={{ justifyContent: 'space-between' }}>
-        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: 'none' }}>
+    <div className="dbv2-page">
+      <nav className="lp-nav" style={{ width: "100%", justifyContent: "space-between" }}>
+        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
           <span className="lp-logo-marca" />
           VagaMatch (Admin)
         </Link>
-        <ThemeToggle />
+        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
+          <ThemeToggle />
+          <Link to="/dashboard" className="dbv2-btn-ghost">Voltar ao dashboard</Link>
+        </div>
       </nav>
 
-      <div className="admin">
-        <h1 style={{ fontFamily: "Manrope", fontWeight: 800, fontSize: "clamp(26px, 6vw, 36px)", marginBottom: "8px" }}>Painel do Administrador</h1>
-        <p className="subtitulo" style={{ marginBottom: "2rem", color: "var(--text-muted)" }}>Saúde geral do VagaMatch — dados em tempo real via Supabase.</p>
+      <div className="dbv2-coluna" style={{ marginTop: 36 }}>
+        <div>
+          <h1 style={{ margin: "0 0 8px", fontFamily: "'Outfit', sans-serif", fontWeight: 800, letterSpacing: "-0.02em", fontSize: "clamp(26px, 6vw, 36px)", color: "#f8fafc" }}>
+            Painel do Administrador
+          </h1>
+          <p className="dbv2-metric-sub" style={{ margin: 0, fontSize: 15 }}>
+            Saúde geral do VagaMatch — dados em tempo real via Supabase.
+          </p>
+        </div>
 
-        <section className="cartoes-stats" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
-          <div className="stat">
-            <span className="stat-numero">{m.totalUsuarios}</span>
-            <span className="stat-label">Usuários Cadastrados</span>
+        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "24px" }}>
+          <div className="dbv2-metric">
+            <span className="dbv2-metric-label">Usuários Cadastrados</span>
+            <span className="dbv2-metric-valor" style={{ fontSize: "clamp(36px, 4vw, 48px)" }}>{m.totalUsuarios}</span>
           </div>
-          <div className="stat">
-            <span className="stat-numero">{m.buscaAtiva}</span>
-            <span className="stat-label">Com Busca Ativa</span>
+          <div className="dbv2-metric">
+            <span className="dbv2-metric-label">Com Busca Ativa</span>
+            <span className="dbv2-metric-valor" style={{ fontSize: "clamp(36px, 4vw, 48px)" }}>{m.buscaAtiva}</span>
           </div>
-          <div className="stat">
-            <span className="stat-numero">{m.cadastrosUltimos7Dias}</span>
-            <span className="stat-label">Cadastros (7 dias)</span>
+          <div className="dbv2-metric">
+            <span className="dbv2-metric-label">Cadastros (7 dias)</span>
+            <span className="dbv2-metric-valor" style={{ fontSize: "clamp(36px, 4vw, 48px)" }}>{m.cadastrosUltimos7Dias}</span>
           </div>
-          <div className="stat">
-            <span className="stat-numero">{m.vagasNotificadas7Dias}</span>
-            <span className="stat-label">Vagas Notificadas (7 dias)</span>
+          <div className="dbv2-metric">
+            <span className="dbv2-metric-label">Vagas Notificadas (7 dias)</span>
+            <span className="dbv2-metric-valor" style={{ fontSize: "clamp(36px, 4vw, 48px)" }}>{m.vagasNotificadas7Dias}</span>
           </div>
         </section>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '2rem' }}>
-          <section className="vaga">
-            <h2 style={{ fontFamily: "Manrope", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px", marginBottom: "16px" }}>Assinaturas</h2>
-            <ul style={{ listStyle: "none", padding: 0 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "24px" }}>
+          <section className="dbv2-card">
+            <h2 className="dbv2-card-titulo" style={{ margin: 0, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "14px" }}>Assinaturas</h2>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {Object.entries(m.porAssinatura).map(([status, qtd]) => (
-                <li key={status} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-glass)", display: "flex", justifyContent: "space-between" }}>
-                  <strong style={{ color: "var(--primary)" }}>{status || "Grátis"}</strong>
-                  <span>{qtd} usuário(s)</span>
+                <li key={status} style={linhaLista}>
+                  <strong style={{ color: "#10b981" }}>{status || "Grátis"}</strong>
+                  <span className="dbv2-metric-sub" style={{ fontVariantNumeric: "tabular-nums" }}>{qtd} usuário(s)</span>
                 </li>
               ))}
             </ul>
           </section>
 
-          <section className="vaga">
-            <h2 style={{ fontFamily: "Manrope", borderBottom: "1px solid var(--border-glass)", paddingBottom: "12px", marginBottom: "16px" }}>Recorrência</h2>
-            <ul style={{ listStyle: "none", padding: 0 }}>
+          <section className="dbv2-card">
+            <h2 className="dbv2-card-titulo" style={{ margin: 0, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "14px" }}>Recorrência</h2>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
               {Object.entries(m.porRecorrencia).map(([tipo, qtd]) => (
-                <li key={tipo} style={{ padding: "8px 0", borderBottom: "1px solid var(--border-glass)", display: "flex", justifyContent: "space-between" }}>
-                  <strong style={{ color: "var(--text-main)" }}>{tipo === "sem_recorrencia" ? "Sem Assinatura" : tipo}</strong>
-                  <span>{qtd} usuário(s)</span>
+                <li key={tipo} style={linhaLista}>
+                  <strong style={{ color: "#f8fafc" }}>{tipo === "sem_recorrencia" ? "Sem Assinatura" : tipo}</strong>
+                  <span className="dbv2-metric-sub" style={{ fontVariantNumeric: "tabular-nums" }}>{qtd} usuário(s)</span>
                 </li>
               ))}
             </ul>
