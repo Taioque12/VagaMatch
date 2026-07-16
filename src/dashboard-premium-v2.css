@@ -189,15 +189,16 @@
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #94a3b8;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s ease;
 }
 
-.dbv2-filtro:hover {
-  background: rgba(255, 255, 255, 0.06);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: #f8fafc;
+/* Pill inativa: brilho esmeralda sutil na borda/texto ao passar o mouse */
+.dbv2-filtro:hover:not(.ativo) {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.45);
+  color: #34d399;
   transform: none;
-  box-shadow: none;
+  box-shadow: 0 0 14px -4px rgba(16, 185, 129, 0.4);
 }
 
 .dbv2-filtro.ativo {
@@ -499,6 +500,56 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+/* ─── Micro-interações UX ────────────────────────────────────────────────── */
+
+/* Avatar do header: círculo com iniciais (e-mail vai pro tooltip) */
+.dbv2-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-family: 'Outfit', sans-serif;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #052e21;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border: 1px solid rgba(236, 253, 245, 0.25);
+  box-shadow: 0 0 14px -2px rgba(16, 185, 129, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  cursor: default;
+  user-select: none;
+}
+
+/* Métrica em 0 com busca ativa: shimmer no número + pulso suave na borda */
+.dbv2-metric-buscando {
+  animation: dbv2-borda-pulse 2.4s ease-in-out infinite;
+}
+
+.dbv2-metric-buscando .dbv2-metric-valor {
+  background: linear-gradient(
+    90deg,
+    #94a3b8 25%,
+    #34d399 50%,
+    #94a3b8 75%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: dbv2-shimmer 1.8s ease-in-out infinite;
+}
+
+@keyframes dbv2-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes dbv2-borda-pulse {
+  0%, 100% { border-color: rgba(255, 255, 255, 0.08); }
+  50% { border-color: rgba(16, 185, 129, 0.35); }
 }
 
 /* ─── Responsivo ─────────────────────────────────────────────────────────── */

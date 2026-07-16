@@ -166,7 +166,10 @@ export function Dashboard() {
           VagaMatch
         </Link>
         <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
-          <span className="dbv2-metric-sub">{session?.user?.email}</span>
+          {/* Avatar com iniciais — e-mail sai do header (fica no title/tooltip) */}
+          <span className="dbv2-avatar" title={session?.user?.email || ""}>
+            {(session?.user?.email || "?").slice(0, 2).toUpperCase()}
+          </span>
           <Link to="/onboarding" className="dbv2-btn-ghost">Meu perfil</Link>
           {ehAdmin && <Link to="/admin" className="dbv2-btn-ghost">Painel admin</Link>}
           <button className="dbv2-btn-ghost" onClick={sair}>Sair</button>
@@ -200,13 +203,14 @@ export function Dashboard() {
               </div>
             </div>
 
-            <div className="dbv2-metric">
+            {/* Shimmer quando busca ativa e valor 0: sistema trabalhando no background */}
+            <div className={buscaAtiva && stats.total === 0 ? "dbv2-metric dbv2-metric-buscando" : "dbv2-metric"}>
               <span className="dbv2-metric-label">Vagas Processadas</span>
               <span className="dbv2-metric-valor">{stats.total}</span>
               <span className="dbv2-metric-sub">últimas 200 vagas</span>
             </div>
 
-            <div className="dbv2-metric">
+            <div className={buscaAtiva && stats.naFila === 0 ? "dbv2-metric dbv2-metric-buscando" : "dbv2-metric"}>
               <span className="dbv2-metric-label">Vagas na Fila</span>
               <span className="dbv2-metric-valor">{stats.naFila}</span>
               <span className="dbv2-metric-sub">processando agora</span>
@@ -287,9 +291,11 @@ export function Dashboard() {
               <div style={{ fontSize: 40 }}>✨</div>
               <p style={{ margin: 0, fontWeight: 700 }}>Nenhuma vaga aqui ainda.</p>
               <span className="dbv2-metric-sub">
-                O robô está escaneando a web. Se demorar, confira seu{" "}
-                <Link to="/onboarding" className="dbv2-link" style={{ color: "#10b981" }}>perfil</Link>.
+                O robô está escaneando a web. Quanto mais completo seu perfil, melhores os matches.
               </span>
+              <Link to="/onboarding" className="dbv2-btn-primario" style={{ marginTop: 8 }}>
+                Completar meu perfil
+              </Link>
             </div>
           )}
 
