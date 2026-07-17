@@ -8,6 +8,7 @@ export const env = {
   supabaseServiceKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
   geminiApiKey: process.env.GEMINI_API_KEY,
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN,
+  adminTelegramChatId: process.env.ADMIN_TELEGRAM_CHAT_ID,
   reedApiKey: process.env.REED_API_KEY,
   joobleApiKey: process.env.JOOBLE_API_KEY,
 };

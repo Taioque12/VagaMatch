@@ -4,7 +4,7 @@ import { env } from "./config.js";
 // REST direto (mesmo padrão do webhook) — batchEmbedContents aceita vários textos
 // por request, então 1 rodada inteira custa poucas chamadas, não 1 por vaga.
 
-const EMBED_MODEL = "text-embedding-004";
+const EMBED_MODEL = "gemini-embedding-2";
 const EMBED_DIMS = 768;
 // Chunk conservador: payload do Google tem limite e descrições de vaga são longas.
 const CHUNK_SIZE = 50;

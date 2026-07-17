@@ -528,6 +528,6 @@ main().catch(async (e) => {
   console.error(e);
   // Garante liberação do lock mesmo em crash fatal — mas só se esta instância o pegou
   if (lockAdquirido) await setState("worker_running", "false").catch(() => {});
-  await alertarErro(ADMIN_CHAT_ID, `Falha fatal no worker: ${e.message}`).catch(() => {});
+  await alertarErro(env.adminTelegramChatId, `Falha fatal no worker: ${e.message}`).catch(() => {});
   process.exit(1);
 });
