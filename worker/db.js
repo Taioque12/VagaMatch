@@ -153,6 +153,24 @@ export async function deduplicarParaUsuario(userId, vagas) {
   return inseridas.map((row) => ({ ...porJobId.get(row.job_id), ...row }));
 }
 
+// Vagas travadas em 'pendente_processamento' há mais que minIdadeMs — geradas
+// numa rodada que morreu no meio (timeout do Actions, crash) antes de avaliar
+// essa vaga. Como não reaparecem na busca bruta seguinte, o dedup nunca as
+// reinclui sozinho; o worker precisa buscá-las explicitamente e reprocessar.
+export async function buscarPendentesAntigas(userId, minIdadeMs, limite = 30) {
+  const cutoff = new Date(Date.now() - minIdadeMs).toISOString();
+  const { data, error } = await supabase
+    .from("vagas_vistas")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "pendente_processamento")
+    .lt("data_encontrada", cutoff)
+    .order("data_encontrada", { ascending: true })
+    .limit(limite);
+  if (error) throw new Error(`Supabase select (pendentes antigas): ${error.message}`);
+  return data ?? [];
+}
+
 export async function marcarStatus(id, status, curriculoPath = null) {
   const patch = { status };
   if (curriculoPath) patch.curriculo_gerado_path = curriculoPath;
