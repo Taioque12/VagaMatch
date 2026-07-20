@@ -24,11 +24,16 @@ jobs:
         with:
           node-version: "22"
 
+      # npm bundlado no runner (Node 22 -> npm ~10.9) interpreta este
+      # lockfile (lockfileVersion 3, optionalDeps aninhadas de esbuild via
+      # vite@7 dentro do vitest@4.1) de forma diferente do npm usado pra
+      # gerá-lo (11.x) — resultado varia entre EBADPLATFORM e "Missing from
+      # lock file" dependendo da versão. Fixar a versão elimina a divergência.
+      - run: npm install -g npm@11
+
       # --omit=dev: worker só usa "dependencies" (node worker/index.js puro,
-      # sem build/test). Evita instalar vite/vitest — e o esbuild opcional
-      # multi-plataforma que eles arrastam, cuja resolução de optionalDeps
-      # aninhadas tem bug conhecido em algumas versões do npm (EBADPLATFORM
-      # fatal em vez de pular a plataforma incompatível).
+      # sem build/test) — não precisa de vite/vitest nem do esbuild que
+      # eles arrastam.
       - run: npm ci --omit=dev
 
       - run: npm run worker
