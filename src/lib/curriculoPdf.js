@@ -1,5 +1,13 @@
-// Réplica em jsPDF (client-side) do layout gerado por worker/pdf.js (pdfkit),
-// para o usuário poder baixar do site o mesmo currículo que o bot manda no Telegram.
+// Gerador client-side (jsPDF) espelhado do gerarPdfBytes em
+// supabase/functions/telegram-webhook/index.ts — mesmo layout, pra o usuário
+// baixar do site o mesmo currículo que o bot manda no Telegram. Qualquer
+// mudança de estrutura aqui deve ser replicada lá (e vice-versa).
+//
+// Layout pensado pra ATS (Applicant Tracking Systems): 1 coluna só, fonte
+// padrão Helvetica (uma das 14 fontes-base do PDF, sempre embutida e sempre
+// legível por parsers), texto real selecionável (não é imagem), sem
+// tabelas/caixas/ícones que quebram a extração automática de texto, seções
+// com títulos padrão do mercado (Resumo/Experiência/Formação/Habilidades).
 
 const MARGEM = 50;
 const LARGURA_UTIL_PT = 595.28 - MARGEM * 2; // A4 em pt
@@ -78,6 +86,16 @@ export async function gerarCurriculoPdf(cv, perfil) {
 
     const { jsPDF } = await import("jspdf");
     const doc = new jsPDF({ unit: "pt", format: "a4" });
+
+    // Metadata do PDF — alguns ATS (Greenhouse, Workday, etc.) leem o
+    // título/autor do documento além do texto, e reforça profissionalismo
+    // ao abrir o arquivo (nome correto na aba do PDF, não "documento.pdf").
+    doc.setProperties({
+      title: `Currículo — ${perfil.nomeCompleto}`,
+      subject: "Currículo",
+      author: perfil.nomeCompleto,
+      creator: "VagaMatch",
+    });
 
     let y = MARGEM;
 

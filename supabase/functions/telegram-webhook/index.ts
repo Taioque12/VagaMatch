@@ -80,6 +80,15 @@ function gerarPdfBytes(cvJson: string, nomeCompleto: string, localizacao?: strin
   let cv;
   try { cv = JSON.parse(cvJson); } catch { cv = {}; }
 
+  // Metadata do PDF — espelha src/lib/curriculoPdf.js (gerador do site).
+  // Alguns ATS leem título/autor do documento além do texto.
+  doc.setProperties({
+    title: `Currículo — ${nomeCompleto}`,
+    subject: "Currículo",
+    author: nomeCompleto,
+    creator: "VagaMatch",
+  });
+
   let y = MARGEM;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
