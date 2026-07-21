@@ -11,12 +11,12 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 
 | Camada | Tecnologia |
 |---|---|
-| **Frontend** | React + Vite + React Router + Supabase Auth (RLS) |
-| **Worker** | Node.js (`worker/`), GitHub Actions cron a cada 10 min, service_role key |
-| **Edge Functions** | `gemini-proxy` (proxy autenticado pro Gemini), `stripe-checkout` / `stripe-webhook` (pagamentos), `telegram-webhook` (respostas instantâneas do bot) |
-| **Banco de Dados** | Supabase (PostgreSQL) com RLS por `user_id` |
-| **IA** | Google Gemini 2.5 Flash (análise de vagas + extração de currículo) |
-| **Pagamentos** | Stripe Checkout + Webhooks |
+| **Frontend** | React + Vite (lazy routes) + React Router + Supabase Auth (RLS) |
+| **Worker** | Node.js (`worker/`), GitHub Actions cron a cada 2h, service_role key |
+| **Edge Functions** | `gemini-proxy` (proxy autenticado pro Gemini + embeddings), `mp-checkout` / `mp-webhook` (pagamentos), `telegram-webhook` (bot + geração de PDF on-demand) |
+| **Banco de Dados** | Supabase (PostgreSQL) com RLS por `user_id` + **pgvector** (embeddings 768d, índices HNSW) |
+| **IA** | Google Gemini 2.5 Flash (score swarm Técnico+Fit, currículo ajustado, extração) + text-embedding (pré-filtro vetorial V3) |
+| **Pagamentos** | Mercado Pago (preapproval/Pix) — Edge Functions `mp-checkout`/`mp-webhook` |
 | **Deploy** | Vercel (frontend) + Supabase (Edge Functions + DB) + GitHub Actions (worker cron) |
 
 ## Funcionalidades
@@ -26,22 +26,25 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Interface interativa que permite ao usuário **editar as tags geradas pela IA** antes de salvar, garantindo total controle
 - O usuário não precisa preencher formulários manualmente
 
-### 🔍 Pipeline de Busca com IA
-- Busca vagas na Adzuna usando cargos-alvo e regiões de cada usuário (raio padrão de 500km)
-- Cache de busca compartilhado entre usuários com mesma região/cargo
-- Filtro Híbrido: varredura de palavras-chave + análise profunda via **Gemini 2.5 Flash**
-- A IA lê a descrição da vaga e o currículo, gera um **Score (0-100)** e uma justificativa
-- Descarte automático de vagas com Score IA < 40
-- **Priorização Inteligente:** Novos cadastros ou uploads de currículo "furam a fila" e recebem as vagas quase que instantaneamente no próximo ciclo do worker
-- **Reprocessamento Automático:** Vagas interrompidas no meio do processo (ex: geração de currículo falhou) são reprocessadas de forma segura via Upsert sem travar o pipeline.
+### 🔍 Pipeline de Busca com IA (V3 — Agentes Inteligentes)
+- Busca em 4 fontes (Adzuna, JSearch, Reed, Jooble) usando cargos-alvo e regiões de cada usuário (raio padrão 500km ou Brasil todo)
+- Cache de busca persistido (`app_state`, TTL 90min) compartilhado entre usuários com mesma região/cargo
+- **Camada 0 — pré-filtro vetorial (pgvector)**: similaridade coseno currículo×vaga (embeddings 768d) descarta vagas ruins **antes** de gastar chamada Gemini; ajuste por memória de feedback (vaga parecida com descartes recentes é penalizada, parecida com candidaturas ganha bônus)
+- **Camada 1 — swarm Técnico + Fit-Cultural**: 2 especialistas lógicos em 1 chamada Gemini, retornando `score_tecnico` + `score_fit`; score final é média ponderada com o sinal vetorial (pesos calibráveis a quente via `app_state`)
+- Descarte automático de vagas com Score final < 40
+- **Priorização Inteligente:** novos cadastros/uploads "furam a fila" no próximo ciclo do worker
+- **Reprocessamento de órfãs:** vagas presas em `pendente_processamento` (rodada interrompida por timeout) são reincluídas automaticamente a cada rodada (até 30/rodada, idade > 1h)
+- Lock de execução via `app_state` (timeout 15min) + semáforo de concorrência 3 + janela de 4s entre chamadas Gemini (15 RPM free tier); 429 nunca descarta vaga
+- Flags a quente em `app_state`: `v3_prefiltro`, `v3_threshold_similaridade`, `v3_pesos_score`, `v3_fator_feedback`, `v3_pdf_automatico` — rollback sem deploy
 
 ### 📱 Bot Telegram (Tempo Real)
 - **Login em 1-Clique:** Integração via *Deep Linking* (`/start {user_id}`). O site atualiza automaticamente via **Supabase Realtime** quando a conexão é feita
 - **Webhook em tempo real** via Supabase Edge Function — respostas instantâneas
 - Comandos: `/start`, `/menu`, `/buscar`, `/status`, `/regiao`
-- Botões inline: **✅ Candidatei-me** / **🗑️ Descartar** (gravam direto no banco)
-- Notificações trazem Score IA e justificativa; o **currículo ajustado é gerado on-demand** só quando o usuário clica "Candidatei-me" (corta o custo Gemini pela metade no pipeline)
-- Link clicável para a vaga original na Adzuna
+- Botões inline: **✅ Candidatei-me** / **🗑️ Descartar** / **📄 Gerar PDF** (gravam direto no banco; descarte/candidatura alimentam a memória vetorial de feedback da V3)
+- Notificações trazem Score IA e o insight Técnico+Fit; o **PDF do currículo ajustado à vaga chega automático** logo após a notificação (desligável a quente via `v3_pdf_automatico`) — o botão "📄 Gerar PDF" regenera on-demand
+- PDF em estrutura **ATS-friendly**: 1 coluna, Helvetica, texto selecionável, seções padrão de mercado, metadata (title/author) — mesmo layout nos 3 geradores (worker, webhook, site)
+- Link clicável para a vaga original
 - Configuração de raio de busca (100km, 500km ou Brasil todo)
 
 ### 🎤 Entrevista Simulada por IA (MVP em texto)
@@ -61,16 +64,18 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Crédito só é liberado quando o indicado **paga a primeira mensalidade** (via webhook Stripe) — contas fake não geram recompensa
 - Contador de créditos visível no dashboard
 
-### 💎 Dashboard Premium
-- Painel Web principal (`/dashboard`) com Glassmorphism, grid de vagas, e filtros rápidos (acessado automaticamente após o onboarding)
-- Exibição do Score IA com cores e motivo da recomendação gerado pela IA
-- Dark/Light mode com CSS variables
-- Download do currículo em PDF
+### 💎 Dashboard Premium V2
+- Coluna única 960px, dark mode esmeralda como padrão absoluto, glassmorphism (blur 24px)
+- Hero "Taxa de Sucesso IA" + métricas (processadas, na fila) + toolbar com toggle de busca e filtros pill
+- Score ring radial por vaga, box "Insight da IA", barras Técnico/Fit (sub-scores V3) e radar de médias (recharts)
+- Micro-interações: shimmer nas métricas durante busca, hover esmeralda, avatar com iniciais no header
+- Rotas lazy (React.lazy + Suspense) — chunk inicial menor pra Landing/Login
+- Download do currículo em PDF (mesmo layout ATS do bot)
 
-### 💳 Pagamentos (Stripe)
-- Integração completa: `stripe-checkout` (Edge Function) + `stripe-webhook`
-- Páginas de sucesso e cancelamento
-- Controle de plano (`free` / `premium`) no perfil do usuário
+### 💳 Pagamentos (Mercado Pago)
+- Edge Functions `mp-checkout` (JWT, preços server-side) + `mp-webhook` (validação x-signature HMAC + reconsulta à API antes de escrever)
+- Planos `match`/`match_plus`; free = 1 busca automática/24h (trigger anti-bypass no banco)
+- Páginas `/upgrade`, `/sucesso`, `/cancelado`
 
 ### 🛡️ Segurança & Robustez
 - **RLS reforçado**: triggers bloqueiam usuário comum de alterar colunas privilegiadas (`role`, `plano`, créditos de indicação, salários); status de vaga só aceita `candidatado`/`descartada` vindos do usuário
@@ -103,6 +108,11 @@ As migrations estão em `supabase/migrations/`, em ordem:
 | 012 | `012_fix_protecao_colunas.sql` | Protege colunas de indicação/salário; destrava status `candidatado`/`descartada` pro usuário |
 | 013 | `013_descricao_vaga.sql` | Coluna `descricao` em `vagas_vistas` (CV on-demand e entrevista) |
 | 014 | `014_entrevistas.sql` | Tabela `entrevistas` (sessões da entrevista simulada, cota e histórico) |
+| 015 | `015_worker_retries.sql` | Coluna `tentativas` (max retries antes de status `erro`) |
+| 016 | `016_mercadopago_billing.sql` | Migração Stripe→Mercado Pago: colunas `mp_*`, quota free 24h, trigger anti-bypass |
+| 017 | `017_vetores.sql` | **V3 Fase A**: extensão pgvector, `embedding vector(768)` em `curriculos`/`vagas_vistas`, índices HNSW, RPC `match_vaga_curriculo`, flags V3 no `app_state` |
+| 018 | `018_feedback_vetorial.sql` | **V3 Fase C**: `feedback_em`, RPC `ajuste_feedback_vetorial` (memória de descartes/candidaturas) |
+| 019 | `019_protege_embedding.sql` | Blinda `vagas_vistas.embedding` contra escrita do usuário (trigger) |
 
 ## Ferramentas de Desenvolvimento (IA)
 
@@ -140,12 +150,12 @@ Isso instala/inicia:
 ## Produção
 
 ### GitHub Actions (Worker Cron)
-`.github/workflows/worker.yml` roda o worker a cada 10 min. Cadastrar secrets em **Settings → Secrets → Actions**:
-`ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`
+`.github/workflows/worker.yml` roda o worker a cada 2h (`npm ci --omit=dev` com npm@11 pinado — evita divergência de lockfile entre versões de npm). Cadastrar secrets em **Settings → Secrets → Actions**:
+`ADZUNA_APP_ID`, `ADZUNA_APP_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `RAPIDAPI_KEY`, `ADMIN_TELEGRAM_CHAT_ID` (opcional, alertas)
 
 ### Supabase Edge Functions
 Secrets necessários (`supabase secrets set`):
-`TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID_MENSAL` (e opcional `STRIPE_PRICE_ID_ANUAL`), `SITE_URL`
+`TELEGRAM_BOT_TOKEN`, `GEMINI_API_KEY`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `TELEGRAM_WEBHOOK_SECRET`, `MP_ACCESS_TOKEN`, `MP_WEBHOOK_SECRET`, `SITE_URL`
 
 ### Telegram Webhook
 Registrado via `setWebhook` apontando para `https://<project-ref>.supabase.co/functions/v1/telegram-webhook`, com `secret_token` igual ao `TELEGRAM_WEBHOOK_SECRET` configurado nas secrets:
@@ -158,18 +168,19 @@ Depois de trocar o secret, é preciso redeployar `telegram-webhook` e re-registr
 
 ## Testes
 
-- `npm test` (vitest) — `src/lib/gemini.test.js`: extração de currículo, validação de schema, timeout do Gemini
-- `gemini-proxy/index.test.ts` roda com `deno test`, não com vitest (excluído em `vite.config.js`)
-- `worker/test-*.js` são scripts manuais de diagnóstico (sem assertions), rodam com `node worker/test-<nome>.js`
+`npm test` (vitest, 18 testes):
+- `src/lib/gemini.test.js` — extração de currículo, validação de schema, timeout do Gemini
+- `worker/processamento.test.js` — semáforo de concorrência, pipeline de vagas (aprovação/descarte por score, 429 não conta falha, PDF automático best-effort)
+- `worker/db.test.js` — query de pendentes órfãs (`buscarPendentesAntigas`)
+
+Edge Functions são excluídas do vitest (`vite.config.js`). Script de manutenção: `node scripts/reprocessar-pendentes.mjs` (desentope vagas presas em `pendente_processamento`, reusando o pipeline de produção).
 
 ## Próximos Passos
 
-### Pendências imediatas (bloqueiam testes fim-a-fim)
-- [ ] Configurar secret `STRIPE_PRICE_ID_MENSAL` nas Edge Functions (sem ele o botão "Assinar Premium" falha)
-- [ ] Testar worker com `.env` real (`node worker/index.js --limit 3`) — validar salários e `descricao` populando
-- [ ] Testar fluxo completo no Telegram: "Candidatei-me" → CV on-demand → oferta de entrevista → sessão completa
-- [ ] Testar indicação fim-a-fim: cadastro com `?ref=`, checkout test do Stripe, crédito no indicador
-- [ ] Revisão visual do dashboard com prints (aguardando `.env` do frontend)
+### Pendências imediatas
+- [ ] Mercado Pago fim-a-fim: criar aplicação no painel do MP, setar `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET`, cadastrar URL do webhook e testar pagamento real
+- [ ] Item 7 da V3: job semanal de refino de perfil (`resumirFeedbackSemanal` já existe em `worker/swarm.js`, falta o cron + confirmação do usuário no Telegram)
+- [ ] Colunas dedicadas `score_tecnico`/`score_fit` em `vagas_vistas` (hoje o frontend parseia do texto `motivo_ia` — funciona, mas é frágil)
 
 ### Roadmap v2 (ver `docs/plano_gamificacao.md` e análise de escala)
 - [ ] **Resgate de créditos de indicação** — hoje só contabiliza; decidir: cupom Stripe automático ou resgate manual
