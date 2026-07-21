@@ -64,6 +64,23 @@ export async function notificarVaga(chatId, vaga) {
   return result.message_id;
 }
 
+// PDF automático: envia o currículo ajustado como documento logo após a
+// notificação da vaga. Mensagem de texto e botões ficam na notificação
+// (caption do sendDocument tem limite de 1024 chars — motivo_ia do swarm
+// estouraria fácil), o PDF chega na sequência no mesmo chat.
+export async function enviarDocumento(chatId, pdfBytes, filename) {
+  const form = new FormData();
+  form.append("chat_id", String(chatId));
+  form.append("document", new Blob([pdfBytes], { type: "application/pdf" }), filename);
+
+  const res = await fetch(API("sendDocument"), { method: "POST", body: form });
+  const data = await res.json();
+  if (!res.ok || data.ok === false) {
+    throw new Error(`Telegram sendDocument: ${JSON.stringify(data)}`);
+  }
+  return data.result.message_id;
+}
+
 export async function enviarResumoDiario(chatId, vagas) {
   const linhas = vagas
     .slice()

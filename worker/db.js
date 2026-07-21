@@ -306,11 +306,12 @@ export async function listarFeedbackRecente(userId, dias = 7) {
 
 // Config V3 calibrável a quente via app_state (defaults semeados nas migrations 017/018).
 export async function lerConfigV3() {
-  const [prefiltro, threshold, pesosRaw, fator] = await Promise.all([
+  const [prefiltro, threshold, pesosRaw, fator, pdfAuto] = await Promise.all([
     getState("v3_prefiltro"),
     getState("v3_threshold_similaridade"),
     getState("v3_pesos_score"),
     getState("v3_fator_feedback"),
+    getState("v3_pdf_automatico"),
   ]);
   let pesos = { vetor: 0.5, tecnico: 0.3, fit: 0.2 };
   try {
@@ -325,6 +326,9 @@ export async function lerConfigV3() {
     threshold: Number.isFinite(thresholdNum) ? thresholdNum : 0.55,
     pesos,
     fatorFeedback: Number.isFinite(fatorNum) ? fatorNum : 0.15,
+    // PDF junto com a notificação (custa +1 chamada Gemini por vaga aprovada).
+    // Default ON; desligar a quente: v3_pdf_automatico = 'off' no app_state.
+    pdfAutomatico: pdfAuto !== "off",
   };
 }
 

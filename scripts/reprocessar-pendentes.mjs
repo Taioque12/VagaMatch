@@ -23,7 +23,7 @@ async function buscarUsuariosComPendentes() {
 
   const [{ data: perfis, error: eP }, { data: prefs, error: ePr }, { data: curriculos, error: eC }] =
     await Promise.all([
-      supabase.from("profiles").select("id, telegram_chat_id").in("id", userIds),
+      supabase.from("profiles").select("id, nome_completo, localizacao, telegram_chat_id").in("id", userIds),
       supabase.from("preferencias").select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km").in("user_id", userIds),
       supabase.from("curriculos").select("*").in("user_id", userIds),
     ]);

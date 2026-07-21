@@ -1,5 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
+// A janela de 4s do Gemini é zerada via test.env no vite.config.js
+// (GEMINI_MIN_INTERVAL_MS=0) — aqui não adianta: imports ESM são hoisted.
+
 vi.mock('./db.js', () => ({
   marcarStatus: vi.fn().mockResolvedValue(undefined),
   salvarMessageId: vi.fn().mockResolvedValue(undefined),
@@ -17,8 +20,13 @@ vi.mock('./swarm.js', () => ({
 }));
 vi.mock('./telegram.js', () => ({
   notificarVaga: vi.fn().mockResolvedValue('msg-1'),
+  enviarDocumento: vi.fn().mockResolvedValue('msg-2'),
   enviarResumoDiario: vi.fn().mockResolvedValue(undefined),
   alertarErro: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock('./curriculo.js', () => ({
+  gerarCurriculo: vi.fn().mockResolvedValue({ resumo_profissional: 'ok' }),
+  gerarPdfCurriculo: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
 }));
 
 import { criarSemaforo, processarLoteDeVagas } from './processamento.js';
@@ -114,6 +122,30 @@ describe('processarLoteDeVagas', () => {
     expect(resultado).toEqual({ processadas: 0, falhas: 0 });
     expect(db.marcarStatus).not.toHaveBeenCalledWith('vaga-3', expect.anything());
     expect(db.registrarFalhaVaga).not.toHaveBeenCalled();
+  });
+
+  it('com pdfAutomatico ON, envia o PDF após notificar', async () => {
+    const { enviarDocumento } = await import('./telegram.js');
+    const vaga = { id: 'vaga-5', job_id: 'j5', titulo: 'Dev', empresa: 'Acme' };
+    const config = { ...CONFIG_V3_OFF, pdfAutomatico: true };
+
+    const resultado = await processarLoteDeVagas(usuarioFake(), [vaga], config);
+
+    expect(resultado).toEqual({ processadas: 1, falhas: 0 });
+    expect(enviarDocumento).toHaveBeenCalledWith('123', expect.any(Uint8Array), expect.stringContaining('Acme'));
+  });
+
+  it('falha na geração do PDF não desfaz a notificação', async () => {
+    const { gerarCurriculo } = await import('./curriculo.js');
+    gerarCurriculo.mockRejectedValueOnce(new Error('quota estourada'));
+
+    const vaga = { id: 'vaga-6', job_id: 'j6', titulo: 'Dev', empresa: 'Acme' };
+    const config = { ...CONFIG_V3_OFF, pdfAutomatico: true };
+
+    const resultado = await processarLoteDeVagas(usuarioFake(), [vaga], config);
+
+    expect(resultado).toEqual({ processadas: 1, falhas: 0 });
+    expect(db.marcarStatus).toHaveBeenCalledWith('vaga-6', 'notificada');
   });
 
   it('erro genérico conta como falha e registra tentativa', async () => {

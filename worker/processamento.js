@@ -12,7 +12,8 @@ import {
 } from "./db.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { avaliarMatchSwarm, calcularScoreFinal } from "./swarm.js";
-import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
+import { gerarCurriculo, gerarPdfCurriculo } from "./curriculo.js";
+import { notificarVaga, enviarDocumento, enviarResumoDiario, alertarErro } from "./telegram.js";
 
 const ADMIN_CHAT_ID = process.env.ADMIN_TELEGRAM_CHAT_ID;
 
@@ -38,7 +39,8 @@ export function criarSemaforo(max) {
 // Espaçamento mínimo entre chamadas Gemini: free tier é 15 RPM (1 req/4s).
 // Concorrência 3 sozinha limita paralelismo, não taxa — sem isso uma rodada
 // grande estoura a quota e vira chuva de 429.
-const GEMINI_MIN_INTERVAL_MS = 4000;
+// Configurável por env só pra testes (zerar a espera); produção usa 4000.
+const GEMINI_MIN_INTERVAL_MS = Number(process.env.GEMINI_MIN_INTERVAL_MS ?? 4000);
 let proximoSlotGemini = 0;
 export async function aguardarJanelaGemini() {
   // Reserva síncrona do slot (single-thread) — sem corrida entre promessas paralelas
@@ -135,11 +137,30 @@ export async function processarLoteDeVagas({ pref, perfil, curriculo }, vagasPar
         // Marca como descoberta só após IA aprovar (antes de Telegram)
         await marcarStatus(vaga.id, "descoberta");
 
-        // Notificação simples, sem CV/PDF — a geração agora é on-demand no webhook
-        // do Telegram, só quando o usuário clica "📄 Gerar PDF" (corta custo Gemini).
         const messageId = await notificarVaga(perfil.telegram_chat_id, vaga);
         await salvarMessageId(vaga.id, messageId);
         await marcarStatus(vaga.id, "notificada");
+
+        // ─── PDF automático (best-effort) ─────────────────────────────────
+        // Gera o currículo ajustado e manda o PDF logo após a notificação.
+        // Custa +1 chamada Gemini por vaga aprovada — desligável a quente
+        // (v3_pdf_automatico='off'). Falha aqui NUNCA desfaz a notificação:
+        // vaga segue 'notificada' e o botão "📄 Gerar PDF" cobre o retry.
+        if (configV3.pdfAutomatico && curriculo) {
+          try {
+            await aguardarJanelaGemini();
+            const nomeCompleto = perfil.nome_completo || "Candidato";
+            const cv = await gerarCurriculo(vaga, curriculo, nomeCompleto);
+            const pdfBytes = gerarPdfCurriculo(cv, nomeCompleto, perfil.localizacao);
+            const filename = `Curriculo_${nomeCompleto.replace(/\s+/g, "_")}_${(vaga.empresa || "vaga").replace(/\s+/g, "_")}.pdf`;
+            await enviarDocumento(perfil.telegram_chat_id, pdfBytes, filename);
+          } catch (e) {
+            console.warn(
+              `PDF automático falhou (vaga ${vaga.job_id}, usuário ${perfil.id}) — botão "Gerar PDF" segue como fallback: ${e.message}`
+            );
+          }
+        }
+
         return { tipo: "ok", vaga };
       } finally {
         sem.liberar();
