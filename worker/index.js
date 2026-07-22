@@ -3,7 +3,7 @@ import { buscarVagas } from "./adzuna.js";
 import { buscarVagasJSearch } from "./jsearch.js";
 import { buscarVagasReed } from "./reed.js";
 import { buscarVagasJooble } from "./jooble.js";
-import { filtrarRelevantes, ordenarPorScore } from "./filter.js";
+import { filtrarRelevantes, filtrarPorModalidade, ordenarPorScore } from "./filter.js";
 import {
   listarUsuariosAtivos,
   deduplicarParaUsuario,
@@ -139,7 +139,8 @@ async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3) {
     }
 
     const relevantes = filtrarRelevantes([...acumulado.values()], palavrasChave);
-    const pontuadas = ordenarPorScore(relevantes);
+    const naModalidade = filtrarPorModalidade(relevantes, pref.modalidade_trabalho);
+    const pontuadas = ordenarPorScore(naModalidade);
     novas = await deduplicarParaUsuario(perfil.id, pontuadas);
 
     console.log(

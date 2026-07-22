@@ -10,7 +10,7 @@ export async function listarUsuariosAtivos(limite = 50, lastUserId = null) {
   // 1. Buscar prioritários (busca_solicitada = true) - ignoram o cursor
   const { data: prefsPrioritarios, error: err1 } = await supabase
     .from("preferencias")
-    .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada, ultima_busca_em")
+    .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, modalidade_trabalho, disparo_manual, busca_solicitada, ultima_busca_em")
     .eq("ativo", true)
     .eq("busca_solicitada", true)
     .limit(limite);
@@ -24,7 +24,7 @@ export async function listarUsuariosAtivos(limite = 50, lastUserId = null) {
   if (limiteRestante > 0) {
     let queryNormal = supabase
       .from("preferencias")
-      .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, disparo_manual, busca_solicitada, ultima_busca_em")
+      .select("user_id, cargos_alvo, palavras_chave, regioes, modo_regiao, raio_km, modalidade_trabalho, disparo_manual, busca_solicitada, ultima_busca_em")
       .eq("ativo", true)
       .eq("disparo_manual", false)
       .order("user_id", { ascending: true });

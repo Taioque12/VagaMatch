@@ -24,6 +24,17 @@ function parseScoresV3(motivo) {
   return { tecnico: Math.min(100, +tec[1]), fit: Math.min(100, +fit[1]) };
 }
 
+// Detecção client-side de vaga remota — mesmos termos do filtro do worker
+// (worker/filter.js), aplicado em título/local/descrição já salvos no banco.
+const TERMOS_REMOTO = ["remoto", "remote", "home office", "100% remoto", "anywhere"];
+function ehVagaRemota(v) {
+  const texto = `${v.titulo} ${v.local || ""} ${v.descricao || ""}`
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "");
+  return TERMOS_REMOTO.some((t) => texto.includes(t));
+}
+
 const FILTROS = [
   { valor: "todas", label: "Todas" },
   { valor: "notificada", label: "Notificadas" },
@@ -36,6 +47,7 @@ export function Dashboard() {
   const [vagas, setVagas] = useState(null);
   const [erro, setErro] = useState(null);
   const [filtro, setFiltro] = useState("todas");
+  const [soHomeOffice, setSoHomeOffice] = useState(false);
   const [buscaAtiva, setBuscaAtiva] = useState(null);
   const [salvandoAtivo, setSalvandoAtivo] = useState(false);
   const [ehAdmin, setEhAdmin] = useState(false);
@@ -99,9 +111,9 @@ export function Dashboard() {
 
   const vagasFiltradas = useMemo(() => {
     if (!vagas) return null;
-    if (filtro === "todas") return vagas;
-    return vagas.filter((v) => v.status === filtro);
-  }, [vagas, filtro]);
+    const porStatus = filtro === "todas" ? vagas : vagas.filter((v) => v.status === filtro);
+    return soHomeOffice ? porStatus.filter(ehVagaRemota) : porStatus;
+  }, [vagas, filtro, soHomeOffice]);
 
   // Médias dos sub-scores V3 das vagas visíveis (parseScoresV3 lê o motivo_ia).
   // Radar precisa de >= 3 eixos pra formar área: Técnico + Fit + Match geral.
@@ -237,6 +249,13 @@ export function Dashboard() {
               {f.label}
             </button>
           ))}
+          <button
+            className={soHomeOffice ? "dbv2-filtro ativo" : "dbv2-filtro"}
+            onClick={() => setSoHomeOffice((v) => !v)}
+            title="Mostra só vagas com menção a remoto/home office no título ou descrição"
+          >
+            🏠 Home Office
+          </button>
         </div>
 
         {/* ===== Faixa horizontal: mercado + radar (ex-sidebar) ===== */}

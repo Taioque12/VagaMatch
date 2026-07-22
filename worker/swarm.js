@@ -56,6 +56,7 @@ Descrição: ${vaga.descricao || vaga.resumo || "Não informado"}
 PERFIL DO CANDIDATO:
 Palavras-chave de interesse: ${palavrasChave.join(", ")}
 Cargos-alvo: ${(pref.cargos_alvo || curriculo.cargos_alvo || []).join(", ") || "Não informado"}
+Modalidade de trabalho desejada: ${pref.modalidade_trabalho && pref.modalidade_trabalho !== "qualquer" ? pref.modalidade_trabalho : "sem preferência declarada"}
 Resumo Profissional: ${curriculo.resumo_profissional || "Não informado"}
 Habilidades: ${(curriculo.habilidades || []).join(", ")}
 Experiências: ${(curriculo.experiencias || [])

@@ -51,6 +51,7 @@ export function Onboarding() {
           cargos_alvo: prefs?.cargos_alvo ?? [],
           palavras_chave: prefs?.palavras_chave ?? [],
           regioes: prefs?.regioes ?? [],
+          modalidade_trabalho: prefs?.modalidade_trabalho ?? "qualquer",
         });
       }
 
@@ -202,6 +203,7 @@ export function Onboarding() {
           cargos_alvo: d.cargos_alvo || [],
           palavras_chave: d.palavras_chave || [],
           regioes: d.regioes || [],
+          modalidade_trabalho: d.modalidade_trabalho || "qualquer",
           busca_solicitada: true, // Aciona a busca prioritária automática no próximo ciclo do worker
           updated_at: new Date().toISOString(),
         },
@@ -362,6 +364,27 @@ export function Onboarding() {
                 placeholder="Adicionar tecnologia (pressione Enter)" 
                 style={{ fontSize: "0.85rem", padding: "6px 12px", width: "100%", maxWidth: 300 }}
               />
+            </div>
+
+            <div style={{ marginTop: "1rem", marginBottom: "1.5rem" }}>
+              <strong className="pv2-label">Modalidade de trabalho</strong>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
+                {[
+                  { valor: "qualquer", label: "Qualquer" },
+                  { valor: "remoto", label: "🏠 Home Office" },
+                  { valor: "hibrido", label: "Híbrido" },
+                  { valor: "presencial", label: "Presencial" },
+                ].map((opt) => (
+                  <button
+                    key={opt.valor}
+                    type="button"
+                    className={(dadosExtraidos.modalidade_trabalho || "qualquer") === opt.valor ? "dbv2-filtro ativo" : "dbv2-filtro"}
+                    onClick={() => setDadosExtraidos((d) => ({ ...d, modalidade_trabalho: opt.valor }))}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {dadosExtraidos.resumo_profissional && (
