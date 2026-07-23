@@ -427,7 +427,7 @@ async function tratarCallback(cq: any) {
       : "qualquer";
 
     await supabase.from("preferencias")
-      .update({ modalidade_trabalho: modalidadeValida })
+      .update({ modalidade_trabalho: modalidadeValida, updated_at: new Date().toISOString() })
       .eq("user_id", perfil.id);
 
     await responderCallback(`Modalidade: ${LABEL_MODALIDADE[modalidadeValida]} ✅`);
