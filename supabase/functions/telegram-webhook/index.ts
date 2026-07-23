@@ -173,6 +173,7 @@ async function enviarMenu(chatId: string | number) {
       inline_keyboard: [
         [{ text: "🔍 Buscar vagas agora", callback_data: "busca:agora" }],
         [{ text: "📍 Configurar região", callback_data: "menu:regiao" }],
+        [{ text: "🏠 Modalidade de trabalho", callback_data: "menu:modalidade" }],
         [{ text: "🔄 Atualizar Perfil (Site)", url: "https://vaga-match-coral.vercel.app/onboarding" }],
       ],
     },
@@ -188,6 +189,28 @@ async function enviarMenuRegiao(chatId: string | number) {
         [{ text: "📍 Minha região (raio 100km)", callback_data: "modo:regiao:100" }],
         [{ text: "📍 Minha região (raio 500km)", callback_data: "modo:regiao:500" }],
         [{ text: "🌎 Brasil todo", callback_data: "modo:brasil:0" }],
+      ],
+    },
+  });
+}
+
+const LABEL_MODALIDADE: Record<string, string> = {
+  qualquer: "Qualquer modalidade",
+  remoto: "🏠 Home Office",
+  hibrido: "Híbrido",
+  presencial: "Presencial",
+};
+
+async function enviarMenuModalidade(chatId: string | number) {
+  await chamarApi("sendMessage", {
+    chat_id: chatId,
+    text: "Que modalidade de trabalho você busca?",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🏠 Home Office", callback_data: "modalidade:remoto" }],
+        [{ text: "🏢 Híbrido", callback_data: "modalidade:hibrido" }],
+        [{ text: "🏭 Presencial", callback_data: "modalidade:presencial" }],
+        [{ text: "🌐 Qualquer uma", callback_data: "modalidade:qualquer" }],
       ],
     },
   });
@@ -386,6 +409,31 @@ async function tratarCallback(cq: any) {
     return;
   }
 
+  if (data === "menu:modalidade") {
+    await responderCallback();
+    if (chatId) await enviarMenuModalidade(chatId);
+    return;
+  }
+
+  if (data.startsWith("modalidade:")) {
+    const [, modalidade] = data.split(":");
+    const { data: perfil } = await supabase.from("profiles").select("id").eq("telegram_chat_id", String(fromId)).maybeSingle();
+    if (!perfil) {
+      await responderCallback("Perfil não encontrado.");
+      return;
+    }
+    const modalidadeValida = ["qualquer", "remoto", "hibrido", "presencial"].includes(modalidade)
+      ? modalidade
+      : "qualquer";
+
+    await supabase.from("preferencias")
+      .update({ modalidade_trabalho: modalidadeValida })
+      .eq("user_id", perfil.id);
+
+    await responderCallback(`Modalidade: ${LABEL_MODALIDADE[modalidadeValida]} ✅`);
+    return;
+  }
+
   if (data.startsWith("modo:")) {
     const [, modo, raio] = data.split(":");
     const { data: perfil } = await supabase.from("profiles").select("id").eq("telegram_chat_id", String(fromId)).maybeSingle();
@@ -459,15 +507,15 @@ async function tratarMensagem(msg: any) {
     const { data: perfil } = await supabase.from("profiles").select("id").eq("telegram_chat_id", String(chatId)).maybeSingle();
     if (!perfil) return;
     
-    const { data: pref, error } = await supabase.from('preferencias').select('cargos_alvo, palavras_chave, modo_regiao, raio_km').eq('user_id', perfil.id).maybeSingle();
-    
+    const { data: pref, error } = await supabase.from('preferencias').select('cargos_alvo, palavras_chave, modo_regiao, raio_km, modalidade_trabalho').eq('user_id', perfil.id).maybeSingle();
+
     if (error) {
       console.error(`Falha ao buscar preferencias: ${error.message}`);
       await enviarMensagemSimples(chatId, "Erro ao buscar seu status. Tente de novo mais tarde.");
       return;
     }
     if (pref) {
-      const textoStatus = `👤 *Seu Status de Busca*\n\n🎯 *Cargos-alvo:*\n${(pref.cargos_alvo || []).join(', ')}\n\n🔑 *Palavras-chave:*\n${(pref.palavras_chave || []).join(', ')}\n\n📍 *Região:*\n${pref.modo_regiao === 'brasil' ? 'Brasil Todo' : 'Minha Região (' + (pref.raio_km || 500) + 'km)'}`;
+      const textoStatus = `👤 *Seu Status de Busca*\n\n🎯 *Cargos-alvo:*\n${(pref.cargos_alvo || []).join(', ')}\n\n🔑 *Palavras-chave:*\n${(pref.palavras_chave || []).join(', ')}\n\n📍 *Região:*\n${pref.modo_regiao === 'brasil' ? 'Brasil Todo' : 'Minha Região (' + (pref.raio_km || 500) + 'km)'}\n\n🏠 *Modalidade:*\n${LABEL_MODALIDADE[pref.modalidade_trabalho || 'qualquer']}`;
       await enviarMensagemSimples(chatId, textoStatus);
     } else {
       await enviarMensagemSimples(chatId, "Nenhuma preferência configurada ainda.");
@@ -477,6 +525,11 @@ async function tratarMensagem(msg: any) {
   
   if (texto === "/regiao") {
     await enviarMenuRegiao(chatId);
+    return;
+  }
+
+  if (texto === "/modalidade") {
+    await enviarMenuModalidade(chatId);
     return;
   }
   

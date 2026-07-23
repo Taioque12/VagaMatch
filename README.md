@@ -40,7 +40,7 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 ### 📱 Bot Telegram (Tempo Real)
 - **Login em 1-Clique:** Integração via *Deep Linking* (`/start {user_id}`). O site atualiza automaticamente via **Supabase Realtime** quando a conexão é feita
 - **Webhook em tempo real** via Supabase Edge Function — respostas instantâneas
-- Comandos: `/start`, `/menu`, `/buscar`, `/status`, `/regiao`
+- Comandos: `/start`, `/menu`, `/buscar`, `/status`, `/regiao`, `/modalidade` (home office/híbrido/presencial/qualquer)
 - Botões inline: **✅ Candidatei-me** / **🗑️ Descartar** / **📄 Gerar PDF** (gravam direto no banco; descarte/candidatura alimentam a memória vetorial de feedback da V3)
 - Notificações trazem Score IA e o insight Técnico+Fit; o **PDF do currículo ajustado à vaga chega automático** logo após a notificação (desligável a quente via `v3_pdf_automatico`) — o botão "📄 Gerar PDF" regenera on-demand
 - PDF em estrutura **ATS-friendly**: 1 coluna, Helvetica, texto selecionável, seções padrão de mercado, metadata (title/author) — mesmo layout nos 3 geradores (worker, webhook, site)
