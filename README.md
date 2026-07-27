@@ -40,12 +40,16 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 ### 📱 Bot Telegram (Tempo Real)
 - **Login em 1-Clique:** Integração via *Deep Linking* (`/start {user_id}`). O site atualiza automaticamente via **Supabase Realtime** quando a conexão é feita
 - **Webhook em tempo real** via Supabase Edge Function — respostas instantâneas
-- Comandos: `/start`, `/menu`, `/buscar`, `/status`, `/regiao`, `/modalidade` (home office/híbrido/presencial/qualquer)
+- Comandos: `/start`, `/menu`, `/buscar`, `/status`, `/regiao`, `/modalidade` (home office/híbrido/presencial/qualquer), `/salario` (salário mínimo), `/ajuda`, `/atualizar`
+- **Navegação por botões:** todo submenu (região, modalidade, salário) tem botão "⬅️ Voltar" pro menu principal
+- **Chat limpo:** a mensagem do comando digitado pelo usuário é apagada automaticamente após processada (`deleteMessage`) — só nos comandos de menu/config, não em texto livre (entrevista simulada mantém o histórico)
 - Botões inline: **✅ Candidatei-me** / **🗑️ Descartar** / **📄 Gerar PDF** (gravam direto no banco; descarte/candidatura alimentam a memória vetorial de feedback da V3)
 - Notificações trazem Score IA e o insight Técnico+Fit; o **PDF do currículo ajustado à vaga chega automático** logo após a notificação (desligável a quente via `v3_pdf_automatico`) — o botão "📄 Gerar PDF" regenera on-demand
 - PDF em estrutura **ATS-friendly**: 1 coluna, Helvetica, texto selecionável, seções padrão de mercado, metadata (title/author) — mesmo layout nos 3 geradores (worker, webhook, site)
 - Link clicável para a vaga original
 - Configuração de raio de busca (100km, 500km ou Brasil todo)
+- **Filtro de salário mínimo:** usuário define um piso (R$2k/4k/6k/10k ou sem filtro); vagas sem salário informado no anúncio passam (fail-open, mesma lógica do filtro de modalidade)
+- **Broadcast de versão:** `node scripts/broadcast-versao.js "1.0.1" "texto"` anuncia novidades pra todos os usuários com Telegram vinculado (manual, sob demanda — evita spam em fix pequeno)
 
 ### 🎤 Entrevista Simulada por IA (MVP em texto)
 - Após receber o currículo ajustado, o bot oferece treinar a entrevista daquela vaga
@@ -113,6 +117,8 @@ As migrations estão em `supabase/migrations/`, em ordem:
 | 017 | `017_vetores.sql` | **V3 Fase A**: extensão pgvector, `embedding vector(768)` em `curriculos`/`vagas_vistas`, índices HNSW, RPC `match_vaga_curriculo`, flags V3 no `app_state` |
 | 018 | `018_feedback_vetorial.sql` | **V3 Fase C**: `feedback_em`, RPC `ajuste_feedback_vetorial` (memória de descartes/candidaturas) |
 | 019 | `019_protege_embedding.sql` | Blinda `vagas_vistas.embedding` contra escrita do usuário (trigger) |
+| 020 | `020_modalidade_trabalho.sql` | Coluna `modalidade_trabalho` em `preferencias` (home office/híbrido/presencial/qualquer) |
+| 021 | `021_salario_minimo.sql` | Coluna `salario_minimo` em `preferencias` (filtro opcional, nullable) |
 
 ## Ferramentas de Desenvolvimento (IA)
 
@@ -168,12 +174,13 @@ Depois de trocar o secret, é preciso redeployar `telegram-webhook` e re-registr
 
 ## Testes
 
-`npm test` (vitest, 18 testes):
+`npm test` (vitest, 22 testes):
 - `src/lib/gemini.test.js` — extração de currículo, validação de schema, timeout do Gemini
 - `worker/processamento.test.js` — semáforo de concorrência, pipeline de vagas (aprovação/descarte por score, 429 não conta falha, PDF automático best-effort)
 - `worker/db.test.js` — query de pendentes órfãs (`buscarPendentesAntigas`)
+- `worker/filter.test.js` — filtro de modalidade de trabalho (`filtrarPorModalidade`)
 
-Edge Functions são excluídas do vitest (`vite.config.js`). Script de manutenção: `node scripts/reprocessar-pendentes.mjs` (desentope vagas presas em `pendente_processamento`, reusando o pipeline de produção).
+Edge Functions são excluídas do vitest (`vite.config.js`). Scripts de manutenção/debug em `scripts/`: `reprocessar-pendentes.mjs` (desentope vagas presas em `pendente_processamento`), `broadcast-versao.js` (anuncia versão nova no Telegram); `scripts/debug/` reúne scripts manuais ad-hoc (não fazem parte da suite automatizada).
 
 ## Próximos Passos
 
