@@ -1,5 +1,5 @@
-import { supabase } from "./db.js";
-import { enviarMensagemSimples } from "./telegram.js";
+import { supabase } from "../../worker/db.js";
+import { enviarMensagemSimples } from "../../worker/telegram.js";
 
 async function run() {
   const { data: pref, error } = await supabase.from('preferencias').select('cargos_alvo, palavras_chave, modo_regiao, raio_km').eq('user_id', 'bacbac9d-e6ed-427b-9743-e002ba6463bb').maybeSingle();

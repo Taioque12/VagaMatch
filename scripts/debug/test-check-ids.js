@@ -1,5 +1,5 @@
-import { supabase } from "./db.js";
-import { env } from "./config.js";
+import { supabase } from "../../worker/db.js";
+import { env } from "../../worker/config.js";
 
 async function run() {
   // 1. Buscar todos os perfis com telegram vinculado

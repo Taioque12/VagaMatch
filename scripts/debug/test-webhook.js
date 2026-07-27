@@ -1,4 +1,4 @@
-import { env } from "./config.js";
+import { env } from "../../worker/config.js";
 
 async function run() {
   const webhookUrl = "https://wrdxvhhmyptizlpdeaue.supabase.co/functions/v1/telegram-webhook";

@@ -1,4 +1,4 @@
-import { env } from "./worker/config.js";
+import { env } from "../../worker/config.js";
 
 async function run() {
   const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${env.geminiApiKey}`);

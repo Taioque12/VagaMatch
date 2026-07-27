@@ -1,4 +1,4 @@
-import { env } from "./config.js";
+import { env } from "../../worker/config.js";
 
 async function run() {
   const url = new URL("https://jsearch.p.rapidapi.com/search-v2");

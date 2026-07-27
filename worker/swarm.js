@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { env } from './config.js';
+import { isGeminiRateLimit } from './gemini-utils.js';
 
 // Camada 1 (V3): "swarm" Técnico + Fit-Cultural em 1 única chamada Gemini.
 // Isolado de ai_filter.js de propósito (Opção A): enquanto v3_prefiltro=off,
@@ -84,11 +85,7 @@ Experiências: ${(curriculo.experiencias || [])
   } catch (error) {
     // Mesma semântica de erro do ai_filter.js: 429 vira isRateLimit (vaga fica
     // pendente, sem queimar tentativa); resto rethrow (reprocessa na próxima rodada).
-    const is429 = error.status === 429
-      || error.message?.includes("429")
-      || error.message?.includes("RESOURCE_EXHAUSTED");
-
-    if (is429) {
+    if (isGeminiRateLimit(error)) {
       console.warn(`⚠️ Rate limit (429) do Gemini no swarm: ${vaga.titulo}`);
       const err = new Error(`Gemini rate limit (429): ${error.message}`);
       err.isRateLimit = true;

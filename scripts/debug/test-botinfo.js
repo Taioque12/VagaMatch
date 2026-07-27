@@ -1,4 +1,4 @@
-import { env } from "./config.js";
+import { env } from "../../worker/config.js";
 
 async function run() {
   const res = await fetch(`https://api.telegram.org/bot${env.telegramBotToken}/getMe`);

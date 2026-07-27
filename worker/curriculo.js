@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { jsPDF } from "jspdf";
 import { env } from "./config.js";
+import { isGeminiRateLimit } from "./gemini-utils.js";
 
 const ai = new GoogleGenAI({ apiKey: env.geminiApiKey });
 
@@ -115,10 +116,7 @@ export async function gerarCurriculo(vaga, curriculo, nomeCompleto) {
   } catch (error) {
     // Mesma semântica de 429 do ai_filter/swarm — chamador decide o que fazer
     // (no PDF automático é best-effort: vaga já notificada, só o anexo falha).
-    const is429 = error.status === 429
-      || error.message?.includes("429")
-      || error.message?.includes("RESOURCE_EXHAUSTED");
-    if (is429) {
+    if (isGeminiRateLimit(error)) {
       const err = new Error(`Gemini rate limit (429): ${error.message}`);
       err.isRateLimit = true;
       throw err;

@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { env } from './config.js';
+import { isGeminiRateLimit } from './gemini-utils.js';
 
 let ai = null;
 if (env.geminiApiKey) {
@@ -54,11 +55,7 @@ Cargos-alvo: ${(curriculo.cargos_alvo || []).join(", ")}
     };
   } catch (error) {
     // Distinguir rate limit (429) de erros genéricos — vaga não deve ser descartada por falta de quota.
-    const is429 = error.status === 429
-      || error.message?.includes("429")
-      || error.message?.includes("RESOURCE_EXHAUSTED");
-
-    if (is429) {
+    if (isGeminiRateLimit(error)) {
       console.warn(`⚠️ Rate limit (429) do Gemini ao avaliar vaga: ${vaga.titulo}`);
       const err = new Error(`Gemini rate limit (429): ${error.message}`);
       err.isRateLimit = true;

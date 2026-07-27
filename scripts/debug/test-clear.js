@@ -1,4 +1,4 @@
-import { supabase } from "./db.js";
+import { supabase } from "../../worker/db.js";
 
 async function run() {
   console.log("Limpando vagas_vistas...");
