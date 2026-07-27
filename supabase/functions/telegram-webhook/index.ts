@@ -522,9 +522,29 @@ async function tratarCallback(cq: any) {
   }
 }
 
+// Comandos de menu/config — a mensagem do usuário some do chat depois de processada
+// (mantém o chat limpo, sensação de "app"). Respostas de texto livre (entrevista
+// simulada etc.) NÃO entram aqui — ali o histórico da conversa importa pro usuário.
+const COMANDOS_APAGAVEIS = new Set([
+  "/start", "/menu", "/buscar", "/status", "/regiao", "/modalidade", "/salario", "/ajuda", "/atualizar",
+]);
+
+async function apagarComando(chatId: string | number, messageId: number) {
+  try {
+    await chamarApi("deleteMessage", { chat_id: chatId, message_id: messageId });
+  } catch {
+    // Best-effort: mensagem >48h ou já apagada não deve quebrar o fluxo.
+  }
+}
+
 async function tratarMensagem(msg: any) {
   const texto = (msg.text ?? "").trim();
   const chatId = msg.chat.id;
+
+  const comandoBase = texto.toLowerCase().split(" ")[0];
+  if (COMANDOS_APAGAVEIS.has(comandoBase) && msg.message_id) {
+    await apagarComando(chatId, msg.message_id);
+  }
 
   // Fluxo de entrevista simulada: se o usuário tem sessão em andamento, a mensagem
   // pode ser dele respondendo o recrutador IA. Comandos (/menu etc.) têm precedência
