@@ -174,6 +174,7 @@ async function enviarMenu(chatId: string | number) {
         [{ text: "🔍 Buscar vagas agora", callback_data: "busca:agora" }],
         [{ text: "📍 Configurar região", callback_data: "menu:regiao" }],
         [{ text: "🏠 Modalidade de trabalho", callback_data: "menu:modalidade" }],
+        [{ text: "💰 Salário mínimo", callback_data: "menu:salario" }],
         [{ text: "🔄 Atualizar Perfil (Site)", url: "https://vaga-match-coral.vercel.app/onboarding" }],
       ],
     },
@@ -189,6 +190,7 @@ async function enviarMenuRegiao(chatId: string | number) {
         [{ text: "📍 Minha região (raio 100km)", callback_data: "modo:regiao:100" }],
         [{ text: "📍 Minha região (raio 500km)", callback_data: "modo:regiao:500" }],
         [{ text: "🌎 Brasil todo", callback_data: "modo:brasil:0" }],
+        [{ text: "⬅️ Voltar", callback_data: "menu:voltar" }],
       ],
     },
   });
@@ -211,6 +213,24 @@ async function enviarMenuModalidade(chatId: string | number) {
         [{ text: "🏢 Híbrido", callback_data: "modalidade:hibrido" }],
         [{ text: "🏭 Presencial", callback_data: "modalidade:presencial" }],
         [{ text: "🌐 Qualquer uma", callback_data: "modalidade:qualquer" }],
+        [{ text: "⬅️ Voltar", callback_data: "menu:voltar" }],
+      ],
+    },
+  });
+}
+
+async function enviarMenuSalario(chatId: string | number) {
+  await chamarApi("sendMessage", {
+    chat_id: chatId,
+    text: "Qual o salário mínimo que você aceita?",
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "R$ 2.000+", callback_data: "salario:2000" }],
+        [{ text: "R$ 4.000+", callback_data: "salario:4000" }],
+        [{ text: "R$ 6.000+", callback_data: "salario:6000" }],
+        [{ text: "R$ 10.000+", callback_data: "salario:10000" }],
+        [{ text: "🌐 Sem filtro", callback_data: "salario:0" }],
+        [{ text: "⬅️ Voltar", callback_data: "menu:voltar" }],
       ],
     },
   });
@@ -403,6 +423,12 @@ async function tratarCallback(cq: any) {
     return;
   }
 
+  if (data === "menu:voltar") {
+    await responderCallback();
+    if (chatId) await enviarMenu(chatId);
+    return;
+  }
+
   if (data === "menu:regiao") {
     await responderCallback();
     if (chatId) await enviarMenuRegiao(chatId);
@@ -412,6 +438,30 @@ async function tratarCallback(cq: any) {
   if (data === "menu:modalidade") {
     await responderCallback();
     if (chatId) await enviarMenuModalidade(chatId);
+    return;
+  }
+
+  if (data === "menu:salario") {
+    await responderCallback();
+    if (chatId) await enviarMenuSalario(chatId);
+    return;
+  }
+
+  if (data.startsWith("salario:")) {
+    const [, valor] = data.split(":");
+    const { data: perfil } = await supabase.from("profiles").select("id").eq("telegram_chat_id", String(fromId)).maybeSingle();
+    if (!perfil) {
+      await responderCallback("Perfil não encontrado.");
+      return;
+    }
+    const valorNum = Number(valor);
+    const salarioMinimo = Number.isFinite(valorNum) && valorNum > 0 ? valorNum : null;
+
+    await supabase.from("preferencias")
+      .update({ salario_minimo: salarioMinimo, updated_at: new Date().toISOString() })
+      .eq("user_id", perfil.id);
+
+    await responderCallback(salarioMinimo ? `Salário mínimo: R$ ${salarioMinimo} ✅` : "Sem filtro de salário ✅");
     return;
   }
 
@@ -507,7 +557,7 @@ async function tratarMensagem(msg: any) {
     const { data: perfil } = await supabase.from("profiles").select("id").eq("telegram_chat_id", String(chatId)).maybeSingle();
     if (!perfil) return;
     
-    const { data: pref, error } = await supabase.from('preferencias').select('cargos_alvo, palavras_chave, modo_regiao, raio_km, modalidade_trabalho').eq('user_id', perfil.id).maybeSingle();
+    const { data: pref, error } = await supabase.from('preferencias').select('cargos_alvo, palavras_chave, modo_regiao, raio_km, modalidade_trabalho, salario_minimo').eq('user_id', perfil.id).maybeSingle();
 
     if (error) {
       console.error(`Falha ao buscar preferencias: ${error.message}`);
@@ -515,7 +565,7 @@ async function tratarMensagem(msg: any) {
       return;
     }
     if (pref) {
-      const textoStatus = `👤 *Seu Status de Busca*\n\n🎯 *Cargos-alvo:*\n${(pref.cargos_alvo || []).join(', ')}\n\n🔑 *Palavras-chave:*\n${(pref.palavras_chave || []).join(', ')}\n\n📍 *Região:*\n${pref.modo_regiao === 'brasil' ? 'Brasil Todo' : 'Minha Região (' + (pref.raio_km || 500) + 'km)'}\n\n🏠 *Modalidade:*\n${LABEL_MODALIDADE[pref.modalidade_trabalho || 'qualquer']}`;
+      const textoStatus = `👤 *Seu Status de Busca*\n\n🎯 *Cargos-alvo:*\n${(pref.cargos_alvo || []).join(', ')}\n\n🔑 *Palavras-chave:*\n${(pref.palavras_chave || []).join(', ')}\n\n📍 *Região:*\n${pref.modo_regiao === 'brasil' ? 'Brasil Todo' : 'Minha Região (' + (pref.raio_km || 500) + 'km)'}\n\n🏠 *Modalidade:*\n${LABEL_MODALIDADE[pref.modalidade_trabalho || 'qualquer']}\n\n💰 *Salário mínimo:*\n${pref.salario_minimo ? `R$ ${pref.salario_minimo}` : 'Sem filtro'}`;
       await enviarMensagemSimples(chatId, textoStatus);
     } else {
       await enviarMensagemSimples(chatId, "Nenhuma preferência configurada ainda.");
@@ -530,6 +580,11 @@ async function tratarMensagem(msg: any) {
 
   if (texto === "/modalidade") {
     await enviarMenuModalidade(chatId);
+    return;
+  }
+
+  if (texto === "/salario") {
+    await enviarMenuSalario(chatId);
     return;
   }
   

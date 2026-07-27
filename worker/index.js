@@ -3,7 +3,7 @@ import { buscarVagas } from "./adzuna.js";
 import { buscarVagasJSearch } from "./jsearch.js";
 import { buscarVagasReed } from "./reed.js";
 import { buscarVagasJooble } from "./jooble.js";
-import { filtrarRelevantes, filtrarPorModalidade, ordenarPorScore } from "./filter.js";
+import { filtrarRelevantes, filtrarPorModalidade, filtrarPorSalarioMinimo, ordenarPorScore } from "./filter.js";
 import {
   listarUsuariosAtivos,
   deduplicarParaUsuario,
@@ -19,7 +19,6 @@ import {
 } from "./db.js";
 import { gerarEmbeddingsVagas } from "./embeddings.js";
 import { alertarErro } from "./telegram.js";
-import { processarFeedback } from "./feedback.js";
 import { processarLoteDeVagas } from "./processamento.js";
 
 // Uso: node worker/index.js [--limit N]  (limita vagas processadas POR USUÁRIO, útil p/ teste)
@@ -140,7 +139,8 @@ async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3) {
 
     const relevantes = filtrarRelevantes([...acumulado.values()], palavrasChave);
     const naModalidade = filtrarPorModalidade(relevantes, pref.modalidade_trabalho);
-    const pontuadas = ordenarPorScore(naModalidade);
+    const noSalario = filtrarPorSalarioMinimo(naModalidade, pref.salario_minimo);
+    const pontuadas = ordenarPorScore(noSalario);
     novas = await deduplicarParaUsuario(perfil.id, pontuadas);
 
     console.log(
@@ -228,13 +228,6 @@ async function main() {
       if (removidas > 0) console.log(`🧹 Cache GC: ${removidas} chave(s) vencida(s) removida(s).`);
     } catch (e) {
       console.warn(`Cache GC falhou (seguindo normal): ${e.message}`);
-    }
-
-    try {
-      // Polling desativado. Agora é o Webhook que cuida do feedback!
-      // await processarFeedback();
-    } catch (e) {
-      console.error(`Falha ao processar feedback: ${e.message}`);
     }
 
     const TAMANHO_LOTE = 50;

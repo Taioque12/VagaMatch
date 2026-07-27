@@ -46,6 +46,18 @@ export function filtrarPorModalidade(vagas, modalidade) {
   });
 }
 
+// Filtra vagas abaixo do salário mínimo desejado. Vaga sem salário informado
+// passa (fail-open: mesmo critério de filtrarPorModalidade — melhor mostrar
+// vaga ambígua do que esconder vaga boa por falta de dado no anúncio).
+export function filtrarPorSalarioMinimo(vagas, salarioMinimo) {
+  if (!salarioMinimo) return vagas;
+  return vagas.filter((v) => {
+    const teto = v.salario_max ?? v.salario_min;
+    if (!teto) return true;
+    return teto >= salarioMinimo;
+  });
+}
+
 function pontuarVaga(vaga) {
   let score = vaga.matches.length * 10;
   if (vaga.salario_min && vaga.salario_min >= MEDIANA_SALARIAL) score += 20;
