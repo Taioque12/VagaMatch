@@ -176,6 +176,7 @@ async function enviarMenu(chatId: string | number) {
         [{ text: "🏠 Modalidade de trabalho", callback_data: "menu:modalidade" }],
         [{ text: "💰 Salário mínimo", callback_data: "menu:salario" }],
         [{ text: "🔄 Atualizar Perfil (Site)", url: "https://vaga-match-coral.vercel.app/onboarding" }],
+        [{ text: "❓ Ajuda", callback_data: "ajuda" }],
       ],
     },
   });
@@ -235,6 +236,16 @@ async function enviarMenuSalario(chatId: string | number) {
     },
   });
 }
+
+const TEXTO_AJUDA = "📋 *Comandos disponíveis*\n\n" +
+  "/menu — Abre o menu principal\n" +
+  "/buscar — Busca vagas agora\n" +
+  "/status — Mostra suas preferências atuais\n" +
+  "/regiao — Configura região de busca\n" +
+  "/modalidade — Configura modalidade de trabalho\n" +
+  "/salario — Configura salário mínimo\n" +
+  "/atualizar — Atualiza currículo/perfil no site\n" +
+  "/ajuda — Mostra esta lista de comandos";
 
 async function enviarMensagemSimples(chatId: string | number, texto: string) {
   await chamarApi("sendMessage", { chat_id: chatId, text: texto, parse_mode: "Markdown" });
@@ -423,6 +434,12 @@ async function tratarCallback(cq: any) {
     return;
   }
 
+  if (data === "ajuda") {
+    await responderCallback();
+    if (chatId) await enviarMensagemSimples(chatId, TEXTO_AJUDA);
+    return;
+  }
+
   if (data === "menu:voltar") {
     await responderCallback();
     if (chatId) await enviarMenu(chatId);
@@ -585,6 +602,11 @@ async function tratarMensagem(msg: any) {
 
   if (texto === "/salario") {
     await enviarMenuSalario(chatId);
+    return;
+  }
+
+  if (texto === "/ajuda") {
+    await enviarMensagemSimples(chatId, TEXTO_AJUDA);
     return;
   }
   
