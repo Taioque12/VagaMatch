@@ -17,6 +17,8 @@ import {
   limparCacheVencido,
   registrarFalhaVaga,
   registrarBuscaRealizada,
+  registrarErro,
+  registrarMetricas,
 } from "./db.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { notificarVaga, enviarResumoDiario, alertarErro } from "./telegram.js";
@@ -262,7 +264,7 @@ async function rodarPipelineDoUsuario({ pref, perfil, curriculo }, cacheBusca) {
 }
 
 // ─── Passo 1: Lock de execução ──────────────────────────────────────────────
-const LOCK_TIMEOUT_MIN = 15; // Timeout de segurança — crash sem limpar lock
+const LOCK_TIMEOUT_MIN = 15; // Timeout de segurança — crash sem limpar lock (workflow.timeout-minutes: 12, sempre menor)
 
 // Só libera o lock no catch fatal se ESTA instância o adquiriu — crash antes
 // da aquisição (ex: requireEnv) não pode soltar o lock de outra instância viva.
@@ -396,6 +398,7 @@ async function main() {
       } catch (e) {
         console.error(`Falha fatal no pipeline do usuário ${usuario.perfil.id}: ${e.message}`);
         totalFalhas++;
+        await registrarErro(e.message, e.stack, { usuario_id: usuario.perfil.id, etapa: "pipeline_usuario" });
         await alertarErro(usuario.perfil.telegram_chat_id, `Falha ao processar suas vagas: ${e.message}`).catch(
           () => {}
         );
@@ -409,6 +412,12 @@ async function main() {
     }
 
     console.log(`Lote processado. ${totalProcessadas} vaga(s) notificada(s), ${totalFalhas} falha(s) no total.`);
+
+    await registrarMetricas({
+      usuariosProcessados: usuarios.length,
+      vagasNotificadas: totalProcessadas,
+      falhasGerais: totalFalhas,
+    });
 
     // Salva o último user_id processado como cursor pra próxima rodada
     if (usuarios.length > 0) {
@@ -441,6 +450,7 @@ main().catch(async (e) => {
   console.error(e);
   // Garante liberação do lock mesmo em crash fatal — mas só se esta instância o pegou
   if (lockAdquirido) await setState("worker_running", "false").catch(() => {});
+  await registrarErro(e.message, e.stack, { etapa: "main_fatal" }).catch(() => {});
   await alertarErro(ADMIN_CHAT_ID, `Falha fatal no worker: ${e.message}`).catch(() => {});
   process.exit(1);
 });

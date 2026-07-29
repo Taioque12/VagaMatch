@@ -165,8 +165,14 @@ Depois de trocar o secret, é preciso redeployar `telegram-webhook` e re-registr
 ## Próximos Passos
 
 ### Pendências imediatas (bloqueiam testes fim-a-fim)
+- [ ] **BLOQUEADO: `.env` do worker (ADZUNA, GEMINI, TELEGRAM, SUPABASE_SERVICE_ROLE_KEY)** — prometido, nunca chegou.
+      Sem ele não dá pra rodar `npm run worker:test` nem validar contra o Supabase real. Isso já bloqueou a
+      validação da nova observabilidade (migration 016, `worker_errors`/`worker_metrics`) — só foi possível
+      checar sintaxe (`node --check`), não comportamento real.
 - [ ] Configurar secret `STRIPE_PRICE_ID_MENSAL` nas Edge Functions (sem ele o botão "Assinar Premium" falha)
-- [ ] Testar worker com `.env` real (`node worker/index.js --limit 3`) — validar salários e `descricao` populando
+- [ ] Aplicar `supabase/migrations/016_worker_observabilidade.sql` no projeto Supabase (`wrdxvhhmyptizlpdeaue`)
+- [ ] Testar worker com `.env` real (`node worker/index.js --limit 3`) — validar salários e `descricao` populando,
+      e confirmar que `worker_errors`/`worker_metrics` estão sendo gravadas
 - [ ] Testar fluxo completo no Telegram: "Candidatei-me" → CV on-demand → oferta de entrevista → sessão completa
 - [ ] Testar indicação fim-a-fim: cadastro com `?ref=`, checkout test do Stripe, crédito no indicador
 - [ ] Revisão visual do dashboard com prints (aguardando `.env` do frontend)

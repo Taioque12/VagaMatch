@@ -264,3 +264,27 @@ export async function registrarBuscaRealizada(userId) {
     .eq("user_id", userId);
   if (error) throw new Error(`Supabase update (ultima_busca_em): ${error.message}`);
 }
+
+// ─── Observabilidade ────────────────────────────────────────────────────────
+
+// Persiste erro crítico no banco — fonte de verdade independente do Telegram
+// (que é best-effort e pode falhar silenciosamente). Nunca lança: chamador
+// não deve quebrar o worker por causa de uma falha ao registrar o próprio erro.
+export async function registrarErro(mensagem, stackTrace = null, contexto = null) {
+  const { error } = await supabase.from("worker_errors").insert({
+    error_message: String(mensagem).slice(0, 4000),
+    stack_trace: stackTrace ? String(stackTrace).slice(0, 8000) : null,
+    context: contexto ?? null,
+  });
+  if (error) console.error(`Falha ao registrar erro no banco: ${error.message}`);
+}
+
+// Consolida as estatísticas de uma rodada completa do worker.
+export async function registrarMetricas({ usuariosProcessados, vagasNotificadas, falhasGerais }) {
+  const { error } = await supabase.from("worker_metrics").insert({
+    usuarios_processados: usuariosProcessados,
+    vagas_notificadas: vagasNotificadas,
+    falhas_gerais: falhasGerais,
+  });
+  if (error) console.error(`Falha ao registrar métricas: ${error.message}`);
+}
