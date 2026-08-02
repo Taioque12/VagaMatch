@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { traduzErroAuth } from "../lib/authErros.js";
 
 const authPageStyle = {
   minHeight: '100vh',
@@ -29,10 +30,15 @@ export function Login() {
     e.preventDefault();
     setErro(null);
     setCarregando(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
+    let error;
+    try {
+      ({ error } = await supabase.auth.signInWithPassword({ email, password: senha }));
+    } catch (err) {
+      error = err;
+    }
     setCarregando(false);
     if (error) {
-      setErro(error.message);
+      setErro(traduzErroAuth(error));
       return;
     }
     navigate("/dashboard");

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { traduzErroAuth } from "../lib/authErros.js";
 
 const authPageStyle = {
   minHeight: '100vh',
@@ -32,10 +33,15 @@ export function Cadastro() {
     e.preventDefault();
     setErro(null);
     setCarregando(true);
-    const { data, error } = await supabase.auth.signUp({ email, password: senha });
+    let data, error;
+    try {
+      ({ data, error } = await supabase.auth.signUp({ email, password: senha }));
+    } catch (err) {
+      error = err;
+    }
     setCarregando(false);
     if (error) {
-      setErro(error.message);
+      setErro(traduzErroAuth(error));
       return;
     }
     if (codigoIndicacao) {
