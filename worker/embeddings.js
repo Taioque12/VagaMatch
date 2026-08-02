@@ -1,10 +1,10 @@
 import { env } from "./config.js";
 
-// Fase A (V3): embeddings de vagas em batch via Gemini text-embedding-004 (768 dims).
+// Fase A (V3): embeddings de vagas em batch via Gemini gemini-embedding-001 (768 dims).
 // REST direto (mesmo padrão do webhook) — batchEmbedContents aceita vários textos
 // por request, então 1 rodada inteira custa poucas chamadas, não 1 por vaga.
 
-const EMBED_MODEL = "gemini-embedding-2";
+const EMBED_MODEL = "gemini-embedding-001";
 const EMBED_DIMS = 768;
 // Chunk conservador: payload do Google tem limite e descrições de vaga são longas.
 const CHUNK_SIZE = 50;
@@ -26,6 +26,7 @@ async function chamarBatchEmbed(textos) {
         requests: textos.map((texto) => ({
           model: `models/${EMBED_MODEL}`,
           content: { parts: [{ text: texto }] },
+          outputDimensionality: EMBED_DIMS,
         })),
       }),
     }
@@ -60,6 +61,8 @@ export async function gerarEmbeddingsVagas(vagas) {
       chunk.forEach((vaga, j) => {
         if (embeddings[j]?.length === EMBED_DIMS) {
           resultados.push({ id: vaga.id, embedding: embeddings[j] });
+        } else {
+          console.warn(`Embedding descartado (vaga ${vaga.id}): esperado ${EMBED_DIMS} dims, veio ${embeddings[j]?.length ?? "undefined"}.`);
         }
       });
     } catch (e) {

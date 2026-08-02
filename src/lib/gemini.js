@@ -47,7 +47,7 @@ async function chamarGemini({ contents, config }) {
 }
 
 // ─── Fase A (V3): embedding do currículo-base via gemini-proxy ──────────────
-// Retorna vetor de 768 floats (text-embedding-004). Lança em erro — quem chama
+// Retorna vetor de 768 floats (gemini-embedding-001). Lança em erro — quem chama
 // decide se é fatal (no onboarding é best-effort: perfil salva mesmo sem vetor).
 export async function gerarEmbedding(texto) {
   const { data: sessionData } = await supabase.auth.getSession();

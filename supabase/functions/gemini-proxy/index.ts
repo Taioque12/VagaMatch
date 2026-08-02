@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
     return json({ error: `Payload excede limite (${Math.round(payloadSize / 1024 / 1024)}MB > 20MB).` }, 413);
   }
 
-  // ─── Fase A (V3): rota de embeddings (text-embedding-004, 768 dims) ───────
+  // ─── Fase A (V3): rota de embeddings (gemini-embedding-001, 768 dims) ─────
   if (payload.task === "embed") {
     const texts = payload.texts;
     if (!Array.isArray(texts) || texts.length === 0 || texts.length > 10) {
@@ -86,14 +86,15 @@ Deno.serve(async (req) => {
     }
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             requests: texts.map((t) => ({
-              model: "models/text-embedding-004",
+              model: "models/gemini-embedding-001",
               content: { parts: [{ text: t }] },
+              outputDimensionality: 768,
             })),
           }),
         },
@@ -113,12 +114,14 @@ Deno.serve(async (req) => {
     }
   }
 
-  const { model = "gemini-2.5-flash", contents, config } = payload;
+  const { model = "gemini-flash-latest", contents, config } = payload;
   if (!contents) return json({ error: "Campo 'contents' obrigatório." }, 400);
 
   // Whitelist de modelos: 'model' entra na URL da API — sem isso o cliente
   // controla o path da requisição server-side.
-  const MODELOS_PERMITIDOS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
+  // gemini-2.5-* descontinuados p/ chaves novas (404 "no longer available to
+  // new users") — gemini-flash-latest/gemini-pro-latest são os atuais.
+  const MODELOS_PERMITIDOS = ["gemini-flash-latest", "gemini-pro-latest", "gemini-2.0-flash"];
   if (!MODELOS_PERMITIDOS.includes(model)) {
     return json({ error: "Modelo não permitido." }, 400);
   }

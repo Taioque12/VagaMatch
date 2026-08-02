@@ -299,7 +299,7 @@ ${curriculoBase}`;
   const userPrompt = `Ajuste o currículo para esta vaga:\n\nTítulo: ${vaga.titulo}\nEmpresa: ${vaga.empresa}\nLocal: ${vaga.local || "Não informado"}\n\nDescrição:\n${vaga.descricao || vaga.resumo || "Não informado"}`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },

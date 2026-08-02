@@ -101,7 +101,7 @@ export async function gerarCurriculo(vaga, curriculo, nomeCompleto) {
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-flash-latest",
       contents: prompt,
       config: {
         systemInstruction: montarSystemPrompt(curriculoBase),

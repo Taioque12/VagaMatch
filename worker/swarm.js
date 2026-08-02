@@ -67,7 +67,7 @@ Experiências: ${(curriculo.experiencias || [])
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-flash-latest',
       contents: prompt,
       config: { responseMimeType: "application/json" },
     });
@@ -123,7 +123,7 @@ CANDIDATOU-SE (${candidaturas.length}):
 ${candidaturas.map(linha).join("\n") || "(nenhuma)"}`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-flash-latest',
     contents: prompt,
   });
   const resumo = response.text?.trim();
