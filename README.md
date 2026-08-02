@@ -15,7 +15,7 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 | **Worker** | Node.js (`worker/`), GitHub Actions cron a cada 2h, service_role key |
 | **Edge Functions** | `gemini-proxy` (proxy autenticado pro Gemini + embeddings), `mp-checkout` / `mp-webhook` (pagamentos), `telegram-webhook` (bot + geração de PDF on-demand) |
 | **Banco de Dados** | Supabase (PostgreSQL) com RLS por `user_id` + **pgvector** (embeddings 768d, índices HNSW) |
-| **IA** | Google Gemini 2.5 Flash (score swarm Técnico+Fit, currículo ajustado, extração) + text-embedding (pré-filtro vetorial V3) |
+| **IA** | Google Gemini (`gemini-flash-latest`, score swarm Técnico+Fit, currículo ajustado, extração) + `gemini-embedding-001` (768d, pré-filtro vetorial V3) |
 | **Pagamentos** | Mercado Pago (preapproval/Pix) — Edge Functions `mp-checkout`/`mp-webhook` |
 | **Deploy** | Vercel (frontend) + Supabase (Edge Functions + DB) + GitHub Actions (worker cron) |
 
@@ -113,6 +113,8 @@ As migrations estão em `supabase/migrations/`, em ordem:
 | 017 | `017_vetores.sql` | **V3 Fase A**: extensão pgvector, `embedding vector(768)` em `curriculos`/`vagas_vistas`, índices HNSW, RPC `match_vaga_curriculo`, flags V3 no `app_state` |
 | 018 | `018_feedback_vetorial.sql` | **V3 Fase C**: `feedback_em`, RPC `ajuste_feedback_vetorial` (memória de descartes/candidaturas) |
 | 019 | `019_protege_embedding.sql` | Blinda `vagas_vistas.embedding` contra escrita do usuário (trigger) |
+| 020 | `020_modalidade_trabalho.sql` | Coluna `modalidade_trabalho` em `preferencias` (remoto/híbrido/presencial/qualquer) |
+| 021 | `021_salario_minimo.sql` | Coluna `salario_minimo` em `preferencias` (filtro de piso salarial) |
 
 ## Ferramentas de Desenvolvimento (IA)
 
@@ -168,7 +170,7 @@ Depois de trocar o secret, é preciso redeployar `telegram-webhook` e re-registr
 
 ## Testes
 
-`npm test` (vitest, 18 testes):
+`npm test` (vitest, 22 testes):
 - `src/lib/gemini.test.js` — extração de currículo, validação de schema, timeout do Gemini
 - `worker/processamento.test.js` — semáforo de concorrência, pipeline de vagas (aprovação/descarte por score, 429 não conta falha, PDF automático best-effort)
 - `worker/db.test.js` — query de pendentes órfãs (`buscarPendentesAntigas`)
@@ -178,6 +180,16 @@ Edge Functions são excluídas do vitest (`vite.config.js`). Script de manutenç
 ## Próximos Passos
 
 ### Pendências imediatas
+- [ ] **[BLOQUEANTE] Trocar `GEMINI_API_KEY`** — a chave em produção está bloqueada por cobrança no Google Cloud (`"Lightning dunning decision is deny"`, 502 em toda chamada Gemini: import de currículo, geração de CV/carta, bot Telegram). Já existe uma chave gratuita nova validada (projeto Google `603484491031`). Falta só aplicar o secret em dois lugares (nenhum tem API pra isso, precisa ser manual):
+  - Supabase → Project Settings → Edge Functions → Secrets → `GEMINI_API_KEY`
+  - GitHub → Settings → Secrets and variables → Actions → `GEMINI_API_KEY`
+  - Depois de trocar, validar reimportando o currículo de um usuário de teste (ex: `joaocarlos_deoliveira@yahoo.com.br`, cadastrado 2026-08-02, currículo ainda vazio)
+- [ ] Fazer merge (ou revisar) os PRs abertos, ambos já testados/com testes passando:
+  - [`fix/modelos-gemini-descontinuados`](https://github.com/Taioque12/VagaMatch/pull/new/fix/modelos-gemini-descontinuados) — migra `gemini-2.5-flash`→`gemini-flash-latest` e `text-embedding-004`→`gemini-embedding-001` (768d explícito) em todos os pontos de chamada; edge functions `gemini-proxy` e `telegram-webhook` já reimplantadas em produção com esse código
+  - [`fix/mensagens-erro-auth`](https://github.com/Taioque12/VagaMatch/pull/new/fix/mensagens-erro-auth) — traduz erros de cadastro/login do Supabase Auth pro português (`src/lib/authErros.js`)
+- [ ] Desativar a **Vercel SSO Protection** do projeto `vaga-match` (Settings → Deployment Protection → Vercel Authentication) — hoje só `vaga-match-coral.vercel.app` é acessível sem login Vercel; os demais domínios (`vaga-match-taioques.vercel.app` etc.) redirecionam pro SSO e bloqueiam testadores externos
+- [ ] Promover o último deploy da Vercel pra produção — o projeto está com `live: false`, então `coral.vercel.app` pode estar servindo build desatualizado
+- [ ] Apagar os usuários de teste criados durante o diagnóstico de hoje (`teste.diag*@gmail.com`) em Supabase → Authentication → Users
 - [ ] Mercado Pago fim-a-fim: criar aplicação no painel do MP, setar `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET`, cadastrar URL do webhook e testar pagamento real
 - [ ] Item 7 da V3: job semanal de refino de perfil (`resumirFeedbackSemanal` já existe em `worker/swarm.js`, falta o cron + confirmação do usuário no Telegram)
 - [ ] Colunas dedicadas `score_tecnico`/`score_fit` em `vagas_vistas` (hoje o frontend parseia do texto `motivo_ia` — funciona, mas é frágil)
