@@ -180,7 +180,7 @@ Edge Functions são excluídas do vitest (`vite.config.js`). Script de manutenç
 ## Próximos Passos
 
 ### Pendências imediatas
-- [ ] **[BLOQUEANTE] Trocar `GEMINI_API_KEY`** — a chave em produção está bloqueada por cobrança no Google Cloud (`"Lightning dunning decision is deny"`, 502 em toda chamada Gemini: import de currículo, geração de CV/carta, bot Telegram). Já existe uma chave gratuita nova validada (projeto Google `603484491031`). Falta só aplicar o secret em dois lugares (nenhum tem API pra isso, precisa ser manual):
+- [x] **[RESOLVIDO LOCALMENTE] Trocar `GEMINI_API_KEY`** — a chave local foi atualizada para a API gratuita. ATENÇÃO: Falta aplicar o novo secret em produção nestes dois lugares (nenhum tem API pra isso, precisa ser manual):
   - Supabase → Project Settings → Edge Functions → Secrets → `GEMINI_API_KEY`
   - GitHub → Settings → Secrets and variables → Actions → `GEMINI_API_KEY`
   - Depois de trocar, validar reimportando o currículo de um usuário de teste (ex: `joaocarlos_deoliveira@yahoo.com.br`, cadastrado 2026-08-02, currículo ainda vazio)
