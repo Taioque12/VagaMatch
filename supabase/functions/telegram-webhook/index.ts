@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { jsPDF } from "https://esm.sh/jspdf@2.5.1"
 import { oferecerEntrevista, processarMensagemEntrevista } from "./interview.ts"
+import { protegerWebhookTelegram } from "./auth.ts"
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -646,20 +647,7 @@ async function tratarMensagem(msg: any) {
 
 const TELEGRAM_WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
 
-serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
-  // Valida que o update veio mesmo do Telegram (secret_token do setWebhook).
-  // Sem isso, qualquer um pode forjar updates e alterar preferências de usuários.
-  if (TELEGRAM_WEBHOOK_SECRET) {
-    const token = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
-    if (token !== TELEGRAM_WEBHOOK_SECRET) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-  }
-
+async function processarUpdate(req: Request) {
   try {
     const upd = await req.json();
     
@@ -674,4 +662,6 @@ serve(async (req) => {
     console.error("Erro no webhook:", e);
     return new Response("Internal Server Error", { status: 500 });
   }
-});
+}
+
+serve(protegerWebhookTelegram(TELEGRAM_WEBHOOK_SECRET, processarUpdate));

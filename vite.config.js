@@ -4,7 +4,9 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   test: {
-    exclude: ["**/node_modules/**", "supabase/functions/**"],
+    // Mantém os testes Deno existentes excluídos, mas executa o teste unitário
+    // da autenticação do webhook pelo Vitest.
+    exclude: ["**/node_modules/**", "supabase/functions/**/index.test.ts"],
     // Zera a janela de rate-limit do Gemini nos testes do worker — precisa
     // estar aqui (não no test file): imports ESM são hoisted e o módulo lê a
     // env na carga, antes de qualquer linha do teste rodar.
