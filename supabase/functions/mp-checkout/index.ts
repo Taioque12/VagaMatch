@@ -98,6 +98,7 @@ Deno.serve(async (req) => {
       headers: {
         Authorization: `Bearer ${MP_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
+        "X-Idempotency-Key": String(checkout.mp_idempotency_key || lockOwner),
       },
       body: JSON.stringify({
         reason: preco.label,

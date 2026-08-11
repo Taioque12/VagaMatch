@@ -170,10 +170,12 @@ Depois de trocar o secret, é preciso redeployar `telegram-webhook` e re-registr
 
 ## Testes
 
-`npm test` (vitest, 22 testes):
+`npm test` (vitest, 41 testes):
 - `src/lib/gemini.test.js` — extração de currículo, validação de schema, timeout do Gemini
 - `worker/processamento.test.js` — semáforo de concorrência, pipeline de vagas (aprovação/descarte por score, 429 não conta falha, PDF automático best-effort)
 - `worker/db.test.js` — query de pendentes órfãs (`buscarPendentesAntigas`)
+- `worker/embeddings.test.js` — consolidação do texto de currículo para embedding
+- `supabase/migrations/security-migrations.test.js` — contratos SQL/config de segurança, rate limit, locks e idempotência
 
 Edge Functions são excluídas do vitest (`vite.config.js`). Script de manutenção: `node scripts/reprocessar-pendentes.mjs` (desentope vagas presas em `pendente_processamento`, reusando o pipeline de produção).
 

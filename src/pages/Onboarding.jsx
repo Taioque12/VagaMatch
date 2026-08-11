@@ -226,11 +226,19 @@ export function Onboarding() {
   async function conectarTelegram() {
     setErro(null);
     setGerandoLinkTelegram(true);
+    const janelaTelegram = window.open("about:blank", "_blank");
     try {
       const { data, error } = await supabase.functions.invoke("telegram-link-token");
       if (error || !data?.token) throw new Error("Não foi possível criar um link seguro para o Telegram.");
-      window.open(`https://t.me/vagamatchbr_bot?start=${encodeURIComponent(data.token)}`, "_blank", "noopener,noreferrer");
+      const url = `https://t.me/vagamatchbr_bot?start=${encodeURIComponent(data.token)}`;
+      if (janelaTelegram) {
+        janelaTelegram.opener = null;
+        janelaTelegram.location.href = url;
+      } else {
+        window.location.assign(url);
+      }
     } catch (err) {
+      if (janelaTelegram && !janelaTelegram.closed) janelaTelegram.close();
       setErro(err.message);
     } finally {
       setGerandoLinkTelegram(false);

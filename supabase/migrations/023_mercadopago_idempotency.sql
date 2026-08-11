@@ -5,10 +5,14 @@ create table if not exists public.mp_checkout_sessions (
   status text not null check (status in ('creating', 'ready', 'failed', 'completed')),
   mp_preapproval_id text,
   init_point text,
+  mp_idempotency_key uuid not null default gen_random_uuid(),
   request_owner_id uuid,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table public.mp_checkout_sessions
+  add column if not exists mp_idempotency_key uuid not null default gen_random_uuid();
 
 alter table public.mp_checkout_sessions enable row level security;
 grant all on public.mp_checkout_sessions to service_role;
@@ -29,7 +33,15 @@ begin
   values (p_user_id, p_plano, p_recorrencia, 'creating', p_owner_id)
   on conflict (user_id) do update
     set plano = excluded.plano, recorrencia = excluded.recorrencia, status = 'creating',
-        mp_preapproval_id = null, init_point = null, request_owner_id = p_owner_id, updated_at = now()
+        mp_preapproval_id = null, init_point = null, request_owner_id = p_owner_id,
+        mp_idempotency_key = case
+          when public.mp_checkout_sessions.status in ('failed', 'creating')
+           and public.mp_checkout_sessions.plano = excluded.plano
+           and public.mp_checkout_sessions.recorrencia = excluded.recorrencia
+          then public.mp_checkout_sessions.mp_idempotency_key
+          else gen_random_uuid()
+        end,
+        updated_at = now()
     where public.mp_checkout_sessions.status = 'failed'
        or public.mp_checkout_sessions.status = 'completed'
        or (public.mp_checkout_sessions.status = 'creating'

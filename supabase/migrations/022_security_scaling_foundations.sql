@@ -16,6 +16,49 @@ create index if not exists telegram_link_tokens_active_user_idx
 alter table public.telegram_link_tokens enable row level security;
 grant all on public.telegram_link_tokens to service_role;
 
+do $$
+begin
+  if exists (
+    select 1
+      from public.profiles
+     where telegram_chat_id is not null
+     group by telegram_chat_id
+    having count(*) > 1
+  ) then
+    raise exception 'telegram_chat_id duplicado em profiles; corrija os dados antes de aplicar a constraint';
+  end if;
+end;
+$$;
+
+create unique index if not exists profiles_telegram_chat_id_unique
+  on public.profiles(telegram_chat_id)
+  where telegram_chat_id is not null;
+
+-- O vínculo Telegram só pode ser gravado por service_role, via token curto.
+-- Isso fecha o bypass da policy "usuario edita o proprio perfil".
+create or replace function public.protect_profile_telegram_chat_id()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  if auth.role() <> 'service_role' then
+    if TG_OP = 'INSERT' and new.telegram_chat_id is not null then
+      raise exception 'não é permitido vincular telegram_chat_id diretamente';
+    end if;
+    if TG_OP = 'UPDATE' and new.telegram_chat_id is distinct from old.telegram_chat_id then
+      raise exception 'não é permitido alterar telegram_chat_id diretamente';
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_profile_telegram_chat_id on public.profiles;
+create trigger protect_profile_telegram_chat_id
+  before insert or update on public.profiles
+  for each row execute function public.protect_profile_telegram_chat_id();
+
 -- Consome o token e registra o chat em uma única transação. O advisory lock
 -- evita que o mesmo chat seja ligado simultaneamente a duas contas.
 create or replace function public.consume_telegram_link_token(

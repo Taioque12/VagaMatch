@@ -11,6 +11,8 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const RATE_LIMIT_PER_MINUTE = 5;
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -45,6 +47,20 @@ Deno.serve(async (req) => {
   if (authError || !data.user) return json({ error: "Não autenticado." }, 401);
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+  const { data: allowed, error: rateLimitError } = await admin.rpc("consume_rate_limit", {
+    p_scope: "curriculo-embedding",
+    p_subject_id: data.user.id,
+    p_limit: RATE_LIMIT_PER_MINUTE,
+    p_window_seconds: 60,
+  });
+  if (rateLimitError) {
+    console.error("curriculo-embedding: falha no rate limit distribuído", rateLimitError.message);
+    return json({ error: "Não foi possível validar o limite de requisições." }, 503);
+  }
+  if (!allowed) {
+    return json({ error: "Limite de geração de embedding atingido. Tente novamente em 1 minuto." }, 429);
+  }
+
   const { data: curriculo, error: curriculoError } = await admin
     .from("curriculos")
     .select("resumo_profissional, habilidades, experiencias, formacao")
