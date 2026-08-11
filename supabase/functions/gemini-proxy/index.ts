@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
   // controla o path da requisição server-side.
   // gemini-2.5-* descontinuados p/ chaves novas (404 "no longer available to
   // new users") — gemini-flash-latest/gemini-pro-latest são os atuais.
-  const MODELOS_PERMITIDOS = ["gemini-flash-latest", "gemini-pro-latest", "gemini-2.0-flash"];
+  const MODELOS_PERMITIDOS = ["gemini-flash-latest", "gemini-pro-latest"];
   if (!MODELOS_PERMITIDOS.includes(model)) {
     return json({ error: "Modelo não permitido." }, 400);
   }

@@ -231,7 +231,7 @@ export function Dashboard() {
         )}
 
         {/* ===== Toolbar: toggle da busca + filtros (ex-sidebar) ===== */}
-        <div className="dbv2-toolbar">
+        <div className="dbv2-toolbar" role="toolbar" aria-label="Controles de busca e filtros">
           <button
             className="dbv2-btn-ghost"
             onClick={alternarBusca}
@@ -245,6 +245,7 @@ export function Dashboard() {
               key={f.valor}
               className={filtro === f.valor ? "dbv2-filtro ativo" : "dbv2-filtro"}
               onClick={() => setFiltro(f.valor)}
+              aria-pressed={filtro === f.valor}
             >
               {f.label}
             </button>
@@ -253,6 +254,7 @@ export function Dashboard() {
             className={soHomeOffice ? "dbv2-filtro ativo" : "dbv2-filtro"}
             onClick={() => setSoHomeOffice((v) => !v)}
             title="Mostra só vagas com menção a remoto/home office no título ou descrição"
+            aria-pressed={soHomeOffice}
           >
             🏠 Home Office
           </button>
@@ -290,7 +292,7 @@ export function Dashboard() {
         <div className="dbv2-vagas">
           <h2 className="dbv2-titulo-secao">Vagas encontradas pela IA</h2>
 
-          {erro && <p className="erro">{erro}</p>}
+          {erro && <p className="erro" role="alert">{erro}</p>}
 
           {vagasFiltradas === null && !erro && (
             <div aria-busy="true" aria-label="Carregando vagas" className="dbv2-vagas">

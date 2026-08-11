@@ -48,17 +48,10 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-  // Um novo link invalida os links ainda utilizáveis do mesmo usuário.
-  await admin
-    .from("telegram_link_tokens")
-    .update({ used_at: new Date().toISOString() })
-    .eq("user_id", data.user.id)
-    .is("used_at", null);
-
-  const { error } = await admin.from("telegram_link_tokens").insert({
-    user_id: data.user.id,
-    token_hash: tokenHash,
-    expires_at: expiresAt,
+  const { error } = await admin.rpc("issue_telegram_link_token", {
+    p_user_id: data.user.id,
+    p_token_hash: tokenHash,
+    p_expires_at: expiresAt,
   });
   if (error) {
     console.error("telegram-link-token: falha ao criar token", error.message);

@@ -4,7 +4,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const MP_ACCESS_TOKEN = Deno.env.get("MP_ACCESS_TOKEN");
-const APP_URL = Deno.env.get("APP_URL") ?? "http://localhost:5173";
+const SITE_URL = Deno.env.get("SITE_URL") ?? Deno.env.get("APP_URL");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -37,7 +37,7 @@ function json(body: unknown, status = 200) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
-  if (!MP_ACCESS_TOKEN || !SUPABASE_SERVICE_ROLE_KEY) return json({ error: "Configuração incompleta no servidor." }, 500);
+  if (!MP_ACCESS_TOKEN || !SUPABASE_SERVICE_ROLE_KEY || !SITE_URL) return json({ error: "Configuração incompleta no servidor." }, 500);
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
         reason: preco.label,
         external_reference: user.id,
         payer_email: user.email,
-        back_url: `${APP_URL}/sucesso`,
+        back_url: `${SITE_URL}/sucesso`,
         auto_recurring: {
           frequency: preco.frequency,
           frequency_type: "months",
@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       console.error(`Mercado Pago ${res.status}: ${corpo}`);
       await admin.from("mp_checkout_sessions").update({
         status: "failed", request_owner_id: null, updated_at: new Date().toISOString(),
-      }).eq("user_id", user.id);
+      }).eq("user_id", user.id).eq("status", "creating").eq("request_owner_id", lockOwner);
       return json({ error: "Falha ao criar assinatura no Mercado Pago." }, 502);
     }
 
@@ -128,16 +128,22 @@ Deno.serve(async (req) => {
     if (!data?.init_point) {
       await admin.from("mp_checkout_sessions").update({
         status: "failed", request_owner_id: null, updated_at: new Date().toISOString(),
-      }).eq("user_id", user.id);
+      }).eq("user_id", user.id).eq("status", "creating").eq("request_owner_id", lockOwner);
       return json({ error: "Mercado Pago não retornou init_point." }, 502);
     }
-    await admin.from("mp_checkout_sessions").update({
+    const { data: persistedCheckout, error: persistError } = await admin.from("mp_checkout_sessions").update({
       status: "ready", mp_preapproval_id: data.id ? String(data.id) : null,
       init_point: data.init_point, request_owner_id: null, updated_at: new Date().toISOString(),
-    }).eq("user_id", user.id);
+    }).eq("user_id", user.id).eq("status", "creating").eq("request_owner_id", lockOwner)
+      .select("status").maybeSingle();
+    if (persistError || !persistedCheckout) {
+      console.error("Mercado Pago: checkout deixou de pertencer à requisição atual antes de persistir.");
+      return json({ error: "Checkout atualizado por outra requisição. Tente novamente." }, 409);
+    }
     return json({ init_point: data.init_point });
   } catch (error) {
-    await admin.from("mp_checkout_sessions").update({ status: "failed", request_owner_id: null, updated_at: new Date().toISOString() }).eq("user_id", user.id);
+    await admin.from("mp_checkout_sessions").update({ status: "failed", request_owner_id: null, updated_at: new Date().toISOString() })
+      .eq("user_id", user.id).eq("status", "creating").eq("request_owner_id", lockOwner);
     console.error(`Falha ao chamar Mercado Pago: ${error.message}`);
     return json({ error: "Erro interno ao criar assinatura." }, 500);
   } finally {

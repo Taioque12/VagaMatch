@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
@@ -26,6 +26,7 @@ export function Onboarding() {
 
   const [novoCargo, setNovoCargo] = useState("");
   const [novaPalavra, setNovaPalavra] = useState("");
+  const inputCurriculoRef = useRef(null);
 
   useEffect(() => {
     if (!session) return;
@@ -301,8 +302,20 @@ export function Onboarding() {
             disabled={analisandoPdf}
             id="upload-cv"
             style={{ display: "none" }}
+            ref={inputCurriculoRef}
           />
-          <label htmlFor="upload-cv" className="zona-upload-label">
+          <label
+            htmlFor="upload-cv"
+            className="zona-upload-label"
+            tabIndex="0"
+            role="button"
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                inputCurriculoRef.current?.click();
+              }
+            }}
+          >
             <span className="zona-upload-icone">{analisandoPdf ? "⏳" : "📄"}</span>
             <span className="zona-upload-titulo">
               {analisandoPdf
@@ -329,11 +342,14 @@ export function Onboarding() {
                 {(dadosExtraidos.cargos_alvo || []).map((c, i) => (
                   <span className="tag" key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     {c}
-                    <button type="button" onClick={() => handleRemCargo(i)} style={{ background: "none", border: "none", color: "currentColor", cursor: "pointer", padding: 0, fontSize: "0.9rem" }}>×</button>
+                    <button type="button" aria-label={`Remover cargo ${c}`} onClick={() => handleRemCargo(i)} style={{ background: "none", border: "none", color: "currentColor", cursor: "pointer", padding: 0, fontSize: "0.9rem" }}>×</button>
                   </span>
                 ))}
               </div>
+              <label htmlFor="novo-cargo" className="sr-only">Adicionar cargo</label>
               <input 
+                id="novo-cargo"
+                name="novo-cargo"
                 type="text" 
                 value={novoCargo} 
                 onChange={e => setNovoCargo(e.target.value)} 
@@ -349,11 +365,14 @@ export function Onboarding() {
                 {(dadosExtraidos.palavras_chave || []).map((p, i) => (
                   <span className="tag" key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
                     {p}
-                    <button type="button" onClick={() => handleRemPalavra(i)} style={{ background: "none", border: "none", color: "currentColor", cursor: "pointer", padding: 0, fontSize: "0.9rem" }}>×</button>
+                    <button type="button" aria-label={`Remover tecnologia ${p}`} onClick={() => handleRemPalavra(i)} style={{ background: "none", border: "none", color: "currentColor", cursor: "pointer", padding: 0, fontSize: "0.9rem" }}>×</button>
                   </span>
                 ))}
               </div>
+              <label htmlFor="nova-tecnologia" className="sr-only">Adicionar tecnologia</label>
               <input 
+                id="nova-tecnologia"
+                name="nova-tecnologia"
                 type="text" 
                 value={novaPalavra} 
                 onChange={e => setNovaPalavra(e.target.value)} 
@@ -377,6 +396,7 @@ export function Onboarding() {
                     type="button"
                     className={(dadosExtraidos.modalidade_trabalho || "qualquer") === opt.valor ? "dbv2-filtro ativo" : "dbv2-filtro"}
                     onClick={() => setDadosExtraidos((d) => ({ ...d, modalidade_trabalho: opt.valor }))}
+                    aria-pressed={(dadosExtraidos.modalidade_trabalho || "qualquer") === opt.valor}
                   >
                     {opt.label}
                   </button>
@@ -429,9 +449,9 @@ export function Onboarding() {
           </section>
         )}
 
-        {erro && <p className="erro" style={{ textAlign: "center" }}>{erro}</p>}
-        {pdfBaixado && <p className="sucesso" style={{ textAlign: "center" }}>✓ PDF baixado com sucesso! Verifique sua pasta de downloads.</p>}
-        {salvo && <p className="sucesso" style={{ textAlign: "center" }}>✓ Preparando suas vagas exclusivas... Redirecionando para o painel em instantes.</p>}
+        {erro && <p className="erro" role="alert" style={{ textAlign: "center" }}>{erro}</p>}
+        {pdfBaixado && <p className="sucesso" role="status" aria-live="polite" style={{ textAlign: "center" }}>✓ PDF baixado com sucesso! Verifique sua pasta de downloads.</p>}
+        {salvo && <p className="sucesso" role="status" aria-live="polite" style={{ textAlign: "center" }}>✓ Preparando suas vagas exclusivas... Redirecionando para o painel em instantes.</p>}
 
         {pronto && (
           <button

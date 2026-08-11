@@ -74,6 +74,8 @@ export function Landing() {
       <div className="lp-glow-2"></div>
       <div className="lp-glow-3"></div>
 
+      <a className="lp-skip-link" href="#conteudo-principal">Pular para o conteúdo</a>
+
       {/* Nav */}
       <nav className="lp-nav-p">
         <Link to="/" className="lp-logo-p">
@@ -82,11 +84,12 @@ export function Landing() {
         </Link>
         <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
           <Link to="/login" className="lp-btn-ghost">Entrar</Link>
-          <a href="#planos" className="lp-btn-primary">Começar Agora</a>
+          <Link to="/cadastro" className="lp-btn-primary">Começar Agora</Link>
         </div>
       </nav>
 
       {/* Hero */}
+      <main id="conteudo-principal">
       <section className="lp-hero-p">
         <div className="lp-hero-content">
           <div className="lp-badge-p">
@@ -101,9 +104,9 @@ export function Landing() {
             Você envia o currículo uma vez. Nós cruzamos com centenas de fontes e enviamos vagas perfeitas direto no seu Telegram, já com currículo ajustado para cada empresa.
           </p>
           <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-            <a href="#planos" className="lp-btn-primary" style={{ padding: "1rem 2rem", fontSize: "1.1rem" }}>
+            <Link to="/cadastro" className="lp-btn-primary" style={{ padding: "1rem 2rem", fontSize: "1.1rem" }}>
               Ativar Minhas Vagas
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -225,6 +228,7 @@ export function Landing() {
           </div>
         </section>
       )}
+      </main>
 
       {/* Footer */}
       <footer style={{ borderTop: "1px solid var(--glass-border)", padding: "3rem 2rem", textAlign: "center", color: "var(--text-body)", position: "relative", zIndex: 10 }}>

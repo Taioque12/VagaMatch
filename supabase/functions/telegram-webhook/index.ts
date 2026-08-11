@@ -606,6 +606,10 @@ async function tratarMensagem(msg: any) {
   if (texto.startsWith("/start")) {
     const partes = texto.split(" ");
     if (partes.length > 1) {
+      if (msg.chat?.type !== "private" || String(msg.from?.id) !== String(chatId)) {
+        await enviarMensagemSimples(chatId, "⚠️ Por segurança, conecte seu Telegram em uma conversa privada com o bot.");
+        return;
+      }
       const token = partes[1].trim();
       const { data: userId, error } = await supabase.rpc("consume_telegram_link_token", {
         p_token_hash: await sha256(token),

@@ -55,13 +55,13 @@ export function Login() {
         <form onSubmit={handleSubmit}>
           <label>
             E-mail
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <input type="email" name="email" autoComplete="email" spellCheck={false} value={email} onChange={(e) => setEmail(e.target.value)} required />
           </label>
           <label>
             Senha
-            <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} required />
+            <input type="password" name="password" autoComplete="current-password" value={senha} onChange={(e) => setSenha(e.target.value)} required />
           </label>
-          {erro && <p className="erro">{erro}</p>}
+          {erro && <p className="erro" role="alert">{erro}</p>}
           <button type="submit" disabled={carregando}>
             {carregando ? "Entrando..." : "Entrar"}
           </button>

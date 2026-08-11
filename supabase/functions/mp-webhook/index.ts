@@ -121,6 +121,37 @@ Deno.serve(async (req) => {
     }
 
     const supabase = createClient(SUPABASE_URL!, SERVICE_ROLE_KEY!);
+    const { data: checkout, error: checkoutError } = await supabase
+      .from("mp_checkout_sessions")
+      .select("mp_preapproval_id, status")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (checkoutError) {
+      console.error(`mp-webhook: falha ao consultar checkout do usuário ${userId}: ${checkoutError.message}`);
+      return ok({ error: "Falha ao validar checkout." }, 503);
+    }
+    if (checkout && !checkout.mp_preapproval_id) {
+      // O checkout pode ainda estar persistindo a resposta do MP; peça retry
+      // para não aplicar um evento sem identificar a assinatura esperada.
+      return ok({ error: "Checkout ainda não registrado." }, 503);
+    }
+    if (checkout?.mp_preapproval_id && checkout.mp_preapproval_id !== String(dataId)) {
+      console.warn(`mp-webhook: preapproval ${dataId} não corresponde ao checkout atual de ${userId}.`);
+      return ok({ ignored: "preapproval não corresponde ao checkout atual" });
+    }
+    if (!checkout) {
+      // Assinaturas anteriores à tabela mp_checkout_sessions continuam
+      // processáveis, mas somente quando ainda são a assinatura do perfil.
+      const { data: legacyProfile, error: legacyError } = await supabase
+        .from("profiles")
+        .select("mp_preapproval_id")
+        .eq("id", userId)
+        .maybeSingle();
+      if (legacyError) return ok({ error: "Falha ao validar assinatura legada." }, 503);
+      if (legacyProfile?.mp_preapproval_id !== String(dataId)) {
+        return ok({ ignored: "preapproval legada não corresponde ao perfil" });
+      }
+    }
     const status: string = preapproval?.status ?? "";
     const notificationId = body?.id ?? url.searchParams.get("notification_id");
     const eventId = notificationId
@@ -167,7 +198,16 @@ Deno.serve(async (req) => {
       return ok({ ignored: status });
     }
 
-    const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
+    const { data: applied, error } = await supabase.rpc("apply_mp_preapproval_status", {
+      p_user_id: userId,
+      p_preapproval_id: String(dataId),
+      p_plano: String(patch.plano),
+      p_assinatura_status: String(patch.assinatura_status),
+      p_recorrencia: patch.assinatura_recorrencia ?? null,
+      p_inicio: patch.assinatura_inicio ?? null,
+      p_proxima_cobranca: patch.assinatura_proxima_cobranca ?? null,
+      p_payer_id: patch.mp_payer_id ?? null,
+    });
     if (error) {
       console.error(`mp-webhook: update profiles falhou (user ${userId}): ${error.message}`);
       await supabase.rpc("finish_payment_webhook_event", {
@@ -175,12 +215,16 @@ Deno.serve(async (req) => {
       });
       return ok({ error: "Falha ao atualizar perfil." }, 503);
     }
+    if (!applied) {
+      await supabase.rpc("finish_payment_webhook_event", {
+        p_provider: "mercadopago", p_event_id: eventId, p_owner_id: eventOwner, p_success: true,
+      });
+      return ok({ ignored: "checkout substituído durante o processamento" });
+    }
 
     await supabase.rpc("finish_payment_webhook_event", {
       p_provider: "mercadopago", p_event_id: eventId, p_owner_id: eventOwner, p_success: true,
     });
-    await supabase.from("mp_checkout_sessions").update({ status: "completed", updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
 
     console.log(`mp-webhook: user ${userId} → ${patch.assinatura_status} (${status}).`);
     return ok();

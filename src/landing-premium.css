@@ -129,9 +129,26 @@
   padding: 0.8rem 1.5rem;
   border-radius: 999px;
   box-shadow: 0 10px 25px -5px var(--neon-glow);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+}
+
+.lp-skip-link {
+  position: fixed;
+  top: 1rem;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  background: #fff;
+  color: #0a0e11;
+  border-radius: 6px;
+  transform: translateY(-200%);
+  transition: transform 0.2s ease;
+}
+
+.lp-skip-link:focus {
+  transform: translateY(0);
 }
 
 .lp-btn-primary::after {
@@ -388,7 +405,7 @@
   border: 1px solid var(--glass-border);
   border-radius: 24px;
   padding: 2.5rem;
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
 }

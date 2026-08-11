@@ -11,6 +11,10 @@ const stripe = new Stripe(STRIPE_SECRET_KEY!, {
   httpClient: Stripe.createFetchHttpClient(),
 });
 
+function assinaturaAtiva(status: Stripe.Subscription.Status) {
+  return status === "active" || status === "trialing";
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") return new Response("Method Not Allowed", { status: 405 });
 
@@ -42,6 +46,10 @@ Deno.serve(async (req) => {
           // Quando finaliza o checkout, pega dados da subscription para saber recorrência
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
           const interval = subscription.items.data[0].plan.interval; // 'month' ou 'year'
+          if (!assinaturaAtiva(subscription.status)) {
+            console.warn(`Stripe checkout ${session.id}: subscription ${subscriptionId} não está ativa (${subscription.status}).`);
+            break;
+          }
           
           await supabaseAdmin
             .from("profiles")
@@ -55,31 +63,12 @@ Deno.serve(async (req) => {
             })
             .eq("id", userId);
 
-          // Primeira mensalidade paga: credita quem indicou (evita fraude de conta fake, só paga de verdade).
-          const { data: indicacao } = await supabaseAdmin
-            .from("indicacoes")
-            .select("id, indicador_id")
-            .eq("indicado_id", userId)
-            .eq("status", "pendente")
-            .maybeSingle();
-
-          if (indicacao) {
-            await supabaseAdmin
-              .from("indicacoes")
-              .update({ status: "pago", pago_em: new Date().toISOString() })
-              .eq("id", indicacao.id);
-
-            const { data: indicadorProfile } = await supabaseAdmin
-              .from("profiles")
-              .select("creditos_indicacao")
-              .eq("id", indicacao.indicador_id)
-              .maybeSingle();
-
-            await supabaseAdmin
-              .from("profiles")
-              .update({ creditos_indicacao: (indicadorProfile?.creditos_indicacao ?? 0) + 1 })
-              .eq("id", indicacao.indicador_id);
-          }
+          // RPC atômico: eventos Stripe duplicados não podem creditar duas vezes.
+          const { error: referralError } = await supabaseAdmin.rpc(
+            "credit_referral_after_paid_subscription",
+            { p_indicado_id: userId },
+          );
+          if (referralError) throw referralError;
         }
         break;
       }
@@ -90,6 +79,10 @@ Deno.serve(async (req) => {
         
         if (subscriptionId) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          if (!assinaturaAtiva(subscription.status)) {
+            console.warn(`Stripe invoice: subscription ${subscriptionId} não está ativa (${subscription.status}).`);
+            break;
+          }
           await supabaseAdmin
             .from("profiles")
             .update({
@@ -107,6 +100,13 @@ Deno.serve(async (req) => {
         const subscriptionId = obj.subscription || obj.id; // no invoice é .subscription, no customer.subscription é .id
         
         if (subscriptionId) {
+          if (event.type === "invoice.payment_failed") {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            if (!["past_due", "unpaid", "incomplete"].includes(subscription.status)) {
+              console.warn(`Stripe invoice failed ignorada: subscription ${subscriptionId} está ${subscription.status}.`);
+              break;
+            }
+          }
           await supabaseAdmin
             .from("profiles")
             .update({

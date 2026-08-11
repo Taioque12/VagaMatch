@@ -9,6 +9,10 @@ const payments = readFileSync(
   new URL("./023_mercadopago_idempotency.sql", import.meta.url),
   "utf8",
 );
+const hardening = readFileSync(
+  new URL("./024_payment_telegram_hardening.sql", import.meta.url),
+  "utf8",
+);
 const curriculoEmbedding = readFileSync(
   new URL("../functions/curriculo-embedding/index.ts", import.meta.url),
   "utf8",
@@ -19,6 +23,22 @@ const mpCheckout = readFileSync(
 );
 const supabaseConfig = readFileSync(
   new URL("../config.toml", import.meta.url),
+  "utf8",
+);
+const telegramLinkToken = readFileSync(
+  new URL("../functions/telegram-link-token/index.ts", import.meta.url),
+  "utf8",
+);
+const telegramWebhook = readFileSync(
+  new URL("../functions/telegram-webhook/index.ts", import.meta.url),
+  "utf8",
+);
+const stripeWebhook = readFileSync(
+  new URL("../functions/stripe-webhook/index.ts", import.meta.url),
+  "utf8",
+);
+const mpWebhook = readFileSync(
+  new URL("../functions/mp-webhook/index.ts", import.meta.url),
   "utf8",
 );
 
@@ -74,5 +94,48 @@ describe("migration 023 payment contracts", () => {
 
   it("mantém o webhook do Mercado Pago sem verificação JWT no config versionado", () => {
     expect(supabaseConfig).toMatch(/\[functions\.mp-webhook\][\s\S]*verify_jwt = false/);
+  });
+
+  it("mantém o webhook Stripe sem verificação JWT no config versionado", () => {
+    expect(supabaseConfig).toMatch(/\[functions\.stripe-webhook\][\s\S]*verify_jwt = false/);
+  });
+});
+
+describe("migration 024 hardening contracts", () => {
+  it("bloqueia embedding informado pelo cliente também na criação", () => {
+    expect(hardening).toContain("before insert or update on public.curriculos");
+    expect(hardening).toContain("tg_op = 'INSERT'");
+  });
+
+  it("emite tokens Telegram de forma serializada", () => {
+    expect(hardening).toContain("issue_telegram_link_token");
+    expect(hardening).toContain("pg_advisory_xact_lock");
+    expect(telegramLinkToken).toContain("issue_telegram_link_token");
+  });
+
+  it("aceita vínculo Telegram somente em conversa privada", () => {
+    expect(telegramWebhook).toContain('msg.chat?.type !== "private"');
+  });
+
+  it("processa crédito Stripe por RPC atômico", () => {
+    expect(hardening).toContain("credit_referral_after_paid_subscription");
+    expect(stripeWebhook).toContain("credit_referral_after_paid_subscription");
+  });
+
+  it("só aceita evento MP da assinatura esperada", () => {
+    expect(mpWebhook).toContain("checkout.mp_preapproval_id !== String(dataId)");
+    expect(mpWebhook).toContain("apply_mp_preapproval_status");
+    expect(hardening).toContain("apply_mp_preapproval_status");
+    expect(mpCheckout).toContain("eq(\"request_owner_id\", lockOwner)");
+  });
+
+  it("mantém compatibilidade de webhook MP com assinaturas legadas", () => {
+    expect(mpWebhook).toContain("Assinaturas anteriores à tabela mp_checkout_sessions");
+    expect(hardening).toContain("mp_preapproval_id = p_preapproval_id");
+  });
+
+  it("não reativa Stripe quando a assinatura atual não está ativa", () => {
+    expect(stripeWebhook).toContain("assinaturaAtiva(subscription.status)");
+    expect(stripeWebhook).toContain("invoice.payment_failed")
   });
 });

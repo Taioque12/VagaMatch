@@ -4,7 +4,7 @@ import Stripe from "npm:stripe@14.16.0";
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
-const SITE_URL = Deno.env.get("SITE_URL") || "http://localhost:5173"; // URL do frontend
+const SITE_URL = Deno.env.get("SITE_URL");
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -21,7 +21,7 @@ function json(body: any, status = 200) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
 
-  if (!STRIPE_SECRET_KEY) return json({ error: "STRIPE_SECRET_KEY não configurada." }, 500);
+  if (!STRIPE_SECRET_KEY || !SITE_URL) return json({ error: "Configuração de pagamento incompleta." }, 500);
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
