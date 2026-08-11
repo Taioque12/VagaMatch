@@ -6,6 +6,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -15,22 +16,6 @@ const CORS_HEADERS = {
 
 // Rate limit: 10 requisições por minuto por usuário
 const RATE_LIMIT_PER_MINUTE = 10;
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(userId);
-  if (!record || now > record.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + 60000 });
-    return true;
-  }
-  if (record.count < RATE_LIMIT_PER_MINUTE) {
-    record.count++;
-    return true;
-  }
-  return false;
-}
-
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -41,7 +26,7 @@ function json(body, status = 200) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
 
-  if (!GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY não configurada no servidor." }, 500);
+  if (!GEMINI_API_KEY || !SUPABASE_SERVICE_ROLE_KEY) return json({ error: "Configuração incompleta no servidor." }, 500);
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -52,7 +37,18 @@ Deno.serve(async (req) => {
     return json({ error: "Não autenticado." }, 401);
   }
 
-  if (!checkRateLimit(userData.user.id)) {
+  const admin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY);
+  const { data: allowed, error: rateLimitError } = await admin.rpc("consume_rate_limit", {
+    p_scope: "gemini-proxy",
+    p_subject_id: userData.user.id,
+    p_limit: RATE_LIMIT_PER_MINUTE,
+    p_window_seconds: 60,
+  });
+  if (rateLimitError) {
+    console.error("Falha no rate limit distribuído:", rateLimitError.message);
+    return json({ error: "Não foi possível validar o limite de requisições." }, 503);
+  }
+  if (!allowed) {
     return json({ error: "Limite de requisições atingido (10/min). Tente de novo em 1 minuto." }, 429);
   }
 
@@ -75,7 +71,7 @@ Deno.serve(async (req) => {
     return json({ error: `Payload excede limite (${Math.round(payloadSize / 1024 / 1024)}MB > 20MB).` }, 413);
   }
 
-  // ─── Fase A (V3): rota de embeddings (text-embedding-004, 768 dims) ───────
+  // ─── Fase A (V3): rota de embeddings (gemini-embedding-001, 768 dims) ─────
   if (payload.task === "embed") {
     const texts = payload.texts;
     if (!Array.isArray(texts) || texts.length === 0 || texts.length > 10) {
@@ -86,14 +82,15 @@ Deno.serve(async (req) => {
     }
     try {
       const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:batchEmbedContents?key=${GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:batchEmbedContents?key=${GEMINI_API_KEY}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             requests: texts.map((t) => ({
-              model: "models/text-embedding-004",
+              model: "models/gemini-embedding-001",
               content: { parts: [{ text: t }] },
+              outputDimensionality: 768,
             })),
           }),
         },
@@ -113,12 +110,14 @@ Deno.serve(async (req) => {
     }
   }
 
-  const { model = "gemini-2.5-flash", contents, config } = payload;
+  const { model = "gemini-flash-latest", contents, config } = payload;
   if (!contents) return json({ error: "Campo 'contents' obrigatório." }, 400);
 
   // Whitelist de modelos: 'model' entra na URL da API — sem isso o cliente
   // controla o path da requisição server-side.
-  const MODELOS_PERMITIDOS = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.0-flash"];
+  // gemini-2.5-* descontinuados p/ chaves novas (404 "no longer available to
+  // new users") — gemini-flash-latest/gemini-pro-latest são os atuais.
+  const MODELOS_PERMITIDOS = ["gemini-flash-latest", "gemini-pro-latest", "gemini-2.0-flash"];
   if (!MODELOS_PERMITIDOS.includes(model)) {
     return json({ error: "Modelo não permitido." }, 400);
   }

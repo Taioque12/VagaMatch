@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 
-import { extrairDadosCurriculo, gerarEmbedding } from "../lib/gemini.js";
+import { extrairDadosCurriculo } from "../lib/gemini.js";
 import { gerarCurriculoPdf } from "../lib/curriculoPdf.js";
 import "../dashboard-premium-v2.css";
 
@@ -19,6 +19,7 @@ export function Onboarding() {
   const [nomeArquivo, setNomeArquivo] = useState(null);
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [pdfBaixado, setPdfBaixado] = useState(false);
+  const [gerandoLinkTelegram, setGerandoLinkTelegram] = useState(false);
 
   const [telegramChatId, setTelegramChatId] = useState("");
   const [dadosExtraidos, setDadosExtraidos] = useState(null);
@@ -163,20 +164,10 @@ export function Onboarding() {
     const d = dadosExtraidos;
 
     try {
-      // Valida telegram_chat_id: deve ser numérico se fornecido
-      let validChatId = null;
-      if (telegramChatId?.trim()) {
-        if (!/^-?\d+$/.test(telegramChatId)) {
-          throw new Error("Chat ID do Telegram deve ser um número (sem espaços/símbolos).");
-        }
-        validChatId = telegramChatId;
-      }
-
       const { error: e1 } = await supabase.from("profiles").upsert({
         id: userId,
         nome_completo: d.nome_completo || "",
         localizacao: d.localizacao || "",
-        telegram_chat_id: validChatId,
         updated_at: new Date().toISOString(),
       });
       if (e1) throw e1;
@@ -215,24 +206,8 @@ export function Onboarding() {
       // Falha aqui não bloqueia o onboarding — o pré-filtro vetorial é
       // fail-open no worker (currículo sem embedding = fluxo normal).
       try {
-        const textoConsolidado = [
-          d.resumo_profissional,
-          (d.habilidades || []).join(", "),
-          ...(d.experiencias || []).map(
-            (exp) => `${exp.cargo} | ${exp.empresa} | ${(exp.bullets || []).join("; ")}`
-          ),
-          ...(d.formacao || []),
-          (d.cargos_alvo || []).join(", "),
-        ].filter(Boolean).join("\n");
-
-        if (textoConsolidado.trim()) {
-          const embedding = await gerarEmbedding(textoConsolidado);
-          const { error: eEmb } = await supabase
-            .from("curriculos")
-            .update({ embedding })
-            .eq("user_id", userId);
-          if (eEmb) throw eEmb;
-        }
+        const { error: eEmb } = await supabase.functions.invoke("curriculo-embedding");
+        if (eEmb) throw eEmb;
       } catch (embErr) {
         console.warn("Embedding do currículo falhou (perfil salvo mesmo assim):", embErr.message);
       }
@@ -245,6 +220,28 @@ export function Onboarding() {
       setErro(err.message);
     } finally {
       setSalvando(false);
+    }
+  }
+
+  async function conectarTelegram() {
+    setErro(null);
+    setGerandoLinkTelegram(true);
+    const janelaTelegram = window.open("about:blank", "_blank");
+    try {
+      const { data, error } = await supabase.functions.invoke("telegram-link-token");
+      if (error || !data?.token) throw new Error("Não foi possível criar um link seguro para o Telegram.");
+      const url = `https://t.me/vagamatchbr_bot?start=${encodeURIComponent(data.token)}`;
+      if (janelaTelegram) {
+        janelaTelegram.opener = null;
+        janelaTelegram.location.href = url;
+      } else {
+        window.location.assign(url);
+      }
+    } catch (err) {
+      if (janelaTelegram && !janelaTelegram.closed) janelaTelegram.close();
+      setErro(err.message);
+    } finally {
+      setGerandoLinkTelegram(false);
     }
   }
 
@@ -415,15 +412,15 @@ export function Onboarding() {
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <a 
-                  href={`https://t.me/vagamatchbr_bot?start=${session.user.id}`} 
-                  target="_blank" 
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={conectarTelegram}
+                  disabled={gerandoLinkTelegram}
                   className="botao-principal"
                   style={{ textDecoration: "none", textAlign: "center", display: "inline-block" }}
                 >
-                  Conectar Telegram (1-clique)
-                </a>
+                  {gerandoLinkTelegram ? "Preparando link seguro..." : "Conectar Telegram"}
+                </button>
                 <p className="ajuda" style={{ fontSize: "0.85rem", textAlign: "center", margin: 0 }}>
                   Clique no botão, depois em "Começar" lá no Telegram. Essa tela vai atualizar sozinha!
                 </p>

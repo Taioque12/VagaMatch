@@ -1,10 +1,10 @@
 import { env } from "./config.js";
 
-// Fase A (V3): embeddings de vagas em batch via Gemini text-embedding-004 (768 dims).
+// Fase A (V3): embeddings de vagas em batch via Gemini gemini-embedding-001 (768 dims).
 // REST direto (mesmo padrão do webhook) — batchEmbedContents aceita vários textos
 // por request, então 1 rodada inteira custa poucas chamadas, não 1 por vaga.
 
-const EMBED_MODEL = "gemini-embedding-2";
+const EMBED_MODEL = "gemini-embedding-001";
 const EMBED_DIMS = 768;
 // Chunk conservador: payload do Google tem limite e descrições de vaga são longas.
 const CHUNK_SIZE = 50;
@@ -14,6 +14,19 @@ function textoDaVaga(vaga) {
     .filter(Boolean)
     .join("\n")
     .slice(0, 8000); // ~2k tokens por texto, folga pro limite do modelo
+}
+
+export function textoDoCurriculo(curriculo) {
+  return [
+    curriculo.resumo_profissional,
+    ...(curriculo.habilidades || []),
+    ...(curriculo.experiencias || []).map(
+      (exp) => `${exp.cargo || ""} | ${exp.empresa || ""} | ${(exp.bullets || []).join("; ")}`
+    ),
+    ...(curriculo.formacao || []),
+    ...(curriculo.cursos || []),
+    ...(curriculo.projetos || []),
+  ].filter(Boolean).join("\n").slice(0, 20000);
 }
 
 async function chamarBatchEmbed(textos) {
@@ -26,6 +39,7 @@ async function chamarBatchEmbed(textos) {
         requests: textos.map((texto) => ({
           model: `models/${EMBED_MODEL}`,
           content: { parts: [{ text: texto }] },
+          outputDimensionality: EMBED_DIMS,
         })),
       }),
     }
@@ -60,6 +74,8 @@ export async function gerarEmbeddingsVagas(vagas) {
       chunk.forEach((vaga, j) => {
         if (embeddings[j]?.length === EMBED_DIMS) {
           resultados.push({ id: vaga.id, embedding: embeddings[j] });
+        } else {
+          console.warn(`Embedding descartado (vaga ${vaga.id}): esperado ${EMBED_DIMS} dims, veio ${embeddings[j]?.length ?? "undefined"}.`);
         }
       });
     } catch (e) {
@@ -68,6 +84,25 @@ export async function gerarEmbeddingsVagas(vagas) {
       );
       if (e.isRateLimit) break; // 429: para de insistir nesta rodada
     }
+  }
+  return resultados;
+}
+
+export async function gerarEmbeddingsCurriculos(curriculos) {
+  const validos = curriculos
+    .map((curriculo) => ({ curriculo, texto: textoDoCurriculo(curriculo) }))
+    .filter(({ texto }) => texto.trim());
+  if (!validos.length) return [];
+
+  const resultados = [];
+  for (let i = 0; i < validos.length; i += 10) {
+    const chunk = validos.slice(i, i + 10);
+    const embeddings = await chamarBatchEmbed(chunk.map(({ texto }) => texto));
+    chunk.forEach(({ curriculo }, index) => {
+      if (embeddings[index]?.length === EMBED_DIMS) {
+        resultados.push({ user_id: curriculo.user_id, embedding: embeddings[index] });
+      }
+    });
   }
   return resultados;
 }

@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import { jsPDF } from "https://esm.sh/jspdf@2.5.1"
 import { oferecerEntrevista, processarMensagemEntrevista } from "./interview.ts"
+import { callbackPertenceAoUsuario, validarRequisicaoWebhookTelegram } from "./auth.ts"
 
 const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -23,6 +24,43 @@ async function chamarApi(metodo: string, body: any) {
     console.error(`Telegram ${metodo} error:`, data);
   }
   return data;
+}
+
+async function sha256(value: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+// Callback data identifica uma vaga, nunca quem pode operá-la. Centralizar esta
+// checagem evita que um botão encaminhado revele dados ou altere outra conta.
+async function buscarVagaAutorizada(
+  callbackId: string,
+  fromId: string | number,
+  chatId: string | number | undefined,
+  campos: string,
+) {
+  if (!chatId || String(fromId) !== String(chatId)) {
+    console.warn("Callback Telegram negado: chat não privado ou divergente.");
+    return null;
+  }
+
+  const { data: perfil } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("telegram_chat_id", String(chatId))
+    .maybeSingle();
+  if (!perfil) return null;
+
+  const { data: vaga } = await supabase
+    .from("vagas_vistas")
+    .select(campos)
+    .eq("callback_id", callbackId)
+    .maybeSingle();
+  if (!vaga || !callbackPertenceAoUsuario({ fromId, chatId, perfilId: perfil.id, vagaUserId: vaga.user_id })) {
+    console.warn("Callback Telegram negado: vaga não pertence ao chat autenticado.");
+    return null;
+  }
+  return vaga;
 }
 
 // ─── Funções de Desenho de PDF (jsPDF) ──────────────────────────────────────
@@ -299,7 +337,7 @@ ${curriculoBase}`;
   const userPrompt = `Ajuste o currículo para esta vaga:\n\nTítulo: ${vaga.titulo}\nEmpresa: ${vaga.empresa}\nLocal: ${vaga.local || "Não informado"}\n\nDescrição:\n${vaga.descricao || vaga.resumo || "Não informado"}`;
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -336,14 +374,15 @@ async function tratarCallback(cq: any) {
     // Única porta de entrada para a chamada Gemini de currículo — o worker e o
     // clique "Candidatei-me" não geram mais nada automaticamente.
     if (tipo === "pdf") {
-      const { data: vaga } = await supabase
-        .from('vagas_vistas')
-        .select('id, user_id, job_id, titulo, empresa, url, descricao')
-        .eq('callback_id', callbackId)
-        .maybeSingle();
+      const vaga = await buscarVagaAutorizada(
+        callbackId,
+        fromId,
+        chatId,
+        "id, user_id, job_id, titulo, empresa, url, descricao",
+      );
 
       if (!vaga) {
-        await responderCallback("Vaga não encontrada (registro antigo).");
+        await responderCallback("Esta ação não está disponível.");
         return;
       }
 
@@ -386,14 +425,15 @@ async function tratarCallback(cq: any) {
     const status = STATUS_POR_TIPO[tipo];
     if (!status) return;
 
-    const { data: vaga } = await supabase
-      .from('vagas_vistas')
-      .select('id, user_id, job_id, titulo, empresa, url, telegram_message_id, score, motivo_ia')
-      .eq('callback_id', callbackId)
-      .maybeSingle();
+    const vaga = await buscarVagaAutorizada(
+      callbackId,
+      fromId,
+      chatId,
+      "id, user_id, job_id, titulo, empresa, url, telegram_message_id, score, motivo_ia",
+    );
 
     if (!vaga) {
-      await responderCallback("Vaga não encontrada (registro antigo).");
+      await responderCallback("Esta ação não está disponível.");
       return;
     }
     // feedback_em alimenta a Fase C (V3): memória vetorial de descartes e
@@ -566,10 +606,14 @@ async function tratarMensagem(msg: any) {
   if (texto.startsWith("/start")) {
     const partes = texto.split(" ");
     if (partes.length > 1) {
-      const userId = partes[1].trim();
-      const { error } = await supabase.from("profiles").update({ telegram_chat_id: String(chatId) }).eq("id", userId);
-      if (error) {
-        console.error("Erro ao vincular Telegram:", error);
+      const token = partes[1].trim();
+      const { data: userId, error } = await supabase.rpc("consume_telegram_link_token", {
+        p_token_hash: await sha256(token),
+        p_chat_id: String(chatId),
+      });
+      if (error || !userId) {
+        console.warn("Vínculo Telegram negado: token inválido, expirado, usado ou chat já associado.");
+        await enviarMensagemSimples(chatId, "⚠️ Este link não é válido ou expirou. Gere um novo link no site.");
       } else {
         await enviarMensagemSimples(chatId, "✅ Telegram conectado com sucesso ao seu perfil do VagaMatch!");
       }
@@ -647,18 +691,11 @@ async function tratarMensagem(msg: any) {
 const TELEGRAM_WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET") || "";
 
 serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
-  // Valida que o update veio mesmo do Telegram (secret_token do setWebhook).
-  // Sem isso, qualquer um pode forjar updates e alterar preferências de usuários.
-  if (TELEGRAM_WEBHOOK_SECRET) {
-    const token = req.headers.get("X-Telegram-Bot-Api-Secret-Token");
-    if (token !== TELEGRAM_WEBHOOK_SECRET) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-  }
+  // Falha fechada: método e secret são validados antes de ler o body, chamar
+  // handlers ou tocar no banco. Um secret ausente é erro de configuração, não
+  // autorização implícita.
+  const rejeicao = validarRequisicaoWebhookTelegram(req, TELEGRAM_WEBHOOK_SECRET);
+  if (rejeicao) return rejeicao;
 
   try {
     const upd = await req.json();

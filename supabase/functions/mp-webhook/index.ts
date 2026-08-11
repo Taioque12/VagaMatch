@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
     });
     if (!res.ok) {
       console.error(`mp-webhook: GET /preapproval/${dataId} falhou (${res.status}).`);
-      return ok({ error: "Falha ao consultar assinatura." }); // 200 — evita retry storm
+        return ok({ error: "Falha ao consultar assinatura." }, 503);
     }
     const preapproval = await res.json();
 
@@ -122,6 +122,20 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL!, SERVICE_ROLE_KEY!);
     const status: string = preapproval?.status ?? "";
+    const notificationId = body?.id ?? url.searchParams.get("notification_id");
+    const eventId = notificationId
+      ? `notification:${notificationId}`
+      : `preapproval:${dataId}:${tipo || "preapproval"}:${status || "unknown"}`;
+    const eventOwner = crypto.randomUUID();
+    const { data: claim, error: claimError } = await supabase.rpc("claim_payment_webhook_event", {
+      p_provider: "mercadopago",
+      p_event_id: eventId,
+      p_owner_id: eventOwner,
+      p_lease_seconds: 120,
+    });
+    if (claimError) return ok({ error: "Falha ao reservar evento." }, 503);
+    if (claim === "processed") return ok({ duplicate: true });
+    if (claim !== "claimed") return ok({ in_progress: true });
 
     let patch: Record<string, unknown> | null = null;
     if (status === "authorized") {
@@ -147,19 +161,31 @@ Deno.serve(async (req) => {
       };
     } else {
       console.log(`mp-webhook: preapproval ${dataId} com status '${status}', sem ação.`);
+      await supabase.rpc("finish_payment_webhook_event", {
+        p_provider: "mercadopago", p_event_id: eventId, p_owner_id: eventOwner, p_success: true,
+      });
       return ok({ ignored: status });
     }
 
     const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
     if (error) {
       console.error(`mp-webhook: update profiles falhou (user ${userId}): ${error.message}`);
-      return ok({ error: "Falha ao atualizar perfil." }); // 200 — log + sem retry storm
+      await supabase.rpc("finish_payment_webhook_event", {
+        p_provider: "mercadopago", p_event_id: eventId, p_owner_id: eventOwner, p_success: false,
+      });
+      return ok({ error: "Falha ao atualizar perfil." }, 503);
     }
+
+    await supabase.rpc("finish_payment_webhook_event", {
+      p_provider: "mercadopago", p_event_id: eventId, p_owner_id: eventOwner, p_success: true,
+    });
+    await supabase.from("mp_checkout_sessions").update({ status: "completed", updated_at: new Date().toISOString() })
+      .eq("user_id", userId);
 
     console.log(`mp-webhook: user ${userId} → ${patch.assinatura_status} (${status}).`);
     return ok();
   } catch (error) {
     console.error(`mp-webhook: erro de processamento (data.id=${dataId}): ${error.message}`);
-    return ok({ error: "Erro interno." }); // 200 — evita retry storm
+    return ok({ error: "Erro interno." }, 503);
   }
 });

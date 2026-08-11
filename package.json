@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "worker": "node worker/index.js",
     "worker:test": "node worker/index.js --limit 2",
+    "embeddings:backfill": "node scripts/reprocessar-embeddings-curriculos.mjs",
     "test": "vitest run",
     "setup:ia": "node scripts/setup-dev.mjs",
     "postinstall": "npx skills add ./.claude/skills -y"
