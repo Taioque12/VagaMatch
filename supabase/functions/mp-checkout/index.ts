@@ -7,6 +7,7 @@ const MP_ACCESS_TOKEN = Deno.env.get("MP_ACCESS_TOKEN");
 const APP_URL = Deno.env.get("APP_URL") ?? "http://localhost:5173";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -36,7 +37,7 @@ function json(body: unknown, status = 200) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
   if (req.method !== "POST") return json({ error: "Método não permitido." }, 405);
-  if (!MP_ACCESS_TOKEN) return json({ error: "MP_ACCESS_TOKEN não configurado no servidor." }, 500);
+  if (!MP_ACCESS_TOKEN || !SUPABASE_SERVICE_ROLE_KEY) return json({ error: "Configuração incompleta no servidor." }, 500);
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const supabase = createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!, {
@@ -62,7 +63,36 @@ Deno.serve(async (req) => {
   }
   if (!user.email) return json({ error: "Usuário sem e-mail cadastrado." }, 400);
 
+  const admin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY);
+  const { data: profile } = await admin.from("profiles")
+    .select("assinatura_status").eq("id", user.id).maybeSingle();
+  if (profile?.assinatura_status === "ativa") {
+    return json({ error: "Você já possui uma assinatura ativa." }, 409);
+  }
+
+  const lockOwner = crypto.randomUUID();
+  const { data: lockAcquired, error: lockError } = await admin.rpc("acquire_distributed_lock", {
+    p_lock_name: `mp-checkout:${user.id}`,
+    p_owner_id: lockOwner,
+    p_lease_seconds: 60,
+  });
+  if (lockError || !lockAcquired) return json({ error: "Outro checkout está em andamento. Tente novamente em instantes." }, 409);
+
   try {
+    const { data: checkout, error: reserveError } = await admin.rpc("reserve_mp_checkout", {
+      p_user_id: user.id, p_plano: plano, p_recorrencia: recorrencia, p_owner_id: lockOwner,
+    });
+    if (reserveError || !checkout) return json({ error: "Não foi possível reservar o checkout." }, 503);
+    if (checkout.status === "ready" && checkout.init_point) {
+      if (checkout.plano !== plano || checkout.recorrencia !== recorrencia) {
+        return json({ error: "Já existe um checkout pendente para outro plano. Conclua ou cancele esse checkout antes de trocar." }, 409);
+      }
+      return json({ init_point: checkout.init_point });
+    }
+    if (checkout.status === "creating" && checkout.request_owner_id !== lockOwner) {
+      return json({ error: "Um checkout já está sendo preparado. Aguarde alguns segundos." }, 409);
+    }
+
     const res = await fetch("https://api.mercadopago.com/preapproval", {
       method: "POST",
       headers: {
@@ -87,14 +117,32 @@ Deno.serve(async (req) => {
     if (!res.ok) {
       const corpo = (await res.text()).slice(0, 300);
       console.error(`Mercado Pago ${res.status}: ${corpo}`);
+      await admin.from("mp_checkout_sessions").update({
+        status: "failed", request_owner_id: null, updated_at: new Date().toISOString(),
+      }).eq("user_id", user.id);
       return json({ error: "Falha ao criar assinatura no Mercado Pago." }, 502);
     }
 
     const data = await res.json();
-    if (!data?.init_point) return json({ error: "Mercado Pago não retornou init_point." }, 502);
+    if (!data?.init_point) {
+      await admin.from("mp_checkout_sessions").update({
+        status: "failed", request_owner_id: null, updated_at: new Date().toISOString(),
+      }).eq("user_id", user.id);
+      return json({ error: "Mercado Pago não retornou init_point." }, 502);
+    }
+    await admin.from("mp_checkout_sessions").update({
+      status: "ready", mp_preapproval_id: data.id ? String(data.id) : null,
+      init_point: data.init_point, request_owner_id: null, updated_at: new Date().toISOString(),
+    }).eq("user_id", user.id);
     return json({ init_point: data.init_point });
   } catch (error) {
+    await admin.from("mp_checkout_sessions").update({ status: "failed", request_owner_id: null, updated_at: new Date().toISOString() }).eq("user_id", user.id);
     console.error(`Falha ao chamar Mercado Pago: ${error.message}`);
     return json({ error: "Erro interno ao criar assinatura." }, 500);
+  } finally {
+    await admin.rpc("release_distributed_lock", {
+      p_lock_name: `mp-checkout:${user.id}`,
+      p_owner_id: lockOwner,
+    });
   }
 });

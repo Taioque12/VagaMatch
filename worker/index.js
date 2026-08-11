@@ -16,7 +16,11 @@ import {
   salvarEmbeddingsVagas,
   lerConfigV3,
   buscarPendentesAntigas,
+  adquirirLockDistribuido,
+  liberarLockDistribuido,
+  renovarLockDistribuido,
 } from "./db.js";
+import { randomUUID } from "node:crypto";
 import { gerarEmbeddingsVagas } from "./embeddings.js";
 import { alertarErro } from "./telegram.js";
 import { processarLoteDeVagas } from "./processamento.js";
@@ -183,11 +187,15 @@ async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3) {
 }
 
 // ─── Passo 1: Lock de execução ──────────────────────────────────────────────
-const LOCK_TIMEOUT_MIN = 15; // Timeout de segurança — crash sem limpar lock
+const LOCK_TIMEOUT_MIN = 15; // Lease de segurança — crash libera após expirar
+const LOCK_NAME = "vagamatch-worker";
+const LOCK_OWNER_ID = randomUUID();
 
 // Só libera o lock no catch fatal se ESTA instância o adquiriu — crash antes
 // da aquisição (ex: requireEnv) não pode soltar o lock de outra instância viva.
 let lockAdquirido = false;
+let heartbeatTimer = null;
+let lockPerdido = false;
 
 async function main() {
   requireEnv([
@@ -197,28 +205,23 @@ async function main() {
     "telegramBotToken",
   ]);
 
-  // ─── Lock: impedir duas instâncias simultâneas ──────────────────────────
-  const lockAtivo = await getState("worker_running");
-  if (lockAtivo === "true") {
-    const lockDesde = await getState("worker_running_since");
-    const minutosRodando = lockDesde
-      ? (Date.now() - new Date(lockDesde).getTime()) / 60000
-      : Infinity;
-
-    if (minutosRodando < LOCK_TIMEOUT_MIN) {
-      console.log(
-        `⏳ Worker já está rodando há ${minutosRodando.toFixed(1)}min. Abortando esta instância.`
-      );
-      return;
-    }
-    console.warn(
-      `⚠️ Lock travado há ${minutosRodando.toFixed(1)}min (possível crash anterior). Assumindo controle.`
-    );
+  // RPC atômica: só uma instância obtém o lease, inclusive fora do Actions.
+  lockAdquirido = await adquirirLockDistribuido(LOCK_NAME, LOCK_OWNER_ID, LOCK_TIMEOUT_MIN * 60);
+  if (!lockAdquirido) {
+    console.log("⏳ Outra instância do worker ainda possui o lease. Abortando.");
+    return;
   }
 
-  await setState("worker_running", "true");
-  await setState("worker_running_since", new Date().toISOString());
-  lockAdquirido = true;
+  heartbeatTimer = setInterval(async () => {
+    try {
+      const renovado = await renovarLockDistribuido(LOCK_NAME, LOCK_OWNER_ID, LOCK_TIMEOUT_MIN * 60);
+      if (!renovado) lockPerdido = true;
+    } catch (error) {
+      lockPerdido = true;
+      console.error(`Falha ao renovar lease do worker: ${error.message}`);
+    }
+  }, 5 * 60 * 1000);
+  heartbeatTimer.unref?.();
 
   try {
     // ─── GC do cache de buscas: remove chaves cache_busca:* mais velhas que 2×TTL ──
@@ -271,6 +274,7 @@ async function main() {
     );
 
     for (const usuario of usuarios) {
+      if (lockPerdido) throw new Error("Lease do worker perdido; interrompendo para evitar execução concorrente.");
       // Regra de Billing: plano free tem quota de 1 busca a cada 24 horas.
       // Free = plano null/'free' OU assinatura não ativa. Pagantes: sem limite.
       const isFree =
@@ -344,8 +348,9 @@ async function main() {
       console.log("Lista vazia, cursor resetado.");
     }
   } finally {
+    if (heartbeatTimer) clearInterval(heartbeatTimer);
     // ─── Lock: sempre libera, inclusive em erro ───────────────────────────
-    await setState("worker_running", "false").catch((e) =>
+    await liberarLockDistribuido(LOCK_NAME, LOCK_OWNER_ID).catch((e) =>
       console.error(`Falha ao liberar lock: ${e.message}`)
     );
   }
@@ -354,7 +359,7 @@ async function main() {
 main().catch(async (e) => {
   console.error(e);
   // Garante liberação do lock mesmo em crash fatal — mas só se esta instância o pegou
-  if (lockAdquirido) await setState("worker_running", "false").catch(() => {});
+  if (lockAdquirido) await liberarLockDistribuido(LOCK_NAME, LOCK_OWNER_ID).catch(() => {});
   await alertarErro(env.adminTelegramChatId, `Falha fatal no worker: ${e.message}`).catch(() => {});
   process.exit(1);
 });

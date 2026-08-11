@@ -6,6 +6,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -15,22 +16,6 @@ const CORS_HEADERS = {
 
 // Rate limit: 10 requisições por minuto por usuário
 const RATE_LIMIT_PER_MINUTE = 10;
-const rateLimitMap = new Map<string, { count: number; resetAt: number }>();
-
-function checkRateLimit(userId: string): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(userId);
-  if (!record || now > record.resetAt) {
-    rateLimitMap.set(userId, { count: 1, resetAt: now + 60000 });
-    return true;
-  }
-  if (record.count < RATE_LIMIT_PER_MINUTE) {
-    record.count++;
-    return true;
-  }
-  return false;
-}
-
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -41,7 +26,7 @@ function json(body, status = 200) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS_HEADERS });
 
-  if (!GEMINI_API_KEY) return json({ error: "GEMINI_API_KEY não configurada no servidor." }, 500);
+  if (!GEMINI_API_KEY || !SUPABASE_SERVICE_ROLE_KEY) return json({ error: "Configuração incompleta no servidor." }, 500);
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -52,7 +37,18 @@ Deno.serve(async (req) => {
     return json({ error: "Não autenticado." }, 401);
   }
 
-  if (!checkRateLimit(userData.user.id)) {
+  const admin = createClient(SUPABASE_URL!, SUPABASE_SERVICE_ROLE_KEY);
+  const { data: allowed, error: rateLimitError } = await admin.rpc("consume_rate_limit", {
+    p_scope: "gemini-proxy",
+    p_subject_id: userData.user.id,
+    p_limit: RATE_LIMIT_PER_MINUTE,
+    p_window_seconds: 60,
+  });
+  if (rateLimitError) {
+    console.error("Falha no rate limit distribuído:", rateLimitError.message);
+    return json({ error: "Não foi possível validar o limite de requisições." }, 503);
+  }
+  if (!allowed) {
     return json({ error: "Limite de requisições atingido (10/min). Tente de novo em 1 minuto." }, 429);
   }
 

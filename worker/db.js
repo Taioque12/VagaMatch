@@ -231,6 +231,29 @@ export async function setState(key, value) {
   if (error) throw new Error(`Supabase upsert (app_state): ${error.message}`);
 }
 
+export async function adquirirLockDistribuido(lockName, ownerId, leaseSeconds) {
+  const { data, error } = await supabase.rpc("acquire_distributed_lock", {
+    p_lock_name: lockName, p_owner_id: ownerId, p_lease_seconds: leaseSeconds,
+  });
+  if (error) throw new Error(`Supabase RPC (acquire lock): ${error.message}`);
+  return data === true;
+}
+
+export async function liberarLockDistribuido(lockName, ownerId) {
+  const { error } = await supabase.rpc("release_distributed_lock", {
+    p_lock_name: lockName, p_owner_id: ownerId,
+  });
+  if (error) throw new Error(`Supabase RPC (release lock): ${error.message}`);
+}
+
+export async function renovarLockDistribuido(lockName, ownerId, leaseSeconds) {
+  const { data, error } = await supabase.rpc("renew_distributed_lock", {
+    p_lock_name: lockName, p_owner_id: ownerId, p_lease_seconds: leaseSeconds,
+  });
+  if (error) throw new Error(`Supabase RPC (renew lock): ${error.message}`);
+  return data === true;
+}
+
 // ─── Fase A (V3): embeddings de vagas ────────────────────────────────────────
 // Grava embeddings gerados em batch. Update por linha (upsert exigiria todas as
 // colunas NOT NULL); falha em uma vaga não derruba as demais.

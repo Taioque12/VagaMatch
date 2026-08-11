@@ -16,6 +16,19 @@ function textoDaVaga(vaga) {
     .slice(0, 8000); // ~2k tokens por texto, folga pro limite do modelo
 }
 
+export function textoDoCurriculo(curriculo) {
+  return [
+    curriculo.resumo_profissional,
+    ...(curriculo.habilidades || []),
+    ...(curriculo.experiencias || []).map(
+      (exp) => `${exp.cargo || ""} | ${exp.empresa || ""} | ${(exp.bullets || []).join("; ")}`
+    ),
+    ...(curriculo.formacao || []),
+    ...(curriculo.cursos || []),
+    ...(curriculo.projetos || []),
+  ].filter(Boolean).join("\n").slice(0, 20000);
+}
+
 async function chamarBatchEmbed(textos) {
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:batchEmbedContents?key=${env.geminiApiKey}`,
@@ -71,6 +84,25 @@ export async function gerarEmbeddingsVagas(vagas) {
       );
       if (e.isRateLimit) break; // 429: para de insistir nesta rodada
     }
+  }
+  return resultados;
+}
+
+export async function gerarEmbeddingsCurriculos(curriculos) {
+  const validos = curriculos
+    .map((curriculo) => ({ curriculo, texto: textoDoCurriculo(curriculo) }))
+    .filter(({ texto }) => texto.trim());
+  if (!validos.length) return [];
+
+  const resultados = [];
+  for (let i = 0; i < validos.length; i += 10) {
+    const chunk = validos.slice(i, i + 10);
+    const embeddings = await chamarBatchEmbed(chunk.map(({ texto }) => texto));
+    chunk.forEach(({ curriculo }, index) => {
+      if (embeddings[index]?.length === EMBED_DIMS) {
+        resultados.push({ user_id: curriculo.user_id, embedding: embeddings[index] });
+      }
+    });
   }
   return resultados;
 }
