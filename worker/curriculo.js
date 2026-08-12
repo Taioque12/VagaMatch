@@ -1,7 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { jsPDF } from "jspdf";
 import { env } from "./config.js";
-import { isGeminiRateLimit } from "./gemini-utils.js";
+import { isGeminiDailyQuota, isGeminiRateLimit } from "./gemini-utils.js";
 
 const ai = new GoogleGenAI({ apiKey: env.geminiApiKey });
 
@@ -119,6 +119,7 @@ export async function gerarCurriculo(vaga, curriculo, nomeCompleto) {
     if (isGeminiRateLimit(error)) {
       const err = new Error(`Gemini rate limit (429): ${error.message}`);
       err.isRateLimit = true;
+      err.isDailyQuota = isGeminiDailyQuota(error);
       throw err;
     }
     throw error;

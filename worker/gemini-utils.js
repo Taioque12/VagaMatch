@@ -4,3 +4,9 @@ export function isGeminiRateLimit(error) {
     || error.message?.includes("429")
     || error.message?.includes("RESOURCE_EXHAUSTED");
 }
+
+export function isGeminiDailyQuota(error) {
+  return error.message?.includes("RequestsPerDay")
+    || error.message?.includes("PerDayPerProject")
+    || error.message?.includes("RequestsPerDayPerProject");
+}

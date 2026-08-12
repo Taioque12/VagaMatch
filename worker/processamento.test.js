@@ -10,6 +10,8 @@ vi.mock('./db.js', () => ({
   registrarFalhaVaga: vi.fn().mockResolvedValue(1),
   similaridadeVagaCurriculo: vi.fn().mockResolvedValue(null),
   ajusteFeedbackVetorial: vi.fn().mockResolvedValue(null),
+  getState: vi.fn().mockResolvedValue(null),
+  setState: vi.fn().mockResolvedValue(undefined),
 }));
 vi.mock('./ai_filter.js', () => ({
   avaliarMatchComIA: vi.fn().mockResolvedValue({ score_ia: 80, motivo_ia: 'bom match' }),
@@ -162,6 +164,28 @@ describe('processarLoteDeVagas', () => {
     expect(avaliarMatchComIA).toHaveBeenCalledTimes(1);
     const { alertarErro } = await import('./telegram.js');
     expect(alertarErro).toHaveBeenCalledTimes(1);
+  });
+
+  it('descreve quota diária e evita repetir alerta dentro da janela', async () => {
+    const { avaliarMatchComIA } = await import('./ai_filter.js');
+    const { alertarErro } = await import('./telegram.js');
+    const erro429 = Object.assign(new Error('RequestsPerDayPerProject'), {
+      isRateLimit: true,
+      isDailyQuota: true,
+    });
+    avaliarMatchComIA.mockRejectedValueOnce(erro429);
+
+    await processarLoteDeVagas(
+      usuarioFake(),
+      [{ id: 'vaga-11', job_id: 'j11', titulo: 'Dev 1' }],
+      CONFIG_V3_OFF,
+    );
+
+    expect(alertarErro).toHaveBeenCalledWith(
+      undefined,
+      expect.stringContaining('Cota diária do Gemini esgotada'),
+    );
+    expect(db.setState).toHaveBeenCalledWith('gemini_rate_limit_alerted_at', expect.any(String));
   });
 
   it('com pdfAutomatico ON, envia o PDF após notificar', async () => {

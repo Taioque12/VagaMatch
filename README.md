@@ -34,7 +34,7 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Descarte automático de vagas com Score final < 40
 - **Priorização Inteligente:** novos cadastros/uploads "furam a fila" no próximo ciclo do worker
 - **Reprocessamento de órfãs:** vagas presas em `pendente_processamento` (rodada interrompida por timeout) são reincluídas automaticamente a cada rodada (até 30/rodada, idade > 1h)
-- Lock distribuído com lease de 15min + semáforo de concorrência 3 + janela de 12s entre chamadas Gemini (5 RPM na cota gratuita). Um circuito compartilhado interrompe novas chamadas após o primeiro 429; vagas permanecem pendentes para a próxima rodada
+- Lock distribuído com lease de 15min + semáforo de concorrência 3 + janela de 12s entre chamadas Gemini. Um circuito compartilhado interrompe novas chamadas após o primeiro 429; vagas permanecem pendentes para a próxima rodada. Quando a cota diária é esgotada, o aviso administrativo é enviado uma vez por ciclo
 - Flags a quente em `app_state`: `v3_prefiltro`, `v3_threshold_similaridade`, `v3_pesos_score`, `v3_fator_feedback`, `v3_pdf_automatico` — rollback sem deploy
 
 ### 📱 Bot Telegram (Tempo Real)
@@ -189,7 +189,7 @@ Edge Functions são excluídas do vitest (`vite.config.js`). Scripts de manuten�
 ## Próximos Passos
 
 ### Pendências imediatas
-- [ ] Monitorar o consumo do Gemini: a cota gratuita atual é 5 RPM. O worker agora desacelera e interrompe a rodada após o primeiro 429, sem descartar vagas
+- [ ] Habilitar billing ou acesso adequado no projeto Gemini. A chave atual atingiu o limite diário de 20 chamadas no modelo disponível; o worker preserva as vagas e retoma após a renovação da quota
 - [ ] Mercado Pago fim-a-fim: criar aplicação no painel do MP, setar `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET`, cadastrar URL do webhook e testar pagamento real
 - [ ] Item 7 da V3: job semanal de refino de perfil (`resumirFeedbackSemanal` já existe em `worker/swarm.js`, falta o cron + confirmação do usuário no Telegram)
 - [ ] Colunas dedicadas `score_tecnico`/`score_fit` em `vagas_vistas` (hoje o frontend parseia do texto `motivo_ia` — funciona, mas é frágil)

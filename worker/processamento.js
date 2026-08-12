@@ -9,11 +9,14 @@ import {
   registrarFalhaVaga,
   similaridadeVagaCurriculo,
   ajusteFeedbackVetorial,
+  getState,
+  setState,
 } from "./db.js";
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { avaliarMatchSwarm, calcularScoreFinal } from "./swarm.js";
 import { gerarCurriculo, gerarPdfCurriculo } from "./curriculo.js";
 import { notificarVaga, enviarDocumento, enviarResumoDiario, alertarErro } from "./telegram.js";
+import { isGeminiDailyQuota } from "./gemini-utils.js";
 
 const ADMIN_CHAT_ID = process.env.ADMIN_TELEGRAM_CHAT_ID;
 
@@ -48,7 +51,26 @@ let proximoSlotGemini = 0;
 function criarErroRateLimit(causa) {
   const erro = new Error(`Gemini rate limit (429): ${causa?.message ?? "quota indisponível"}`);
   erro.isRateLimit = true;
+  erro.isDailyQuota = causa?.isDailyQuota || isGeminiDailyQuota(causa);
   return erro;
+}
+
+const ALERTA_COTA_GEMINI_KEY = "gemini_rate_limit_alerted_at";
+const JANELA_ALERTA_COTA_MS = 26 * 60 * 60 * 1000;
+
+async function deveAlertarCotaGemini() {
+  try {
+    const ultimoAlerta = await getState(ALERTA_COTA_GEMINI_KEY);
+    if (ultimoAlerta && Date.now() - new Date(ultimoAlerta).getTime() < JANELA_ALERTA_COTA_MS) {
+      return false;
+    }
+    await setState(ALERTA_COTA_GEMINI_KEY, new Date().toISOString());
+    return true;
+  } catch (erro) {
+    // Falha no estado não deve impedir o alerta de capacidade.
+    console.warn(`Falha ao controlar alerta de quota Gemini: ${erro.message}`);
+    return true;
+  }
 }
 
 // Um 429 normalmente vale para a chave inteira, não apenas para uma vaga. Ao
@@ -265,12 +287,15 @@ export async function processarLoteDeVagas(
   // ─── Passo 2: Alerta ao admin se taxa de 429 > 20% ─────────────────────
   if (rateLimitCount > 0 && vagasParaProcessar.length > 0) {
     const taxa429 = rateLimitCount / vagasParaProcessar.length;
-    if (taxa429 > 0.2 && !circuitoJaBloqueado) {
+    if (taxa429 > 0.2 && !circuitoJaBloqueado && await deveAlertarCotaGemini()) {
       console.warn(`🚨 ${(taxa429 * 100).toFixed(0)}% das vagas deram rate limit (429)!`);
+      const cotaDiaria = resultados.some((r) => r.status === "rejected" && r.reason?.isDailyQuota);
       await alertarErro(
         ADMIN_CHAT_ID,
-        `Rate limit alto: ${rateLimitCount}/${vagasParaProcessar.length} vagas (${(taxa429 * 100).toFixed(0)}%) ` +
-        `deram 429 na rodada do usuário ${perfil.id}. Possível estouro de quota do Gemini.`
+        cotaDiaria
+          ? "Cota diária do Gemini esgotada. As vagas foram mantidas pendentes e serão retomadas após a renovação da quota."
+          : `Rate limit alto: ${rateLimitCount}/${vagasParaProcessar.length} vagas (${(taxa429 * 100).toFixed(0)}%) ` +
+            `deram 429 na rodada do usuário ${perfil.id}. Possível estouro de quota do Gemini.`
       ).catch(() => {});
     }
   }

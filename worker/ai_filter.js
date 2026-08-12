@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { env } from './config.js';
-import { isGeminiRateLimit } from './gemini-utils.js';
+import { isGeminiDailyQuota, isGeminiRateLimit } from './gemini-utils.js';
 
 let ai = null;
 if (env.geminiApiKey) {
@@ -59,6 +59,7 @@ Cargos-alvo: ${(curriculo.cargos_alvo || []).join(", ")}
       console.warn(`⚠️ Rate limit (429) do Gemini ao avaliar vaga: ${vaga.titulo}`);
       const err = new Error(`Gemini rate limit (429): ${error.message}`);
       err.isRateLimit = true;
+      err.isDailyQuota = isGeminiDailyQuota(error);
       throw err;
     }
 

@@ -1,6 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import { env } from './config.js';
-import { isGeminiRateLimit } from './gemini-utils.js';
+import { isGeminiDailyQuota, isGeminiRateLimit } from './gemini-utils.js';
 
 // Camada 1 (V3): "swarm" Técnico + Fit-Cultural em 1 única chamada Gemini.
 // Isolado de ai_filter.js de propósito (Opção A): enquanto v3_prefiltro=off,
@@ -89,6 +89,7 @@ Experiências: ${(curriculo.experiencias || [])
       console.warn(`⚠️ Rate limit (429) do Gemini no swarm: ${vaga.titulo}`);
       const err = new Error(`Gemini rate limit (429): ${error.message}`);
       err.isRateLimit = true;
+      err.isDailyQuota = isGeminiDailyQuota(error);
       throw err;
     }
 
