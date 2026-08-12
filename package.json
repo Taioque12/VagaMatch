@@ -15,18 +15,23 @@
     "postinstall": "npx skills add ./.claude/skills -y"
   },
   "dependencies": {
-    "@google/genai": "^0.15.0",
+    "@google/genai": "2.16.0",
     "@supabase/supabase-js": "^2.112.3",
+    "dompurify": "3.4.13",
     "dotenv": "^16.4.0",
     "jspdf": "^4.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.0",
+    "react-router-dom": "7.18.2",
     "recharts": "^3.9.2"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "vite": "^5.4.0",
+    "@vitejs/plugin-react": "5.1.1",
+    "vite": "7.3.6",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "nanoid": "3.3.18",
+    "postcss": "8.5.26"
   }
 }
