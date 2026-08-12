@@ -1,5 +1,5 @@
-import { lazy, Suspense } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { lazy, Suspense, useEffect } from "react";
+import { BrowserRouter, Link, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "./lib/AuthContext.jsx";
 import { RotaProtegida } from "./components/RotaProtegida.jsx";
 import { RotaAdmin } from "./components/RotaAdmin.jsx";
@@ -19,9 +19,32 @@ const Upgrade = lazy(() => import("./pages/Upgrade.jsx").then((m) => ({ default:
 
 function FallbackCarregando() {
   return (
-    <div style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#0a0e11", color: "#94a3b8" }}>
-      Carregando...
+    <div role="status" aria-live="polite" style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#0a0e11", color: "#94a3b8" }}>
+      Carregando…
     </div>
+  );
+}
+
+function RestaurarRolagem() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+  }, [pathname]);
+
+  return null;
+}
+
+function PaginaNaoEncontrada() {
+  return (
+    <main className="pagina-nao-encontrada">
+      <section className="pagina-nao-encontrada__conteudo" aria-labelledby="titulo-404">
+        <p className="pagina-nao-encontrada__codigo">Erro 404</p>
+        <h1 id="titulo-404">Esta página não existe</h1>
+        <p>O endereço pode ter mudado ou sido digitado incorretamente.</p>
+        <Link className="pagina-nao-encontrada__acao" to="/">Voltar ao início</Link>
+      </section>
+    </main>
   );
 }
 
@@ -29,6 +52,7 @@ export function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <RestaurarRolagem />
         <Suspense fallback={<FallbackCarregando />}>
           <Routes>
             <Route path="/" element={<Landing />} />
@@ -69,6 +93,7 @@ export function App() {
                 </RotaProtegida>
               }
             />
+            <Route path="*" element={<PaginaNaoEncontrada />} />
           </Routes>
         </Suspense>
       </BrowserRouter>

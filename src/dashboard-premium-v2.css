@@ -24,6 +24,28 @@
   gap: 36px;
 }
 
+.dbv2-page-header {
+  display: grid;
+  gap: 8px;
+  max-width: 680px;
+}
+
+.dbv2-page-header h1 {
+  margin: 0;
+  color: #f8fafc;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(30px, 5vw, 46px);
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.dbv2-page-kicker {
+  margin: 0;
+  color: #34d399;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .dbv2-titulo-secao {
   margin: 0;
   font-family: 'Outfit', sans-serif;
@@ -240,6 +262,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 20px;
+  min-width: 0;
 }
 
 .dbv2-card-titulo {
@@ -249,6 +272,8 @@
   letter-spacing: -0.02em;
   color: #f8fafc;
   line-height: 1.2;
+  overflow-wrap: anywhere;
+  text-wrap: pretty;
 }
 
 .dbv2-card-meta {
@@ -259,6 +284,8 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .dbv2-dot {
@@ -623,4 +650,19 @@
   .dbv2-page { padding: 0 16px 60px; }
   .dbv2-hero-valor { font-size: 64px; }
   .dbv2-metric-valor { font-size: 48px; }
+  .dbv2-card { padding: 24px 20px; }
+  .dbv2-card-header { gap: 14px; }
+  .dbv2-ring { width: 72px; height: 72px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dbv2-card,
+  .dbv2-metric,
+  .dbv2-pulse,
+  .dbv2-metric-buscando,
+  .dbv2-metric-buscando .dbv2-metric-valor,
+  .skeleton {
+    animation: none;
+    transition: none;
+  }
 }

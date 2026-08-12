@@ -188,7 +188,11 @@ export function Dashboard() {
         </div>
       </nav>
 
-      <div className="dbv2-coluna" style={{ marginTop: 36 }}>
+      <main className="dbv2-coluna" style={{ marginTop: 36 }}>
+        <header className="dbv2-page-header">
+          <p className="dbv2-page-kicker">Painel de oportunidades</p>
+          <h1>Suas melhores vagas, em um só lugar</h1>
+        </header>
         {/* ===== Top metrics: hero Taxa de Sucesso + Processadas + Fila ===== */}
         {stats && (
           <div className="dbv2-metrics">
@@ -309,14 +313,23 @@ export function Dashboard() {
 
           {vagasFiltradas?.length === 0 && (
             <div className="dbv2-card" style={{ alignItems: "center", textAlign: "center", padding: "48px 32px" }}>
-              <div style={{ fontSize: 40 }}>✨</div>
-              <p style={{ margin: 0, fontWeight: 700 }}>Nenhuma vaga aqui ainda.</p>
+              <p style={{ margin: 0, fontWeight: 700 }}>
+                {filtro !== "todas" || soHomeOffice ? "Nenhuma vaga corresponde aos filtros." : "Nenhuma vaga aqui ainda."}
+              </p>
               <span className="dbv2-metric-sub">
-                O robô está escaneando a web. Quanto mais completo seu perfil, melhores os matches.
+                {filtro !== "todas" || soHomeOffice
+                  ? "Tente outro status ou mostre também as vagas presenciais."
+                  : "A busca automática está procurando oportunidades alinhadas ao seu perfil."}
               </span>
-              <Link to="/onboarding" className="dbv2-btn-primario" style={{ marginTop: 8 }}>
-                Completar meu perfil
-              </Link>
+              {filtro !== "todas" || soHomeOffice ? (
+                <button className="dbv2-btn-primario" style={{ marginTop: 8 }} onClick={() => { setFiltro("todas"); setSoHomeOffice(false); }}>
+                  Limpar filtros
+                </button>
+              ) : (
+                <Link to="/onboarding" className="dbv2-btn-primario" style={{ marginTop: 8 }}>
+                  Revisar meu perfil
+                </Link>
+              )}
             </div>
           )}
 
@@ -407,7 +420,7 @@ export function Dashboard() {
             );
           })}
         </div>
-      </div>
+      </main>
     </div>
   );
 }
