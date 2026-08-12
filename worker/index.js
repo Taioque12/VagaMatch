@@ -23,7 +23,7 @@ import {
 import { randomUUID } from "node:crypto";
 import { gerarEmbeddingsVagas } from "./embeddings.js";
 import { alertarErro } from "./telegram.js";
-import { processarLoteDeVagas } from "./processamento.js";
+import { criarCircuitoRateLimitGemini, processarLoteDeVagas } from "./processamento.js";
 
 // Uso: node worker/index.js [--limit N]  (limita vagas processadas POR USUÁRIO, útil p/ teste)
 const limitArg = process.argv.indexOf("--limit");
@@ -114,7 +114,7 @@ async function buscarComCache(cacheMemoria, cargo, regiao, raioKm) {
 }
 
 // ─── Passo 2 + 4: Pipeline paralelo com tratamento de rate limit ────────────
-async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3) {
+async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3, circuitoGemini) {
   const { pref, perfil, curriculo } = usuario;
   const cargosAlvo = pref.cargos_alvo ?? [];
   const palavrasChave = pref.palavras_chave ?? [];
@@ -183,7 +183,7 @@ async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3) {
   }
 
   const vagasParaProcessar = [...novas, ...pendentesAntigas].slice(0, LIMITE);
-  return processarLoteDeVagas({ pref, perfil, curriculo }, vagasParaProcessar, configV3);
+  return processarLoteDeVagas({ pref, perfil, curriculo }, vagasParaProcessar, configV3, circuitoGemini);
 }
 
 // ─── Passo 1: Lock de execução ──────────────────────────────────────────────
@@ -256,6 +256,10 @@ async function main() {
 
     let totalProcessadas = 0;
     let totalFalhas = 0;
+    // A cota do Gemini pertence à chave, não ao usuário. Compartilhar o
+    // circuito impede que uma rodada continue queimando quota e alertando
+    // repetidamente depois do primeiro 429.
+    const circuitoGemini = criarCircuitoRateLimitGemini();
     // Cache por rodada: cargo+região+raio iguais entre usuários diferentes = 1 request só,
     // não 1 por pessoa. Crítico pra escalar (ver ROADMAP: 1000+ usuários estourariam o free tier da Adzuna).
     const cacheBusca = new Map();
@@ -302,7 +306,7 @@ async function main() {
       }
 
       try {
-        const { processadas, falhas } = await rodarPipelineDoUsuario(usuario, cacheBusca, configV3);
+        const { processadas, falhas } = await rodarPipelineDoUsuario(usuario, cacheBusca, configV3, circuitoGemini);
         totalProcessadas += processadas;
         totalFalhas += falhas;
         // Só free precisa do carimbo de quota — falha aqui não derruba a rodada.

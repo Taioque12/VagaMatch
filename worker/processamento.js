@@ -36,11 +36,13 @@ export function criarSemaforo(max) {
   };
 }
 
-// Espaçamento mínimo entre chamadas Gemini: free tier é 15 RPM (1 req/4s).
+// Espaçamento mínimo entre chamadas Gemini: a cota gratuita atual é 5 RPM
+// (1 requisição a cada 12s). A variável permite ajustar a cota sem alterar
+// o fluxo de processamento.
 // Concorrência 3 sozinha limita paralelismo, não taxa — sem isso uma rodada
 // grande estoura a quota e vira chuva de 429.
-// Configurável por env só pra testes (zerar a espera); produção usa 4000.
-const GEMINI_MIN_INTERVAL_MS = Number(process.env.GEMINI_MIN_INTERVAL_MS ?? 4000);
+// Configurável por env só pra testes (zerar a espera); produção usa 12000.
+const GEMINI_MIN_INTERVAL_MS = Number(process.env.GEMINI_MIN_INTERVAL_MS ?? 12000);
 let proximoSlotGemini = 0;
 
 function criarErroRateLimit(causa) {
@@ -105,6 +107,7 @@ export async function processarLoteDeVagas(
   circuitoGemini = criarCircuitoRateLimitGemini()
 ) {
   if (!vagasParaProcessar.length) return { processadas: 0, falhas: 0 };
+  const circuitoJaBloqueado = circuitoGemini.bloqueado;
   const palavrasChave = pref.palavras_chave ?? [];
 
   // ─── Passo 4: Processamento paralelo com semáforo (concorrência 3) ──────
@@ -262,7 +265,7 @@ export async function processarLoteDeVagas(
   // ─── Passo 2: Alerta ao admin se taxa de 429 > 20% ─────────────────────
   if (rateLimitCount > 0 && vagasParaProcessar.length > 0) {
     const taxa429 = rateLimitCount / vagasParaProcessar.length;
-    if (taxa429 > 0.2) {
+    if (taxa429 > 0.2 && !circuitoJaBloqueado) {
       console.warn(`🚨 ${(taxa429 * 100).toFixed(0)}% das vagas deram rate limit (429)!`);
       await alertarErro(
         ADMIN_CHAT_ID,

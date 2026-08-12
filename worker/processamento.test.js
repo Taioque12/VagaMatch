@@ -140,6 +140,30 @@ describe('processarLoteDeVagas', () => {
     expect(db.marcarStatus).not.toHaveBeenCalled();
   });
 
+  it('reaproveita o circuito entre lotes para não repetir chamadas após um 429', async () => {
+    const { avaliarMatchComIA } = await import('./ai_filter.js');
+    const circuito = criarCircuitoRateLimitGemini();
+    const erro429 = Object.assign(new Error('Gemini rate limit (429)'), { isRateLimit: true });
+    avaliarMatchComIA.mockRejectedValueOnce(erro429);
+
+    await processarLoteDeVagas(
+      usuarioFake(),
+      [{ id: 'vaga-9', job_id: 'j9', titulo: 'Dev 1' }],
+      CONFIG_V3_OFF,
+      circuito,
+    );
+    await processarLoteDeVagas(
+      usuarioFake(),
+      [{ id: 'vaga-10', job_id: 'j10', titulo: 'Dev 2' }],
+      CONFIG_V3_OFF,
+      circuito,
+    );
+
+    expect(avaliarMatchComIA).toHaveBeenCalledTimes(1);
+    const { alertarErro } = await import('./telegram.js');
+    expect(alertarErro).toHaveBeenCalledTimes(1);
+  });
+
   it('com pdfAutomatico ON, envia o PDF após notificar', async () => {
     const { enviarDocumento } = await import('./telegram.js');
     const vaga = { id: 'vaga-5', job_id: 'j5', titulo: 'Dev', empresa: 'Acme' };
