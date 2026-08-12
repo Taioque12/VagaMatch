@@ -20,6 +20,7 @@ export function Onboarding() {
   const [baixandoPdf, setBaixandoPdf] = useState(false);
   const [pdfBaixado, setPdfBaixado] = useState(false);
   const [gerandoLinkTelegram, setGerandoLinkTelegram] = useState(false);
+  const [confirmandoSaida, setConfirmandoSaida] = useState(false);
 
   const [telegramChatId, setTelegramChatId] = useState("");
   const [dadosExtraidos, setDadosExtraidos] = useState(null);
@@ -27,6 +28,11 @@ export function Onboarding() {
   const [novoCargo, setNovoCargo] = useState("");
   const [novaPalavra, setNovaPalavra] = useState("");
   const inputCurriculoRef = useRef(null);
+  const dadosSalvosRef = useRef(null);
+  const dialogSaidaRef = useRef(null);
+
+  const temAlteracoesNaoSalvas = Boolean(dadosExtraidos) &&
+    JSON.stringify(dadosExtraidos) !== dadosSalvosRef.current;
 
   useEffect(() => {
     if (!session) return;
@@ -41,7 +47,7 @@ export function Onboarding() {
       if (perfil) setTelegramChatId(perfil.telegram_chat_id ?? "");
 
       if (perfil?.nome_completo?.trim() || curriculo?.habilidades?.length > 0) {
-        setDadosExtraidos({
+        const dadosCarregados = {
           nome_completo: perfil?.nome_completo ?? "",
           localizacao: perfil?.localizacao ?? "",
           resumo_profissional: curriculo?.resumo_profissional ?? "",
@@ -54,7 +60,9 @@ export function Onboarding() {
           palavras_chave: prefs?.palavras_chave ?? [],
           regioes: prefs?.regioes ?? [],
           modalidade_trabalho: prefs?.modalidade_trabalho ?? "qualquer",
-        });
+        };
+        setDadosExtraidos(dadosCarregados);
+        dadosSalvosRef.current = JSON.stringify(dadosCarregados);
       }
 
       setCarregando(false);
@@ -87,6 +95,26 @@ export function Onboarding() {
       supabase.removeChannel(channel);
     };
   }, [session]);
+
+  useEffect(() => {
+    if (!temAlteracoesNaoSalvas) return;
+
+    function avisarAntesDeSair(event) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+
+    window.addEventListener("beforeunload", avisarAntesDeSair);
+    return () => window.removeEventListener("beforeunload", avisarAntesDeSair);
+  }, [temAlteracoesNaoSalvas]);
+
+  useEffect(() => {
+    const dialog = dialogSaidaRef.current;
+    if (!dialog) return;
+
+    if (confirmandoSaida && !dialog.open) dialog.showModal();
+    if (!confirmandoSaida && dialog.open) dialog.close();
+  }, [confirmandoSaida]);
 
   function handleAddCargo(e) {
     if (e.key === "Enter" && novoCargo.trim()) {
@@ -213,15 +241,32 @@ export function Onboarding() {
         console.warn("Embedding do currículo falhou (perfil salvo mesmo assim):", embErr.message);
       }
 
+      dadosSalvosRef.current = JSON.stringify(d);
       setSalvo(true);
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 3000);
     } catch (err) {
       setErro(err.message);
     } finally {
       setSalvando(false);
     }
+  }
+
+  function solicitarSaida() {
+    if (temAlteracoesNaoSalvas) {
+      setConfirmandoSaida(true);
+      return;
+    }
+    navigate("/dashboard");
+  }
+
+  function protegerLinkDoDashboard(event) {
+    if (!temAlteracoesNaoSalvas) return;
+    event.preventDefault();
+    solicitarSaida();
+  }
+
+  function confirmarSaida() {
+    setConfirmandoSaida(false);
+    navigate("/dashboard");
   }
 
   async function conectarTelegram() {
@@ -275,19 +320,46 @@ export function Onboarding() {
 
   return (
     <div className="pv2-fundo" style={{ display: "flex", flexDirection: "column" }}>
-      <nav className="lp-nav">
-        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
-          <span className="lp-logo-marca" />
-          VagaMatch
-        </Link>
-        <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
-          <Link to="/dashboard" className="lp-botao-claro">
-            Ir para Vagas
+      <header>
+        <nav className="lp-nav" aria-label="Navegação do perfil">
+          <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }} onClick={protegerLinkDoDashboard}>
+            <span className="lp-logo-marca" />
+            VagaMatch
           </Link>
-        </div>
-      </nav>
+          <div style={{ display: "flex", gap: "20px", alignItems: "center" }}>
+            <button type="button" className="lp-botao-claro" onClick={solicitarSaida}>
+              Voltar para vagas
+            </button>
+          </div>
+        </nav>
+      </header>
 
-      <div className="onboarding onboarding-simples">
+      <dialog
+        ref={dialogSaidaRef}
+        className="onboarding-exit-dialog"
+        aria-labelledby="saida-sem-salvar-titulo"
+        aria-describedby="saida-sem-salvar-descricao"
+        onCancel={(event) => {
+          event.preventDefault();
+          setConfirmandoSaida(false);
+        }}
+        onClose={() => setConfirmandoSaida(false)}
+      >
+        <h2 id="saida-sem-salvar-titulo">Sair sem salvar?</h2>
+        <p id="saida-sem-salvar-descricao">
+          As alterações feitas no seu perfil serão perdidas.
+        </p>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <button type="button" className="dbv2-btn-ghost" onClick={() => setConfirmandoSaida(false)}>
+            Continuar editando
+          </button>
+          <button type="button" className="botao-principal" onClick={confirmarSaida}>
+            Sair sem salvar
+          </button>
+        </div>
+      </dialog>
+
+      <main className="onboarding onboarding-simples">
         <h1 style={{ textAlign: "center", marginBottom: "0.5rem" }}>Configure seu perfil</h1>
         <p className="ajuda" style={{ textAlign: "center", maxWidth: 520, margin: "0 auto" }}>
           Envie seu currículo em PDF — a IA lê tudo e preenche seu perfil, currículo-base e
@@ -333,8 +405,42 @@ export function Onboarding() {
         {pronto && (
           <section className="cartao-resumo">
             <div className="cartao-resumo-check">✓ Perfil extraído com sucesso</div>
-            <h2>{dadosExtraidos.nome_completo || "Nome não identificado"}</h2>
-            {dadosExtraidos.localizacao && <p className="ajuda">{dadosExtraidos.localizacao}</p>}
+            <h2>Revise seu perfil</h2>
+
+            <div style={{ display: "grid", gap: "1rem", marginTop: "1rem" }}>
+              <label htmlFor="nome-completo">
+                Nome completo
+                <input
+                  id="nome-completo"
+                  name="name"
+                  type="text"
+                  autoComplete="name"
+                  value={dadosExtraidos.nome_completo || ""}
+                  onChange={(event) => setDadosExtraidos((d) => ({ ...d, nome_completo: event.target.value }))}
+                />
+              </label>
+              <label htmlFor="localizacao">
+                Localização
+                <input
+                  id="localizacao"
+                  name="localizacao"
+                  type="text"
+                  autoComplete="address-level2"
+                  value={dadosExtraidos.localizacao || ""}
+                  onChange={(event) => setDadosExtraidos((d) => ({ ...d, localizacao: event.target.value }))}
+                />
+              </label>
+              <label htmlFor="resumo-profissional">
+                Resumo profissional
+                <textarea
+                  id="resumo-profissional"
+                  name="resumo_profissional"
+                  rows="5"
+                  value={dadosExtraidos.resumo_profissional || ""}
+                  onChange={(event) => setDadosExtraidos((d) => ({ ...d, resumo_profissional: event.target.value }))}
+                />
+              </label>
+            </div>
 
             <div style={{ marginTop: "1rem" }}>
               <strong className="pv2-label">Cargos-alvo</strong>
@@ -404,10 +510,6 @@ export function Onboarding() {
               </div>
             </div>
 
-            {dadosExtraidos.resumo_profissional && (
-              <p className="resumo-preview">{dadosExtraidos.resumo_profissional}</p>
-            )}
-
             <button
               type="button"
               onClick={handleBaixarPdf}
@@ -427,7 +529,7 @@ export function Onboarding() {
               Receba as vagas no seu celular assim que a IA aprovar.
             </p>
             {telegramChatId ? (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 18px", background: "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(255,255,255,0.02))", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 14, color: "#34d399", fontWeight: 700 }}>
+              <div role="status" aria-live="polite" aria-atomic="true" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "14px 18px", background: "linear-gradient(135deg, rgba(16,185,129,0.08), rgba(255,255,255,0.02))", border: "1px solid rgba(16,185,129,0.18)", borderRadius: 14, color: "#34d399", fontWeight: 700 }}>
                 <span>✅ Telegram Conectado!</span>
               </div>
             ) : (
@@ -441,6 +543,9 @@ export function Onboarding() {
                 >
                   {gerandoLinkTelegram ? "Preparando link seguro..." : "Conectar Telegram"}
                 </button>
+                <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                  {gerandoLinkTelegram ? "Preparando link seguro para conectar o Telegram." : "Telegram ainda não conectado."}
+                </p>
                 <p className="ajuda" style={{ fontSize: "0.85rem", textAlign: "center", margin: 0 }}>
                   Clique no botão, depois em "Começar" lá no Telegram. Essa tela vai atualizar sozinha!
                 </p>
@@ -451,7 +556,14 @@ export function Onboarding() {
 
         {erro && <p className="erro" role="alert" style={{ textAlign: "center" }}>{erro}</p>}
         {pdfBaixado && <p className="sucesso" role="status" aria-live="polite" style={{ textAlign: "center" }}>✓ PDF baixado com sucesso! Verifique sua pasta de downloads.</p>}
-        {salvo && <p className="sucesso" role="status" aria-live="polite" style={{ textAlign: "center" }}>✓ Preparando suas vagas exclusivas... Redirecionando para o painel em instantes.</p>}
+        {salvo && (
+          <div className="sucesso" role="status" aria-live="polite" style={{ textAlign: "center" }}>
+            <p style={{ marginTop: 0 }}>Perfil salvo. A busca usará essas informações nos próximos ciclos.</p>
+            <button type="button" className="dbv2-btn-primario" onClick={solicitarSaida}>
+              Ir para vagas
+            </button>
+          </div>
+        )}
 
         {pronto && (
           <button
@@ -460,10 +572,10 @@ export function Onboarding() {
             disabled={salvando}
             className="botao-principal"
           >
-            {salvando ? "Salvando..." : "Salvar e continuar"}
+            {salvando ? "Salvando…" : "Salvar perfil"}
           </button>
         )}
-      </div>
+      </main>
     </div>
   );
 }

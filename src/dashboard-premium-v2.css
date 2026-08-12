@@ -666,3 +666,232 @@
     transition: none;
   }
 }
+
+.onboarding-exit-dialog {
+  width: min(calc(100% - 32px), 460px);
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: #10171b;
+  color: #f8fafc;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+}
+
+.onboarding-exit-dialog::backdrop {
+  background: rgba(2, 8, 12, 0.78);
+  backdrop-filter: blur(4px);
+}
+
+.onboarding-exit-dialog h2,
+.onboarding-exit-dialog p {
+  margin-top: 0;
+}
+
+.onboarding-exit-dialog p {
+  color: #94a3b8;
+  line-height: 1.6;
+}
+
+/* ─── Mobile compacto (320–430px) ───────────────────────────────────────── */
+@media (max-width: 480px) {
+  .dbv2-page {
+    padding: 0 12px 44px;
+  }
+
+  .dbv2-page .lp-nav {
+    width: 100%;
+    padding: 12px 0;
+    align-items: flex-start;
+  }
+
+  .dbv2-page .lp-nav > div {
+    width: 100%;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px !important;
+  }
+
+  .dbv2-page .lp-nav .dbv2-avatar {
+    display: none;
+  }
+
+  .dbv2-page .lp-nav .dbv2-btn-ghost {
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+
+  .dbv2-coluna {
+    gap: 24px;
+    margin-top: 24px !important;
+  }
+
+  .dbv2-metrics {
+    gap: 12px;
+  }
+
+  .dbv2-metric,
+  .dbv2-metric-hero {
+    min-height: 0;
+    padding: 18px;
+    gap: 10px;
+    border-radius: 16px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 5px 20px -14px rgba(0, 0, 0, 0.7);
+  }
+
+  .dbv2-hero-valor,
+  .dbv2-metric-valor {
+    font-size: 40px;
+  }
+
+  .dbv2-hero-valor .unidade {
+    font-size: 24px;
+  }
+
+  .dbv2-toolbar {
+    flex-wrap: nowrap;
+    gap: 8px;
+    padding: 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .dbv2-toolbar > * {
+    flex: 0 0 auto;
+    min-height: 44px;
+    scroll-snap-align: start;
+  }
+
+  .dbv2-toolbar > span {
+    display: none;
+  }
+
+  .dbv2-toolbar .dbv2-btn-ghost,
+  .dbv2-toolbar .dbv2-filtro {
+    min-height: 44px;
+    padding: 10px 14px;
+    touch-action: manipulation;
+  }
+
+  .dbv2-card,
+  .dbv2-radar-card {
+    padding: 18px;
+    gap: 16px;
+    border-radius: 16px;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    box-shadow: 0 5px 20px -14px rgba(0, 0, 0, 0.7);
+  }
+
+  .dbv2-card-header {
+    gap: 12px;
+  }
+
+  .dbv2-card-titulo {
+    font-size: 18px;
+    overflow-wrap: anywhere;
+  }
+
+  .dbv2-card-meta {
+    gap: 6px;
+    font-size: 12px;
+    overflow-wrap: anywhere;
+  }
+
+  .dbv2-ring {
+    width: 62px;
+    height: 62px;
+  }
+
+  .dbv2-ring-miolo {
+    inset: 4px;
+  }
+
+  .dbv2-ring-num {
+    font-size: 18px;
+  }
+
+  .dbv2-ring-sub {
+    font-size: 7px;
+  }
+
+  .dbv2-insight {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .dbv2-insight-chip {
+    width: 24px;
+    height: 24px;
+  }
+
+  .dbv2-insight p {
+    overflow-wrap: anywhere;
+  }
+
+  .dbv2-subscore {
+    grid-template-columns: 58px minmax(0, 1fr) 30px;
+    gap: 8px;
+  }
+
+  .dbv2-subscore-label,
+  .dbv2-subscore-num {
+    font-size: 10px;
+  }
+
+  .dbv2-card-rodape {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 14px;
+  }
+
+  .dbv2-card-rodape > span[style] {
+    display: none;
+  }
+
+  .dbv2-card-rodape .dbv2-pill-status,
+  .dbv2-card-rodape .dbv2-link {
+    grid-column: 1 / -1;
+  }
+
+  .dbv2-card-rodape .dbv2-link,
+  .dbv2-card-rodape .dbv2-btn-ghost,
+  .dbv2-card-rodape .dbv2-btn-primario {
+    min-width: 0;
+    min-height: 44px;
+    justify-content: center;
+    padding: 10px 12px;
+    text-align: center;
+    touch-action: manipulation;
+  }
+
+  .dbv2-card-rodape .dbv2-link {
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 999px;
+  }
+}
+
+@media (max-width: 360px) {
+  .dbv2-page .lp-nav .dbv2-btn-ghost,
+  .dbv2-card-rodape .dbv2-btn-ghost,
+  .dbv2-card-rodape .dbv2-btn-primario {
+    font-size: 12px;
+  }
+
+  .dbv2-toolbar .dbv2-btn-ghost,
+  .dbv2-toolbar .dbv2-filtro {
+    padding-inline: 12px;
+    font-size: 12px;
+  }
+}
