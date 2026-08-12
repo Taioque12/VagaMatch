@@ -49,6 +49,8 @@ export function Dashboard() {
   const [erro, setErro] = useState(null);
   const [filtro, setFiltro] = useState("recomendadas");
   const [soHomeOffice, setSoHomeOffice] = useState(false);
+  const [ordenacao, setOrdenacao] = useState("relevancia");
+  const [periodo, setPeriodo] = useState("tudo");
   const [quantidadeVisivel, setQuantidadeVisivel] = useState(12);
   const [buscaAtiva, setBuscaAtiva] = useState(null);
   const [salvandoAtivo, setSalvandoAtivo] = useState(false);
@@ -121,12 +123,30 @@ export function Dashboard() {
     } else {
       porStatus = filtro === "todas" ? vagas : vagas.filter((v) => v.status === filtro);
     }
-    return soHomeOffice ? porStatus.filter(ehVagaRemota) : porStatus;
-  }, [vagas, filtro, soHomeOffice]);
+    const porModalidade = soHomeOffice ? porStatus.filter(ehVagaRemota) : porStatus;
+    if (periodo === "tudo") return porModalidade;
+
+    const inicio = new Date();
+    if (periodo === "hoje") inicio.setHours(0, 0, 0, 0);
+    if (periodo === "7d") inicio.setDate(inicio.getDate() - 7);
+    if (periodo === "30d") inicio.setDate(inicio.getDate() - 30);
+    return porModalidade.filter((vaga) => new Date(vaga.data_encontrada) >= inicio);
+  }, [vagas, filtro, soHomeOffice, periodo]);
+
+  const vagasOrdenadas = useMemo(() => {
+    if (!vagasFiltradas) return null;
+    const porDataDesc = (a, b) => new Date(b.data_encontrada) - new Date(a.data_encontrada);
+    const porScoreDesc = (a, b) => (b.score ?? 0) - (a.score ?? 0);
+    return [...vagasFiltradas].sort((a, b) => {
+      if (ordenacao === "recentes") return porDataDesc(a, b);
+      if (ordenacao === "score") return porScoreDesc(a, b) || porDataDesc(a, b);
+      return porScoreDesc(a, b) || porDataDesc(a, b);
+    });
+  }, [vagasFiltradas, ordenacao]);
 
   useEffect(() => {
     setQuantidadeVisivel(12);
-  }, [filtro, soHomeOffice]);
+  }, [filtro, soHomeOffice, ordenacao, periodo]);
 
   // Médias dos sub-scores V3 das vagas visíveis (parseScoresV3 lê o motivo_ia).
   // Radar precisa de >= 3 eixos pra formar área: Técnico + Fit + Match geral.
@@ -278,6 +298,34 @@ export function Dashboard() {
           >
             🏠 Home Office
           </button>
+          <label className="dbv2-ordenacao">
+            <span>Ordenar</span>
+            <select value={ordenacao} onChange={(event) => setOrdenacao(event.target.value)}>
+              <option value="relevancia">Mais relevantes</option>
+              <option value="recentes">Mais recentes</option>
+              <option value="score">Maior match</option>
+            </select>
+          </label>
+        </div>
+
+        <div className="dbv2-periodo" role="group" aria-label="Período em que a vaga foi encontrada">
+          <span>Encontradas em</span>
+          {[
+            ["hoje", "Hoje"],
+            ["7d", "7 dias"],
+            ["30d", "30 dias"],
+            ["tudo", "Tudo"],
+          ].map(([valor, label]) => (
+            <button
+              key={valor}
+              type="button"
+              className={periodo === valor ? "dbv2-periodo-btn ativo" : "dbv2-periodo-btn"}
+              onClick={() => setPeriodo(valor)}
+              aria-pressed={periodo === valor}
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         {/* ===== Faixa horizontal: mercado + radar (ex-sidebar) ===== */}
@@ -315,13 +363,13 @@ export function Dashboard() {
               <h2 id="titulo-vagas" className="dbv2-titulo-secao">
                 {filtro === "recomendadas" ? "Recomendadas para você" : "Vagas encontradas pela IA"}
               </h2>
-              {vagasFiltradas && <p className="dbv2-contagem">{vagasFiltradas.length} oportunidades neste recorte</p>}
+              {vagasOrdenadas && <p className="dbv2-contagem">{vagasOrdenadas.length} oportunidades neste recorte</p>}
             </div>
           </div>
 
           {erro && <p className="erro" role="alert">{erro}</p>}
 
-          {vagasFiltradas === null && !erro && (
+          {vagasOrdenadas === null && !erro && (
             <div aria-busy="true" aria-label="Carregando vagas" className="dbv2-vagas">
               {[1, 2].map((i) => (
                 <div key={i} className="dbv2-card skeleton-card">
@@ -334,7 +382,7 @@ export function Dashboard() {
             </div>
           )}
 
-          {vagasFiltradas?.length === 0 && (
+          {vagasOrdenadas?.length === 0 && (
             <div className="dbv2-card" style={{ alignItems: "center", textAlign: "center", padding: "48px 32px" }}>
               <p style={{ margin: 0, fontWeight: 700 }}>
                 {filtro !== "todas" || soHomeOffice ? "Nenhuma vaga corresponde aos filtros." : "Nenhuma vaga aqui ainda."}
@@ -356,7 +404,7 @@ export function Dashboard() {
             </div>
           )}
 
-          {vagasFiltradas?.slice(0, quantidadeVisivel).map((v) => {
+          {vagasOrdenadas?.slice(0, quantidadeVisivel).map((v) => {
             const scoresV3 = parseScoresV3(v.motivo_ia);
             return (
               <div key={v.id} className="dbv2-card">
@@ -439,7 +487,7 @@ export function Dashboard() {
             );
           })}
 
-          {vagasFiltradas && vagasFiltradas.length > quantidadeVisivel && (
+          {vagasOrdenadas && vagasOrdenadas.length > quantidadeVisivel && (
             <button className="dbv2-carregar-mais" onClick={() => setQuantidadeVisivel((atual) => atual + 12)}>
               Mostrar mais vagas
             </button>

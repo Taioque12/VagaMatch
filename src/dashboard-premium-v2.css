@@ -943,6 +943,51 @@
 .dbv2-carregar-mais { align-self: center; min-height: 44px; padding: 10px 16px; border: 1px solid rgba(16, 185, 129, 0.36); border-radius: 8px; background: transparent; color: #6ee7b7; font: inherit; font-weight: 700; cursor: pointer; }
 .dbv2-carregar-mais:hover { background: rgba(16, 185, 129, 0.09); }
 
+.dbv2-ordenacao {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dbv2-ordenacao select {
+  min-height: 38px;
+  padding: 0 30px 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  background: #10171b;
+  color: #f8fafc;
+  font: inherit;
+}
+
+.dbv2-periodo {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #94a3b8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.dbv2-periodo-btn {
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font: inherit;
+  cursor: pointer;
+}
+
+.dbv2-periodo-btn.ativo {
+  border-bottom-color: #10b981;
+  color: #6ee7b7;
+}
+
 @media (max-width: 480px) {
   .dbv2-user-menu { position: relative; width: auto; }
   .dbv2-user-menu > summary { display: inline-flex; align-items: center; min-height: 40px; padding: 0 12px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 8px; color: #f8fafc; cursor: pointer; list-style: none; }
@@ -953,4 +998,8 @@
   .dbv2-user-menu-conteudo .dbv2-btn-ghost { justify-content: center; min-height: 44px; }
   .dbv2-card { padding: 18px; }
   .dbv2-vagas-cabecalho { align-items: start; }
+  .dbv2-ordenacao span { display: none; }
+  .dbv2-periodo { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 2px; }
+  .dbv2-periodo > span,
+  .dbv2-periodo-btn { flex: 0 0 auto; }
 }
