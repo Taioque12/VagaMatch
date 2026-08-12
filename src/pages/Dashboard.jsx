@@ -36,6 +36,7 @@ function ehVagaRemota(v) {
 }
 
 const FILTROS = [
+  { valor: "recomendadas", label: "Recomendadas" },
   { valor: "todas", label: "Todas" },
   { valor: "notificada", label: "Notificadas" },
   { valor: "candidatado", label: "Candidatadas" },
@@ -46,8 +47,9 @@ export function Dashboard() {
   const { session } = useAuth();
   const [vagas, setVagas] = useState(null);
   const [erro, setErro] = useState(null);
-  const [filtro, setFiltro] = useState("todas");
+  const [filtro, setFiltro] = useState("recomendadas");
   const [soHomeOffice, setSoHomeOffice] = useState(false);
+  const [quantidadeVisivel, setQuantidadeVisivel] = useState(12);
   const [buscaAtiva, setBuscaAtiva] = useState(null);
   const [salvandoAtivo, setSalvandoAtivo] = useState(false);
   const [ehAdmin, setEhAdmin] = useState(false);
@@ -111,9 +113,20 @@ export function Dashboard() {
 
   const vagasFiltradas = useMemo(() => {
     if (!vagas) return null;
-    const porStatus = filtro === "todas" ? vagas : vagas.filter((v) => v.status === filtro);
+    let porStatus;
+    if (filtro === "recomendadas") {
+      porStatus = vagas
+        .filter((v) => !["erro", "pendente_processamento"].includes(v.status) && (v.score ?? 0) >= 60)
+        .sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
+    } else {
+      porStatus = filtro === "todas" ? vagas : vagas.filter((v) => v.status === filtro);
+    }
     return soHomeOffice ? porStatus.filter(ehVagaRemota) : porStatus;
   }, [vagas, filtro, soHomeOffice]);
+
+  useEffect(() => {
+    setQuantidadeVisivel(12);
+  }, [filtro, soHomeOffice]);
 
   // Médias dos sub-scores V3 das vagas visíveis (parseScoresV3 lê o motivo_ia).
   // Radar precisa de >= 3 eixos pra formar área: Técnico + Fit + Match geral.
@@ -177,7 +190,9 @@ export function Dashboard() {
           <span className="lp-logo-marca" />
           VagaMatch
         </Link>
-        <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
+        <details className="dbv2-user-menu">
+          <summary aria-label="Abrir menu da conta">Menu</summary>
+          <div className="dbv2-user-menu-conteudo">
           {/* Avatar com iniciais — e-mail sai do header (fica no title/tooltip) */}
           <span className="dbv2-avatar" title={session?.user?.email || ""}>
             {(session?.user?.email || "?").slice(0, 2).toUpperCase()}
@@ -185,7 +200,8 @@ export function Dashboard() {
           <Link to="/onboarding" className="dbv2-btn-ghost">Meu perfil</Link>
           {ehAdmin && <Link to="/admin" className="dbv2-btn-ghost">Painel admin</Link>}
           <button className="dbv2-btn-ghost" onClick={sair}>Sair</button>
-        </div>
+          </div>
+        </details>
       </nav>
 
       <main className="dbv2-coluna" style={{ marginTop: 36 }}>
@@ -196,7 +212,7 @@ export function Dashboard() {
         {/* ===== Top metrics: hero Taxa de Sucesso + Processadas + Fila ===== */}
         {stats && (
           <div className="dbv2-metrics">
-            <div className="dbv2-metric dbv2-metric-hero">
+            <div className="dbv2-metric dbv2-metric-hero dbv2-metric-destaque">
               <div className="dbv2-hero-topo">
                 <div className="dbv2-hero-chip">
                   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -241,14 +257,14 @@ export function Dashboard() {
             onClick={alternarBusca}
             disabled={salvandoAtivo || buscaAtiva === null}
           >
-            {buscaAtiva === null ? "..." : buscaAtiva ? "⏸ Pausar busca" : "▶ Retomar busca"}
+            {buscaAtiva === null ? "Carregando…" : buscaAtiva ? "Pausar busca" : "Retomar busca"}
           </button>
           <span style={{ flex: 1 }} />
           {FILTROS.map((f) => (
             <button
               key={f.valor}
               className={filtro === f.valor ? "dbv2-filtro ativo" : "dbv2-filtro"}
-              onClick={() => setFiltro(f.valor)}
+              onClick={() => { setFiltro(f.valor); setQuantidadeVisivel(12); }}
               aria-pressed={filtro === f.valor}
             >
               {f.label}
@@ -293,8 +309,15 @@ export function Dashboard() {
         )}
 
         {/* ===== Lista de vagas ===== */}
-        <div className="dbv2-vagas">
-          <h2 className="dbv2-titulo-secao">Vagas encontradas pela IA</h2>
+        <section className="dbv2-vagas" aria-labelledby="titulo-vagas">
+          <div className="dbv2-vagas-cabecalho">
+            <div>
+              <h2 id="titulo-vagas" className="dbv2-titulo-secao">
+                {filtro === "recomendadas" ? "Recomendadas para você" : "Vagas encontradas pela IA"}
+              </h2>
+              {vagasFiltradas && <p className="dbv2-contagem">{vagasFiltradas.length} oportunidades neste recorte</p>}
+            </div>
+          </div>
 
           {erro && <p className="erro" role="alert">{erro}</p>}
 
@@ -333,7 +356,7 @@ export function Dashboard() {
             </div>
           )}
 
-          {vagasFiltradas?.map((v) => {
+          {vagasFiltradas?.slice(0, quantidadeVisivel).map((v) => {
             const scoresV3 = parseScoresV3(v.motivo_ia);
             return (
               <div key={v.id} className="dbv2-card">
@@ -362,17 +385,13 @@ export function Dashboard() {
                 </div>
 
                 {v.motivo_ia && (
-                  <div className="dbv2-insight">
-                    <div className="dbv2-insight-chip">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                        <path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z" />
-                      </svg>
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 3, minWidth: 0 }}>
-                      <span className="dbv2-insight-label">Insight da IA</span>
-                      <p>{v.motivo_ia}</p>
-                    </div>
-                  </div>
+                  <details className="dbv2-insight">
+                    <summary>
+                      <span className="dbv2-insight-label">Por que esta vaga combina com você</span>
+                      <span aria-hidden="true">Ver análise</span>
+                    </summary>
+                    <p>{v.motivo_ia}</p>
+                  </details>
                 )}
 
                 {scoresV3 && (
@@ -419,7 +438,13 @@ export function Dashboard() {
               </div>
             );
           })}
-        </div>
+
+          {vagasFiltradas && vagasFiltradas.length > quantidadeVisivel && (
+            <button className="dbv2-carregar-mais" onClick={() => setQuantidadeVisivel((atual) => atual + 12)}>
+              Mostrar mais vagas
+            </button>
+          )}
+        </section>
       </main>
     </div>
   );
