@@ -1,17 +1,10 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
 import "../dashboard-premium-v2.css";
 
 export function Sucesso() {
-  const [params] = useSearchParams();
-
-  // Mercado Pago retorna status/collection_status no back_url
-  const status = params.get("status") || params.get("collection_status");
-  const aprovado = status === "approved";
-
-  const titulo = aprovado ? "Pagamento Aprovado!" : "Pagamento em processamento";
-  const mensagem = aprovado
-    ? "Sua assinatura foi ativada com sucesso. A partir de agora, o nosso robô vai buscar vagas para você automaticamente e te notificar sempre que encontrar um match perfeito."
-    : "Recebemos a confirmação do Mercado Pago. Seu pagamento está em processamento e seu plano ativa em instantes — você já pode voltar ao dashboard, tudo acontece automaticamente.";
+  const titulo = "Pagamento em processamento";
+  const mensagem =
+    "Recebemos sua confirmação. A ativação do plano é concluída automaticamente após a validação do pagamento.";
 
   return (
     <div className="dbv2-page">
@@ -50,7 +43,7 @@ export function Sucesso() {
             fontSize: 26,
           }}
         >
-          {aprovado ? "🎉" : "✅"}
+          ✅
         </div>
         <h1
           style={{
