@@ -73,7 +73,6 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Métricas de vagas processadas/em fila, filtros por status, modalidade, período e ordenação por relevância, data ou match
 - Score por vaga, insight de IA expansível, barras Técnico/Fit e radar de médias (recharts)
 - Paginação progressiva, menu de conta adaptado ao mobile e rotas lazy (React.lazy + Suspense)
-- Rotas lazy (React.lazy + Suspense) — chunk inicial menor pra Landing/Login
 - Download do currículo em PDF (mesmo layout ATS do bot)
 
 ### 💳 Pagamentos (Mercado Pago)
