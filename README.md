@@ -34,7 +34,7 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Descarte automático de vagas com Score final < 40
 - **Priorização Inteligente:** novos cadastros/uploads "furam a fila" no próximo ciclo do worker
 - **Reprocessamento de órfãs:** vagas presas em `pendente_processamento` (rodada interrompida por timeout) são reincluídas automaticamente a cada rodada (até 30/rodada, idade > 1h)
-- Lock de execução via `app_state` (timeout 15min) + semáforo de concorrência 3 + janela de 4s entre chamadas Gemini (15 RPM free tier); 429 nunca descarta vaga
+- Lock distribuído com lease de 15min + semáforo de concorrência 3 + janela de 12s entre chamadas Gemini (5 RPM na cota gratuita). Um circuito compartilhado interrompe novas chamadas após o primeiro 429; vagas permanecem pendentes para a próxima rodada
 - Flags a quente em `app_state`: `v3_prefiltro`, `v3_threshold_similaridade`, `v3_pesos_score`, `v3_fator_feedback`, `v3_pdf_automatico` — rollback sem deploy
 
 ### 📱 Bot Telegram (Tempo Real)
@@ -69,10 +69,10 @@ Ver [ROADMAP.md](./ROADMAP.md) pras fases planejadas e [DESIGN.md](./DESIGN.md) 
 - Contador de créditos visível no dashboard
 
 ### 💎 Dashboard Premium V2
-- Coluna única 960px, dark mode esmeralda como padrão absoluto, glassmorphism (blur 24px)
-- Hero "Taxa de Sucesso IA" + métricas (processadas, na fila) + toolbar com toggle de busca e filtros pill
-- Score ring radial por vaga, box "Insight da IA", barras Técnico/Fit (sub-scores V3) e radar de médias (recharts)
-- Micro-interações: shimmer nas métricas durante busca, hover esmeralda, avatar com iniciais no header
+- Coluna única responsiva, modo escuro com contraste ajustado e controles compactos
+- Métricas de vagas processadas/em fila, filtros por status, modalidade, período e ordenação por relevância, data ou match
+- Score por vaga, insight de IA expansível, barras Técnico/Fit e radar de médias (recharts)
+- Paginação progressiva, menu de conta adaptado ao mobile e rotas lazy (React.lazy + Suspense)
 - Rotas lazy (React.lazy + Suspense) — chunk inicial menor pra Landing/Login
 - Download do currículo em PDF (mesmo layout ATS do bot)
 
@@ -119,6 +119,9 @@ As migrations estão em `supabase/migrations/`, em ordem:
 | 019 | `019_protege_embedding.sql` | Blinda `vagas_vistas.embedding` contra escrita do usuário (trigger) |
 | 020 | `020_modalidade_trabalho.sql` | Coluna `modalidade_trabalho` em `preferencias` (remoto/híbrido/presencial/qualquer) |
 | 021 | `021_salario_minimo.sql` | Coluna `salario_minimo` em `preferencias` (filtro opcional de piso salarial, nullable) |
+| 022 | `022_security_scaling_foundations.sql` | Tokens curtos do Telegram, rate limit e lock distribuído com lease |
+| 023 | `023_mercadopago_idempotency.sql` | Sessões de checkout e processamento idempotente de webhooks do Mercado Pago |
+| 024 | `024_payment_telegram_hardening.sql` | Proteções adicionais para vínculo Telegram, indicações e status de assinatura |
 
 ## Ferramentas de Desenvolvimento (IA)
 
@@ -174,9 +177,9 @@ Depois de trocar o secret, é preciso redeployar `telegram-webhook` e re-registr
 
 ## Testes
 
-`npm test` (vitest, 41 testes):
+`npm test` (Vitest, 51 testes):
 - `src/lib/gemini.test.js` — extração de currículo, validação de schema, timeout do Gemini
-- `worker/processamento.test.js` — semáforo de concorrência, pipeline de vagas (aprovação/descarte por score, 429 não conta falha, PDF automático best-effort)
+- `worker/processamento.test.js` — semáforo de concorrência, pipeline de vagas, circuito compartilhado de 429 e PDF automático best-effort
 - `worker/db.test.js` — query de pendentes órfãs (`buscarPendentesAntigas`)
 - `worker/filter.test.js` — filtro de modalidade de trabalho (`filtrarPorModalidade`)
 - `worker/embeddings.test.js` — consolidação do texto de currículo para embedding
@@ -187,16 +190,7 @@ Edge Functions são excluídas do vitest (`vite.config.js`). Scripts de manuten�
 ## Próximos Passos
 
 ### Pendências imediatas
-- [x] **[RESOLVIDO LOCALMENTE] Trocar `GEMINI_API_KEY`** — a chave local foi atualizada para a API gratuita. ATENÇÃO: Falta aplicar o novo secret em produção nestes dois lugares (nenhum tem API pra isso, precisa ser manual):
-  - Supabase → Project Settings → Edge Functions → Secrets → `GEMINI_API_KEY`
-  - GitHub → Settings → Secrets and variables → Actions → `GEMINI_API_KEY`
-  - Depois de trocar, validar reimportando o currículo de um usuário de teste (ex: `joaocarlos_deoliveira@yahoo.com.br`, cadastrado 2026-08-02, currículo ainda vazio)
-- [ ] Fazer merge (ou revisar) os PRs abertos, ambos já testados/com testes passando:
-  - [`fix/modelos-gemini-descontinuados`](https://github.com/Taioque12/VagaMatch/pull/new/fix/modelos-gemini-descontinuados) — migra `gemini-2.5-flash`→`gemini-flash-latest` e `text-embedding-004`→`gemini-embedding-001` (768d explícito) em todos os pontos de chamada; edge functions `gemini-proxy` e `telegram-webhook` já reimplantadas em produção com esse código
-  - [`fix/mensagens-erro-auth`](https://github.com/Taioque12/VagaMatch/pull/new/fix/mensagens-erro-auth) — traduz erros de cadastro/login do Supabase Auth pro português (`src/lib/authErros.js`)
-- [ ] Desativar a **Vercel SSO Protection** do projeto `vaga-match` (Settings → Deployment Protection → Vercel Authentication) — hoje só `vaga-match-coral.vercel.app` é acessível sem login Vercel; os demais domínios (`vaga-match-taioques.vercel.app` etc.) redirecionam pro SSO e bloqueiam testadores externos
-- [ ] Promover o último deploy da Vercel pra produção — o projeto está com `live: false`, então `coral.vercel.app` pode estar servindo build desatualizado
-- [ ] Apagar os usuários de teste criados durante o diagnóstico de hoje (`teste.diag*@gmail.com`) em Supabase → Authentication → Users
+- [ ] Monitorar o consumo do Gemini: a cota gratuita atual é 5 RPM. O worker agora desacelera e interrompe a rodada após o primeiro 429, sem descartar vagas
 - [ ] Mercado Pago fim-a-fim: criar aplicação no painel do MP, setar `MP_ACCESS_TOKEN`/`MP_WEBHOOK_SECRET`, cadastrar URL do webhook e testar pagamento real
 - [ ] Item 7 da V3: job semanal de refino de perfil (`resumirFeedbackSemanal` já existe em `worker/swarm.js`, falta o cron + confirmação do usuário no Telegram)
 - [ ] Colunas dedicadas `score_tecnico`/`score_fit` em `vagas_vistas` (hoje o frontend parseia do texto `motivo_ia` — funciona, mas é frágil)
