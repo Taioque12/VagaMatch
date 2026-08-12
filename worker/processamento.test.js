@@ -29,7 +29,7 @@ vi.mock('./curriculo.js', () => ({
   gerarPdfCurriculo: vi.fn().mockReturnValue(new Uint8Array([1, 2, 3])),
 }));
 
-import { criarSemaforo, processarLoteDeVagas } from './processamento.js';
+import { criarCircuitoRateLimitGemini, criarSemaforo, processarLoteDeVagas } from './processamento.js';
 import * as db from './db.js';
 
 const CONFIG_V3_OFF = { prefiltroAtivo: false, threshold: 0.55, pesos: { vetor: 0.5, tecnico: 0.3, fit: 0.2 } };
@@ -122,6 +122,22 @@ describe('processarLoteDeVagas', () => {
     expect(resultado).toEqual({ processadas: 0, falhas: 0 });
     expect(db.marcarStatus).not.toHaveBeenCalledWith('vaga-3', expect.anything());
     expect(db.registrarFalhaVaga).not.toHaveBeenCalled();
+  });
+
+  it('não chama Gemini para as vagas restantes após abrir o circuito de quota', async () => {
+    const { avaliarMatchComIA } = await import('./ai_filter.js');
+    const circuito = criarCircuitoRateLimitGemini();
+    circuito.bloquear(Object.assign(new Error('Gemini rate limit (429)'), { isRateLimit: true }));
+
+    const vagas = [
+      { id: 'vaga-7', job_id: 'j7', titulo: 'Dev 1' },
+      { id: 'vaga-8', job_id: 'j8', titulo: 'Dev 2' },
+    ];
+    const resultado = await processarLoteDeVagas(usuarioFake(), vagas, CONFIG_V3_OFF, circuito);
+
+    expect(resultado).toEqual({ processadas: 0, falhas: 0 });
+    expect(avaliarMatchComIA).not.toHaveBeenCalled();
+    expect(db.marcarStatus).not.toHaveBeenCalled();
   });
 
   it('com pdfAutomatico ON, envia o PDF após notificar', async () => {

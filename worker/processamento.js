@@ -42,19 +42,68 @@ export function criarSemaforo(max) {
 // Configurável por env só pra testes (zerar a espera); produção usa 4000.
 const GEMINI_MIN_INTERVAL_MS = Number(process.env.GEMINI_MIN_INTERVAL_MS ?? 4000);
 let proximoSlotGemini = 0;
-export async function aguardarJanelaGemini() {
+
+function criarErroRateLimit(causa) {
+  const erro = new Error(`Gemini rate limit (429): ${causa?.message ?? "quota indisponível"}`);
+  erro.isRateLimit = true;
+  return erro;
+}
+
+// Um 429 normalmente vale para a chave inteira, não apenas para uma vaga. Ao
+// abrir o circuito, as esperas já enfileiradas são canceladas antes de gerar
+// novas chamadas que só repetiriam a falha.
+export function criarCircuitoRateLimitGemini() {
+  let erro = null;
+  let interromper;
+  const interrompido = new Promise((resolve) => {
+    interromper = resolve;
+  });
+
+  return {
+    get bloqueado() {
+      return erro !== null;
+    },
+    bloquear(causa) {
+      if (erro) return;
+      erro = criarErroRateLimit(causa);
+      interromper(erro);
+    },
+    verificar() {
+      if (erro) throw erro;
+    },
+    async aguardar(ms) {
+      this.verificar();
+      if (ms > 0) {
+        await Promise.race([new Promise((resolve) => setTimeout(resolve, ms)), interrompido]);
+      }
+      this.verificar();
+    },
+  };
+}
+
+export async function aguardarJanelaGemini(circuito = null) {
+  circuito?.verificar();
   // Reserva síncrona do slot (single-thread) — sem corrida entre promessas paralelas
   const agora = Date.now();
   const slot = Math.max(agora, proximoSlotGemini);
   proximoSlotGemini = slot + GEMINI_MIN_INTERVAL_MS;
-  if (slot > agora) await new Promise((r) => setTimeout(r, slot - agora));
+  if (slot > agora) {
+    if (circuito) await circuito.aguardar(slot - agora);
+    else await new Promise((resolve) => setTimeout(resolve, slot - agora));
+  }
+  circuito?.verificar();
 }
 
 // Processa um lote de vagas (já em vagas_vistas) para um usuário: Camada 0
 // (pré-filtro vetorial + feedback), Camada 1 (swarm/ai_filter), notificação
 // Telegram. Reaproveitado tanto pelo fluxo normal (vagas novas + pendentes
 // antigas) quanto por scripts ad-hoc de reprocessamento.
-export async function processarLoteDeVagas({ pref, perfil, curriculo }, vagasParaProcessar, configV3) {
+export async function processarLoteDeVagas(
+  { pref, perfil, curriculo },
+  vagasParaProcessar,
+  configV3,
+  circuitoGemini = criarCircuitoRateLimitGemini()
+) {
   if (!vagasParaProcessar.length) return { processadas: 0, falhas: 0 };
   const palavrasChave = pref.palavras_chave ?? [];
 
@@ -114,7 +163,7 @@ export async function processarLoteDeVagas({ pref, perfil, curriculo }, vagasPar
         // Flag OFF: prompt antigo (ai_filter.js), comportamento idêntico ao
         // de produção hoje. Flag ON: swarm Técnico+Fit (1 chamada) + média
         // ponderada com o score vetorial usando os pesos do app_state.
-        await aguardarJanelaGemini();
+        await aguardarJanelaGemini(circuitoGemini);
         let score_ia, motivo_ia;
         if (configV3.prefiltroAtivo) {
           const r = await avaliarMatchSwarm(vaga, curriculo, palavrasChave, pref);
@@ -148,13 +197,14 @@ export async function processarLoteDeVagas({ pref, perfil, curriculo }, vagasPar
         // vaga segue 'notificada' e o botão "📄 Gerar PDF" cobre o retry.
         if (configV3.pdfAutomatico && curriculo) {
           try {
-            await aguardarJanelaGemini();
+            await aguardarJanelaGemini(circuitoGemini);
             const nomeCompleto = perfil.nome_completo || "Candidato";
             const cv = await gerarCurriculo(vaga, curriculo, nomeCompleto);
             const pdfBytes = gerarPdfCurriculo(cv, nomeCompleto, perfil.localizacao);
             const filename = `Curriculo_${nomeCompleto.replace(/\s+/g, "_")}_${(vaga.empresa || "vaga").replace(/\s+/g, "_")}.pdf`;
             await enviarDocumento(perfil.telegram_chat_id, pdfBytes, filename);
           } catch (e) {
+            if (e?.isRateLimit) circuitoGemini.bloquear(e);
             console.warn(
               `PDF automático falhou (vaga ${vaga.job_id}, usuário ${perfil.id}) — botão "Gerar PDF" segue como fallback: ${e.message}`
             );
@@ -162,6 +212,9 @@ export async function processarLoteDeVagas({ pref, perfil, curriculo }, vagasPar
         }
 
         return { tipo: "ok", vaga };
+      } catch (erro) {
+        if (erro?.isRateLimit) circuitoGemini.bloquear(erro);
+        throw erro;
       } finally {
         sem.liberar();
       }
