@@ -25,6 +25,7 @@ vi.mock('./telegram.js', () => ({
   enviarDocumento: vi.fn().mockResolvedValue('msg-2'),
   enviarResumoDiario: vi.fn().mockResolvedValue(undefined),
   alertarErro: vi.fn().mockResolvedValue(undefined),
+  isTelegramBlockedError: vi.fn((erro) => erro?.isTelegramBlocked === true),
 }));
 vi.mock('./curriculo.js', () => ({
   gerarCurriculo: vi.fn().mockResolvedValue({ resumo_profissional: 'ok' }),
@@ -221,5 +222,42 @@ describe('processarLoteDeVagas', () => {
 
     expect(resultado).toEqual({ processadas: 0, falhas: 1 });
     expect(db.registrarFalhaVaga).toHaveBeenCalledWith('vaga-4', 3);
+  });
+
+  it('adia o lote sem iniciar Gemini quando o orçamento acabou', async () => {
+    const { avaliarMatchComIA } = await import('./ai_filter.js');
+    const vaga = { id: 'vaga-12', job_id: 'j12', titulo: 'Dev' };
+
+    const resultado = await processarLoteDeVagas(
+      usuarioFake(),
+      [vaga],
+      CONFIG_V3_OFF,
+      criarCircuitoRateLimitGemini(),
+      { deveInterromper: () => true },
+    );
+
+    expect(resultado).toEqual({ processadas: 0, falhas: 0, interrompidoPorTempo: true });
+    expect(avaliarMatchComIA).not.toHaveBeenCalled();
+    expect(db.registrarFalhaVaga).not.toHaveBeenCalled();
+  });
+
+  it('interrompe envios após Telegram 403 sem consumir tentativas', async () => {
+    const { notificarVaga } = await import('./telegram.js');
+    const erroBloqueado = Object.assign(new Error('bot was blocked by the user'), {
+      isTelegramBlocked: true,
+    });
+    notificarVaga.mockRejectedValueOnce(erroBloqueado);
+    const vagas = [
+      { id: 'vaga-13', job_id: 'j13', titulo: 'Dev 1' },
+      { id: 'vaga-14', job_id: 'j14', titulo: 'Dev 2' },
+      { id: 'vaga-15', job_id: 'j15', titulo: 'Dev 3' },
+    ];
+
+    const resultado = await processarLoteDeVagas(usuarioFake(), vagas, CONFIG_V3_OFF);
+
+    expect(resultado).toEqual({ processadas: 0, falhas: 0 });
+    expect(notificarVaga).toHaveBeenCalledTimes(1);
+    expect(db.marcarStatus).toHaveBeenCalledWith('vaga-13', 'pendente_processamento');
+    expect(db.registrarFalhaVaga).not.toHaveBeenCalled();
   });
 });

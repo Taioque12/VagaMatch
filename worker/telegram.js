@@ -10,9 +10,18 @@ async function chamarApi(metodo, body) {
   });
   const data = await res.json();
   if (!res.ok || data.ok === false) {
-    throw new Error(`Telegram ${metodo}: ${JSON.stringify(data)}`);
+    const erro = new Error(`Telegram ${metodo}: ${JSON.stringify(data)}`);
+    erro.telegramErrorCode = Number(data?.error_code ?? res.status);
+    erro.telegramDescription = data?.description ?? "";
+    erro.isTelegramBlocked =
+      erro.telegramErrorCode === 403 && /bot was blocked by the user/i.test(erro.telegramDescription);
+    throw erro;
   }
   return data.result;
+}
+
+export function isTelegramBlockedError(error) {
+  return error?.isTelegramBlocked === true;
 }
 
 function botoesFeedback(callbackId) {

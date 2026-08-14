@@ -24,6 +24,7 @@ import { randomUUID } from "node:crypto";
 import { gerarEmbeddingsVagas } from "./embeddings.js";
 import { alertarErro } from "./telegram.js";
 import { criarCircuitoRateLimitGemini, processarLoteDeVagas } from "./processamento.js";
+import { criarOrcamentoTempo } from "./time-budget.js";
 
 // Uso: node worker/index.js [--limit N]  (limita vagas processadas POR USUÁRIO, útil p/ teste)
 const limitArg = process.argv.indexOf("--limit");
@@ -37,6 +38,7 @@ if (limitArg > -1 && !Number.isFinite(limitValue)) {
 // Cadência do cron é 10min — TTL maior que isso já corta a maioria das
 // chamadas repetidas sem deixar vaga muito velha.
 const CACHE_TTL_MS = 90 * 60 * 1000;
+const WORKER_MAX_RUNTIME_MS = Number(process.env.WORKER_MAX_RUNTIME_MS ?? 10 * 60 * 1000);
 
 // Chave única por combinação de busca (cargo + região + raio) — usada pra cachear
 // resultado entre usuários diferentes que buscam a mesma coisa, evitando 1 request por pessoa.
@@ -114,8 +116,11 @@ async function buscarComCache(cacheMemoria, cargo, regiao, raioKm) {
 }
 
 // ─── Passo 2 + 4: Pipeline paralelo com tratamento de rate limit ────────────
-async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3, circuitoGemini) {
+async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3, circuitoGemini, controleExecucao) {
   const { pref, perfil, curriculo } = usuario;
+  if (controleExecucao.deveInterromper()) {
+    return { processadas: 0, falhas: 0, interrompidoPorTempo: true };
+  }
   const cargosAlvo = pref.cargos_alvo ?? [];
   const palavrasChave = pref.palavras_chave ?? [];
   const brasilTodo = pref.modo_regiao === "brasil";
@@ -136,6 +141,9 @@ async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3, circuitoGem
     const acumulado = new Map();
     for (const cargo of cargosAlvo) {
       for (const regiao of regioes) {
+        if (controleExecucao.deveInterromper()) {
+          return { processadas: 0, falhas: 0, interrompidoPorTempo: true };
+        }
         const vagas = await buscarComCache(cacheBusca, cargo, regiao, raioKm);
         for (const v of vagas) acumulado.set(v.job_id, v);
       }
@@ -183,7 +191,13 @@ async function rodarPipelineDoUsuario(usuario, cacheBusca, configV3, circuitoGem
   }
 
   const vagasParaProcessar = [...novas, ...pendentesAntigas].slice(0, LIMITE);
-  return processarLoteDeVagas({ pref, perfil, curriculo }, vagasParaProcessar, configV3, circuitoGemini);
+  return processarLoteDeVagas(
+    { pref, perfil, curriculo },
+    vagasParaProcessar,
+    configV3,
+    circuitoGemini,
+    controleExecucao
+  );
 }
 
 // ─── Passo 1: Lock de execução ──────────────────────────────────────────────
@@ -211,6 +225,9 @@ async function main() {
     console.log("⏳ Outra instância do worker ainda possui o lease. Abortando.");
     return;
   }
+
+  const controleExecucao = criarOrcamentoTempo(WORKER_MAX_RUNTIME_MS);
+  console.log(`Orçamento de execução: ${(WORKER_MAX_RUNTIME_MS / 60000).toFixed(1)} minuto(s).`);
 
   heartbeatTimer = setInterval(async () => {
     try {
@@ -263,6 +280,8 @@ async function main() {
     // Cache por rodada: cargo+região+raio iguais entre usuários diferentes = 1 request só,
     // não 1 por pessoa. Crítico pra escalar (ver ROADMAP: 1000+ usuários estourariam o free tier da Adzuna).
     const cacheBusca = new Map();
+    const usuariosConcluidos = [];
+    let interrompidoPorTempo = false;
 
     // ─── Camada 0 (V3): config calibrável a quente via app_state ────────────
     // Lida 1x por rodada. Falha na leitura → defaults seguros com flag OFF
@@ -278,6 +297,11 @@ async function main() {
     );
 
     for (const usuario of usuarios) {
+      if (controleExecucao.deveInterromper()) {
+        interrompidoPorTempo = true;
+        console.log("⏱️ Orçamento de tempo atingido antes do próximo usuário; encerrando a rodada normalmente.");
+        break;
+      }
       if (lockPerdido) throw new Error("Lease do worker perdido; interrompendo para evitar execução concorrente.");
       // Regra de Billing: plano free tem quota de 1 busca a cada 24 horas.
       // Free = plano null/'free' OU assinatura não ativa. Pagantes: sem limite.
@@ -301,16 +325,25 @@ async function main() {
               console.error(`Falha ao limpar busca_solicitada (${usuario.perfil.id}): ${e.message}`)
             );
           }
+          usuariosConcluidos.push(usuario);
           continue;
         }
       }
 
       try {
-        const { processadas, falhas } = await rodarPipelineDoUsuario(usuario, cacheBusca, configV3, circuitoGemini);
+        const resultado = await rodarPipelineDoUsuario(
+          usuario,
+          cacheBusca,
+          configV3,
+          circuitoGemini,
+          controleExecucao
+        );
+        const { processadas, falhas } = resultado;
         totalProcessadas += processadas;
         totalFalhas += falhas;
+        interrompidoPorTempo = resultado.interrompidoPorTempo === true;
         // Só free precisa do carimbo de quota — falha aqui não derruba a rodada.
-        if (isFree) {
+        if (isFree && !interrompidoPorTempo) {
           await registrarBuscaRealizada(usuario.pref.user_id).catch((e) =>
             console.error(`Falha ao registrar ultima_busca_em (${usuario.perfil.id}): ${e.message}`)
           );
@@ -322,20 +355,26 @@ async function main() {
           () => {}
         );
       } finally {
-        if (usuario.pref.busca_solicitada) {
+        if (usuario.pref.busca_solicitada && !interrompidoPorTempo) {
           await limparBuscaSolicitada(usuario.pref.user_id).catch((e) =>
             console.error(`Falha ao limpar busca_solicitada (${usuario.perfil.id}): ${e.message}`)
           );
         }
       }
+
+      if (interrompidoPorTempo) {
+        console.log("⏱️ Orçamento de tempo atingido durante o usuário atual; vagas pendentes ficam para a próxima rodada.");
+        break;
+      }
+      usuariosConcluidos.push(usuario);
     }
 
     console.log(`Lote processado. ${totalProcessadas} vaga(s) notificada(s), ${totalFalhas} falha(s) no total.`);
 
     // Salva o último user_id processado como cursor pra próxima rodada
-    if (usuarios.length > 0) {
+    if (usuariosConcluidos.length > 0) {
       // Ignora usuários de busca_solicitada para não bagunçar o cursor
-      const usuariosNormais = usuarios.filter(u => !u.pref.busca_solicitada);
+      const usuariosNormais = usuariosConcluidos.filter(u => !u.pref.busca_solicitada);
       
       if (usuariosNormais.length > 0) {
         // Ordena por ID pois a junção no db.js pode ter desordenado
@@ -346,10 +385,12 @@ async function main() {
       } else {
         console.log(`Lote contendo apenas usuários prioritários. Cursor mantido em: ${lastUserId || "(início)"}`);
       }
-    } else {
+    } else if (!interrompidoPorTempo) {
       // Se lista vazia, reseta cursor
       await setState("worker_last_user_id", "");
       console.log("Lista vazia, cursor resetado.");
+    } else {
+      console.log(`Cursor mantido em: ${lastUserId || "(início)"}.`);
     }
   } finally {
     if (heartbeatTimer) clearInterval(heartbeatTimer);
