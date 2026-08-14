@@ -15,7 +15,13 @@ import {
 import { avaliarMatchComIA } from "./ai_filter.js";
 import { avaliarMatchSwarm, calcularScoreFinal } from "./swarm.js";
 import { gerarCurriculo, gerarPdfCurriculo } from "./curriculo.js";
-import { notificarVaga, enviarDocumento, enviarResumoDiario, alertarErro } from "./telegram.js";
+import {
+  notificarVaga,
+  enviarDocumento,
+  enviarResumoDiario,
+  alertarErro,
+  isTelegramBlockedError,
+} from "./telegram.js";
 import { isGeminiDailyQuota } from "./gemini-utils.js";
 
 const ADMIN_CHAT_ID = process.env.ADMIN_TELEGRAM_CHAT_ID;
@@ -126,19 +132,28 @@ export async function processarLoteDeVagas(
   { pref, perfil, curriculo },
   vagasParaProcessar,
   configV3,
-  circuitoGemini = criarCircuitoRateLimitGemini()
+  circuitoGemini = criarCircuitoRateLimitGemini(),
+  controleExecucao = {}
 ) {
   if (!vagasParaProcessar.length) return { processadas: 0, falhas: 0 };
   const circuitoJaBloqueado = circuitoGemini.bloqueado;
   const palavrasChave = pref.palavras_chave ?? [];
+  const deveInterromper = controleExecucao.deveInterromper ?? (() => false);
+  let telegramBloqueado = false;
 
   // ─── Passo 4: Processamento paralelo com semáforo (concorrência 3) ──────
   const sem = criarSemaforo(3);
+  // Serializa somente o envio. Assim, o primeiro 403 bloqueia os demais antes
+  // que várias notificações concorrentes repitam a mesma falha permanente.
+  const semTelegram = criarSemaforo(1);
 
   const resultados = await Promise.allSettled(
     vagasParaProcessar.map(async (vaga) => {
       await sem.adquirir();
       try {
+        if (deveInterromper()) return { tipo: "adiada_tempo", vaga };
+        if (telegramBloqueado) return { tipo: "adiada_telegram", vaga };
+
         // ─── Camada 0 (V3): pré-filtro vetorial ANTES de gastar chamada Gemini ──
         // Similaridade coseno currículo×vaga via pgvector (RPC). null = sem
         // embedding de um dos lados ou erro → sem sinal, segue fluxo normal.
@@ -188,7 +203,10 @@ export async function processarLoteDeVagas(
         // Flag OFF: prompt antigo (ai_filter.js), comportamento idêntico ao
         // de produção hoje. Flag ON: swarm Técnico+Fit (1 chamada) + média
         // ponderada com o score vetorial usando os pesos do app_state.
+        if (deveInterromper()) return { tipo: "adiada_tempo", vaga };
         await aguardarJanelaGemini(circuitoGemini);
+        if (deveInterromper()) return { tipo: "adiada_tempo", vaga };
+        if (telegramBloqueado) return { tipo: "adiada_telegram", vaga };
         let score_ia, motivo_ia;
         if (configV3.prefiltroAtivo) {
           const r = await avaliarMatchSwarm(vaga, curriculo, palavrasChave, pref);
@@ -208,10 +226,33 @@ export async function processarLoteDeVagas(
           return { tipo: "descartada", vaga };
         }
 
+        if (deveInterromper()) return { tipo: "adiada_tempo", vaga };
+        if (telegramBloqueado) return { tipo: "adiada_telegram", vaga };
+
         // Marca como descoberta só após IA aprovar (antes de Telegram)
         await marcarStatus(vaga.id, "descoberta");
 
-        const messageId = await notificarVaga(perfil.telegram_chat_id, vaga);
+        let messageId;
+        await semTelegram.adquirir();
+        try {
+          if (telegramBloqueado) {
+            await marcarStatus(vaga.id, "pendente_processamento");
+            return { tipo: "adiada_telegram", vaga };
+          }
+          try {
+            messageId = await notificarVaga(perfil.telegram_chat_id, vaga);
+          } catch (erro) {
+            if (isTelegramBlockedError(erro)) {
+              telegramBloqueado = true;
+              await marcarStatus(vaga.id, "pendente_processamento").catch((statusErro) =>
+                console.error(`Falha ao preservar vaga pendente (${vaga.job_id}): ${statusErro.message}`)
+              );
+            }
+            throw erro;
+          }
+        } finally {
+          semTelegram.liberar();
+        }
         await salvarMessageId(vaga.id, messageId);
         await marcarStatus(vaga.id, "notificada");
 
@@ -220,9 +261,13 @@ export async function processarLoteDeVagas(
         // Custa +1 chamada Gemini por vaga aprovada — desligável a quente
         // (v3_pdf_automatico='off'). Falha aqui NUNCA desfaz a notificação:
         // vaga segue 'notificada' e o botão "📄 Gerar PDF" cobre o retry.
-        if (configV3.pdfAutomatico && curriculo) {
+        if (configV3.pdfAutomatico && curriculo && !deveInterromper()) {
           try {
             await aguardarJanelaGemini(circuitoGemini);
+            if (deveInterromper()) {
+              console.log(`PDF automático adiado por limite de tempo (vaga ${vaga.job_id}).`);
+              return { tipo: "ok", vaga };
+            }
             const nomeCompleto = perfil.nome_completo || "Candidato";
             const cv = await gerarCurriculo(vaga, curriculo, nomeCompleto);
             const pdfBytes = gerarPdfCurriculo(cv, nomeCompleto, perfil.localizacao);
@@ -250,6 +295,7 @@ export async function processarLoteDeVagas(
   let processadas = 0;
   let falhas = 0;
   let rateLimitCount = 0;
+  let interrompidoPorTempo = false;
   const vagasAprovadas = [];
 
   for (const [i, r] of resultados.entries()) {
@@ -258,12 +304,15 @@ export async function processarLoteDeVagas(
         processadas++;
         vagasAprovadas.push(r.value.vaga);
       }
+      if (r.value.tipo === "adiada_tempo") interrompidoPorTempo = true;
       // "descartada" não conta como processada nem falha
     } else {
       // rejected — erro
       const erro = r.reason;
       const vaga = vagasParaProcessar[i];
-      if (erro?.isRateLimit) {
+      if (isTelegramBlockedError(erro)) {
+        console.warn(`Telegram bloqueado pelo usuário ${perfil.id}; vagas restantes adiadas sem consumir tentativas.`);
+      } else if (erro?.isRateLimit) {
         // ─── Passo 2: Não descartar por rate limit — manter como pendente ──
         // 429 não incrementa tentativas: é quota nossa, não defeito da vaga.
         rateLimitCount++;
@@ -301,11 +350,12 @@ export async function processarLoteDeVagas(
   }
 
   // Envia resumo após filtro IA (só vagas aprovadas)
-  if (vagasAprovadas.length > 1) {
+  if (vagasAprovadas.length > 1 && !interrompidoPorTempo) {
     await enviarResumoDiario(perfil.telegram_chat_id, vagasAprovadas).catch((e) =>
       console.error(`Falha no resumo (${perfil.id}): ${e.message}`)
     );
   }
 
+  if (interrompidoPorTempo) return { processadas, falhas, interrompidoPorTempo: true };
   return { processadas, falhas };
 }
