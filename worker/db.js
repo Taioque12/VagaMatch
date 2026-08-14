@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { env } from "./config.js";
+import { withSupabaseRetry } from "./supabase-retry.js";
 
 // service_role: ignora RLS — o worker age em nome de todos os usuários.
 export const supabase = createClient(env.supabaseUrl, env.supabaseServiceKey);
@@ -231,26 +232,31 @@ export async function setState(key, value) {
   if (error) throw new Error(`Supabase upsert (app_state): ${error.message}`);
 }
 
+async function executarRpcDeLock(label, rpcName, params) {
+  return withSupabaseRetry(async () => {
+    const { data, error } = await supabase.rpc(rpcName, params);
+    if (error) throw error;
+    return data;
+  }, { label: `Supabase RPC (${label})` });
+}
+
 export async function adquirirLockDistribuido(lockName, ownerId, leaseSeconds) {
-  const { data, error } = await supabase.rpc("acquire_distributed_lock", {
+  const data = await executarRpcDeLock("acquire lock", "acquire_distributed_lock", {
     p_lock_name: lockName, p_owner_id: ownerId, p_lease_seconds: leaseSeconds,
   });
-  if (error) throw new Error(`Supabase RPC (acquire lock): ${error.message}`);
   return data === true;
 }
 
 export async function liberarLockDistribuido(lockName, ownerId) {
-  const { error } = await supabase.rpc("release_distributed_lock", {
+  await executarRpcDeLock("release lock", "release_distributed_lock", {
     p_lock_name: lockName, p_owner_id: ownerId,
   });
-  if (error) throw new Error(`Supabase RPC (release lock): ${error.message}`);
 }
 
 export async function renovarLockDistribuido(lockName, ownerId, leaseSeconds) {
-  const { data, error } = await supabase.rpc("renew_distributed_lock", {
+  const data = await executarRpcDeLock("renew lock", "renew_distributed_lock", {
     p_lock_name: lockName, p_owner_id: ownerId, p_lease_seconds: leaseSeconds,
   });
-  if (error) throw new Error(`Supabase RPC (renew lock): ${error.message}`);
   return data === true;
 }
 

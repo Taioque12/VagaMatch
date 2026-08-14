@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Chain builder fake: cada método de filtro devolve `this` até o .limit()
 // final resolver — espelha a API real do supabase-js o suficiente pra
@@ -22,7 +22,7 @@ vi.mock('./config.js', () => ({
   env: { supabaseUrl: 'http://fake', supabaseServiceKey: 'fake-key' },
 }));
 
-import { supabase, buscarPendentesAntigas } from './db.js';
+import { supabase, buscarPendentesAntigas, adquirirLockDistribuido } from './db.js';
 
 describe('buscarPendentesAntigas', () => {
   beforeEach(() => {
@@ -60,5 +60,47 @@ describe('buscarPendentesAntigas', () => {
     supabase.from = vi.fn(() => ({ select: vi.fn(() => query) }));
 
     await expect(buscarPendentesAntigas('user-1', 60 * 60 * 1000)).rejects.toThrow('timeout de conexão');
+  });
+});
+
+describe('adquirirLockDistribuido', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('repete erro transitório do gateway e adquire o lease', async () => {
+    supabase.rpc = vi.fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { message: 'upstream connect error or disconnect/reset before headers' },
+      })
+      .mockResolvedValueOnce({ data: true, error: null });
+
+    const resultadoPromise = adquirirLockDistribuido('vagamatch-worker', 'owner-1', 900);
+    await vi.runAllTimersAsync();
+
+    await expect(resultadoPromise).resolves.toBe(true);
+    expect(supabase.rpc).toHaveBeenCalledTimes(2);
+    expect(supabase.rpc).toHaveBeenLastCalledWith('acquire_distributed_lock', {
+      p_lock_name: 'vagamatch-worker',
+      p_owner_id: 'owner-1',
+      p_lease_seconds: 900,
+    });
+  });
+
+  it('não repete erro de autenticação', async () => {
+    supabase.rpc = vi.fn().mockResolvedValue({
+      data: null,
+      error: { status: 401, message: 'JWT rejected' },
+    });
+
+    await expect(adquirirLockDistribuido('vagamatch-worker', 'owner-1', 900))
+      .rejects.toThrow('Supabase RPC (acquire lock): JWT rejected');
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
   });
 });
