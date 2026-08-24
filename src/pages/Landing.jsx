@@ -1,241 +1,102 @@
-import { useEffect, useRef, useState } from "react";
+import { ArrowRight, BellRing, BriefcaseBusiness, FileCheck2, MapPin, Send, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import { PRECOS, PLANO_FEATURES, PLANO_PLUS_FEATURES } from "../lib/planos.js";
 import "../landing-premium.css";
 
-const BENEFITS = [
-  {
-    icon: "✨",
-    title: "Currículo Reformatado",
-    desc: "Cada envio chega ajustado ao que a vaga pede — palavras-chave, ordem de experiências, ênfase certa.",
-    size: "large"
-  },
-  {
-    icon: "🌍",
-    title: "Região + Remoto",
-    desc: "Vagas perto de você e remotas do país inteiro, sem duplicar esforço.",
-  },
-  {
-    icon: "✉️",
-    title: "Abordagem Pronta",
-    desc: "Texto de contato já escrito pra cada vaga. Copiou, colou, aplicou.",
-  },
-  {
-    icon: "🚀",
-    title: "Tudo no Telegram",
-    desc: "Sem dashboard pra abrir, sem senha pra lembrar. A vaga chega onde você já está.",
-    size: "large"
-  }
+const STEPS = [
+  ["01", "Conte seu objetivo", "Cadastre seu perfil, experiências e o tipo de oportunidade que procura."],
+  ["02", "Receba oportunidades", "O VagaMatch organiza vagas compatíveis e destaca o que merece sua atenção."],
+  ["03", "Candidate-se preparado", "Use seu perfil e os materiais gerados para avançar com mais contexto."],
 ];
 
-function useReveal() {
-  const ref = useRef(null);
-  const [revelado, setRevelado] = useState(false);
+const BENEFITS = [
+  [BriefcaseBusiness, "Oportunidades organizadas", "Menos abas abertas e mais clareza sobre onde agir primeiro."],
+  [FileCheck2, "Perfil que evolui", "Revise suas experiências e mantenha seus materiais prontos para cada candidatura."],
+  [Send, "Acompanhamento no Telegram", "Receba atualizações pelo canal que já faz parte da sua rotina."],
+];
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setRevelado(true);
-      },
-      { threshold: 0.15 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return [ref, revelado];
-}
-
-function CheckIcon() {
+function ProductPreview() {
   return (
-    <svg className="lp-feature-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
+    <div className="landing-preview" aria-label="Demonstração da interface de oportunidades do VagaMatch">
+      <div className="landing-preview__bar">
+        <div><span className="landing-preview__eyebrow">Seu painel</span><strong>Oportunidades para você</strong></div>
+        <span className="landing-preview__demo">Demonstração</span>
+      </div>
+      <div className="landing-preview__filters" aria-hidden="true"><span>Mais recentes</span><span>Remoto e híbrido</span></div>
+      <article className="landing-job">
+        <div className="landing-job__mark">VM</div>
+        <div className="landing-job__content">
+          <div className="landing-job__heading">
+            <div><span className="landing-job__source">Nova oportunidade</span><h2>Desenvolvedor(a) Front-end</h2></div>
+            <span className="landing-job__match"><Sparkles size={14} /> Boa aderência</span>
+          </div>
+          <div className="landing-job__meta">
+            <span><MapPin size={15} /> Remoto</span><span><BriefcaseBusiness size={15} /> Tecnologia</span>
+          </div>
+          <p>Experiência com React, interfaces responsivas e colaboração com times de produto.</p>
+          <div className="landing-job__actions"><span>Ver análise da vaga</span><ArrowRight size={17} /></div>
+        </div>
+      </article>
+      <div className="landing-preview__notice">
+        <BellRing size={18} /><div><strong>Você decide o próximo passo</strong><span>Informação relevante, sem ruído.</span></div>
+      </div>
+    </div>
   );
 }
 
 export function Landing() {
-  const [billing, setBilling] = useState("monthly");
-
-  const [bentoRef, bentoRevelado] = useReveal();
-  const [pricingRef, pricingRevelado] = useReveal();
-
-  const preco = billing === "monthly" ? PRECOS.monthlyPrice : PRECOS.annualMonthlyEquivalent;
-  const precoPlus = billing === "monthly" ? PRECOS.monthlyPricePlus : PRECOS.annualMonthlyEquivalentPlus;
-
-  const animClass = (rev) => `animate-on-scroll ${rev ? "visible" : ""}`;
-
   return (
-    <div className="lp-premium-wrap">
-      {/* Ambient Lights */}
-      <div className="lp-glow-1"></div>
-      <div className="lp-glow-2"></div>
-      <div className="lp-glow-3"></div>
+    <div className="landing">
+      <a className="landing__skip" href="#conteudo-principal">Pular para o conteúdo</a>
+      <header className="landing-header">
+        <Link to="/" className="landing-brand" aria-label="VagaMatch, página inicial"><span className="landing-brand__mark">V</span><span>VagaMatch</span></Link>
+        <nav className="landing-header__actions" aria-label="Acesso à conta">
+          <Link to="/login" className="button button--quiet">Entrar</Link>
+          <Link to="/cadastro" className="button button--primary">Criar conta</Link>
+        </nav>
+      </header>
 
-      <a className="lp-skip-link" href="#conteudo-principal">Pular para o conteúdo</a>
-
-      {/* Nav */}
-      <nav className="lp-nav-p">
-        <Link to="/" className="lp-logo-p">
-          <div className="lp-logo-dot"></div>
-          VagaMatch
-        </Link>
-        <div style={{ display: "flex", gap: "1.5rem", alignItems: "center" }}>
-          <Link to="/login" className="lp-btn-ghost">Entrar</Link>
-          <Link to="/cadastro" className="lp-btn-primary">Começar Agora</Link>
-        </div>
-      </nav>
-
-      {/* Hero */}
       <main id="conteudo-principal">
-      <section className="lp-hero-p">
-        <div className="lp-hero-content">
-          <div className="lp-badge-p">
-            <span className="lp-pulse-dot"></span>
-            Monitoramento 24/7 Ativo
+        <section className="landing-hero" aria-labelledby="landing-title">
+          <div className="landing-hero__copy">
+            <p className="landing-kicker">Sua busca, mais bem direcionada</p>
+            <h1 id="landing-title">VagaMatch</h1>
+            <p className="landing-hero__headline">Encontre oportunidades compatíveis e avance com mais clareza.</p>
+            <p className="landing-hero__description">Organize seu perfil, acompanhe vagas e prepare cada candidatura em um fluxo simples, feito para quem procura trabalho de verdade.</p>
+            <div className="landing-hero__actions">
+              <Link to="/cadastro" className="button button--primary button--large">Começar agora <ArrowRight size={18} /></Link>
+              <Link to="/login" className="button button--secondary button--large">Já tenho uma conta</Link>
+            </div>
+            <p className="landing-hero__note">Você mantém o controle sobre onde e quando se candidatar.</p>
           </div>
-          <h1 className="lp-h1-p">
-            Pare de procurar.<br />
-            <span className="lp-text-gradient">Deixe a vaga te achar.</span>
-          </h1>
-          <p className="lp-hero-sub-p">
-            Você envia o currículo uma vez. Nós cruzamos com centenas de fontes e enviamos vagas perfeitas direto no seu Telegram, já com currículo ajustado para cada empresa.
-          </p>
-          <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-            <Link to="/cadastro" className="lp-btn-primary" style={{ padding: "1rem 2rem", fontSize: "1.1rem" }}>
-              Ativar Minhas Vagas
-            </Link>
+          <ProductPreview />
+        </section>
+
+        <section className="landing-steps" aria-labelledby="steps-title">
+          <div className="landing-section-heading"><p className="landing-kicker">Como funciona</p><h2 id="steps-title">Da descoberta à candidatura, sem perder o contexto.</h2></div>
+          <ol className="landing-steps__list">
+            {STEPS.map(([number, title, description]) => <li key={number}><span>{number}</span><h3>{title}</h3><p>{description}</p></li>)}
+          </ol>
+        </section>
+
+        <section className="landing-benefits" aria-labelledby="benefits-title">
+          <div className="landing-benefits__intro">
+            <p className="landing-kicker">Feito para a rotina real</p><h2 id="benefits-title">Menos esforço operacional. Mais atenção ao que importa.</h2>
+            <p>O VagaMatch reúne as informações necessárias para você comparar oportunidades e manter seu perfil em dia.</p>
           </div>
-        </div>
-
-        <div className="lp-hero-visual-p">
-          <div className="lp-mockup-glass">
-            <div className="lp-chat-header-p">
-              <div className="lp-chat-avatar-p">VM</div>
-              <div>
-                <div style={{ fontWeight: 700, color: "#fff" }}>VagaMatch Bot</div>
-                <div style={{ fontSize: "0.8rem", color: "var(--neon-green)" }}>Online</div>
-              </div>
-            </div>
-            
-            <div className="lp-chat-bubble-user">
-              Currículo PDF enviado ✓
-            </div>
-            
-            <div className="lp-chat-bubble-bot">
-              <div className="lp-chat-vaga-tag-p">Match 95% • São Paulo, SP</div>
-              <div className="lp-chat-vaga-title-p">Desenvolvedor Front-end Pleno</div>
-              <div style={{ fontSize: "0.85rem", color: "var(--text-body)" }}>Empresa: TechStart • Há 10 min</div>
-              
-              <div className="lp-chat-attachment-p">
-                <span style={{ fontSize: "1.2rem" }}>📄</span>
-                <div>
-                  <div style={{ color: "#fff", fontWeight: 500 }}>curriculo_TechStart.pdf</div>
-                  <div style={{ fontSize: "0.75rem", color: "var(--text-body)" }}>Ajustado para React e UI/UX</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Bento Grid Features */}
-      <section className="lp-section-p" ref={bentoRef}>
-        <div className={`lp-section-title-p ${animClass(bentoRevelado)}`}>
-          <div className="lp-section-tag-p">Como Funciona</div>
-          <h2 className="lp-h2-p">Um robô trabalhando <span className="lp-text-gradient-green">por você</span></h2>
-        </div>
-        
-        <div className={`lp-bento-grid ${animClass(bentoRevelado)}`} style={{ transitionDelay: "0.2s" }}>
-          {BENEFITS.map((b, i) => (
-            <div key={i} className={`lp-bento-card ${b.size === "large" ? "lp-bento-large" : ""}`}>
-              <div className="lp-bento-icon">{b.icon}</div>
-              <h3 className="lp-bento-title">{b.title}</h3>
-              <p className="lp-bento-desc">{b.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Pricing - Oculto durante o Beta */}
-      {false && (
-        <section id="planos" className="lp-section-p" ref={pricingRef}>
-          <div className={`lp-section-title-p ${animClass(pricingRevelado)}`}>
-            <div className="lp-section-tag-p">Investimento</div>
-            <h2 className="lp-h2-p">Sua carreira no <span className="lp-text-gradient-green">automático</span></h2>
-          </div>
-
-          <div className={`lp-billing-toggle ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.1s" }}>
-            <button
-              type="button"
-              className={`lp-billing-opt ${billing === "monthly" ? "active" : ""}`}
-              onClick={() => setBilling("monthly")}
-            >
-              Mensal
-            </button>
-            <button
-              type="button"
-              className={`lp-billing-opt ${billing === "annual" ? "active" : ""}`}
-              onClick={() => setBilling("annual")}
-            >
-              Anual <span className="lp-billing-badge">-18%</span>
-            </button>
-          </div>
-
-          <div className={`lp-pricing-grid ${animClass(pricingRevelado)}`} style={{ transitionDelay: "0.2s" }}>
-            {/* Basic Plan */}
-            <div className="lp-pricing-card">
-              <h3 style={{ fontSize: "1.5rem", color: "#fff", marginBottom: "0.5rem" }}>Match</h3>
-              <p style={{ color: "var(--text-body)", marginBottom: "2rem" }}>Para quem quer testar sem compromisso</p>
-              <div className="lp-price-val">
-                <span>R$</span>{preco}<span>/mês</span>
-              </div>
-              
-              <div className="lp-feature-list">
-                {PLANO_FEATURES.map((f, i) => (
-                  <div key={i} className="lp-feature-item">
-                    <CheckIcon /> {f}
-                  </div>
-                ))}
-              </div>
-              <Link to="/cadastro" className="lp-btn-ghost" style={{ display: "block", textAlign: "center", marginTop: "2.5rem", padding: "1rem", border: "1px solid var(--glass-border)", borderRadius: "999px" }}>
-                Assinar Match
-              </Link>
-            </div>
-
-            {/* Premium Plan */}
-            <div className="lp-pricing-card premium">
-              <div style={{ position: "absolute", top: 0, left: "50%", transform: "translate(-50%, -50%)", background: "var(--neon-green)", color: "#000", fontWeight: 800, padding: "6px 20px", borderRadius: "999px", fontSize: "0.85rem", letterSpacing: "0.05em" }}>RECOMENDADO</div>
-              <h3 style={{ fontSize: "1.8rem", color: "#fff", marginBottom: "0.5rem" }}>Match Plus</h3>
-              <p style={{ color: "var(--text-body)", marginBottom: "2rem" }}>Mais fontes de vagas, velocidade máxima</p>
-              <div className="lp-price-val" style={{ color: "var(--neon-green)" }}>
-                <span style={{ color: "var(--text-body)" }}>R$</span>{precoPlus}<span style={{ color: "var(--text-body)" }}>/mês</span>
-              </div>
-              
-              <div className="lp-feature-list">
-                {PLANO_PLUS_FEATURES.map((f, i) => (
-                  <div key={i} className="lp-feature-item" style={{ color: "#fff" }}>
-                    <CheckIcon /> {f}
-                  </div>
-                ))}
-              </div>
-              <Link to="/cadastro" className="lp-btn-primary" style={{ display: "block", textAlign: "center", marginTop: "2.5rem", padding: "1rem" }}>
-                Ativar Match Plus 🚀
-              </Link>
-            </div>
+          <div className="landing-benefits__list">
+            {BENEFITS.map(([Icon, title, description]) => <article key={title}><Icon size={22} aria-hidden="true" /><div><h3>{title}</h3><p>{description}</p></div></article>)}
           </div>
         </section>
-      )}
+
+        <section className="landing-cta" aria-labelledby="cta-title">
+          <div><p className="landing-kicker">Seu próximo movimento</p><h2 id="cta-title">Comece com um perfil mais completo.</h2></div>
+          <Link to="/cadastro" className="button button--primary button--large">Criar minha conta <ArrowRight size={18} /></Link>
+        </section>
       </main>
 
-      {/* Footer */}
-      <footer style={{ borderTop: "1px solid var(--glass-border)", padding: "3rem 2rem", textAlign: "center", color: "var(--text-body)", position: "relative", zIndex: 10 }}>
-        <div style={{ fontFamily: "'Outfit', sans-serif", fontSize: "1.5rem", fontWeight: 800, color: "#fff", marginBottom: "1rem" }}>
-          VagaMatch
-        </div>
-        <p>© 2026 VagaMatch. Desenvolvido para acelerar sua carreira.</p>
+      <footer className="landing-footer">
+        <Link to="/" className="landing-brand"><span className="landing-brand__mark">V</span><span>VagaMatch</span></Link>
+        <p>Uma experiência mais clara para acompanhar sua busca profissional.</p><Link to="/privacidade">Privacidade</Link><span>© 2026 VagaMatch</span>
       </footer>
     </div>
   );

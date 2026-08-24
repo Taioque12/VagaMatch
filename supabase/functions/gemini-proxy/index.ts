@@ -97,7 +97,8 @@ Deno.serve(async (req) => {
       );
       if (!res.ok) {
         const corpo = (await res.text()).slice(0, 300);
-        return json({ error: `Gemini embed ${res.status}: ${corpo}` }, 502);
+        console.error(`gemini-proxy: embedding upstream ${res.status}: ${corpo}`);
+        return json({ error: "Falha temporaria no servico de IA." }, 502);
       }
       const data = await res.json();
       const embeddings = (data.embeddings ?? []).map((e: any) => e.values);
@@ -106,7 +107,8 @@ Deno.serve(async (req) => {
       }
       return json({ embeddings });
     } catch (error) {
-      return json({ error: `Falha ao gerar embedding: ${error.message}` }, 500);
+      console.error("gemini-proxy: falha ao gerar embedding", error);
+      return json({ error: "Falha temporaria no servico de IA." }, 500);
     }
   }
 
@@ -141,7 +143,8 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const corpo = (await res.text()).slice(0, 300);
-      return json({ error: `Gemini ${res.status}: ${corpo}` }, 502);
+      console.error(`gemini-proxy: generation upstream ${res.status}: ${corpo}`);
+      return json({ error: "Falha temporaria no servico de IA." }, 502);
     }
 
     const data = await res.json();
@@ -156,6 +159,7 @@ Deno.serve(async (req) => {
     }
     return json({ text });
   } catch (error) {
-    return json({ error: `Falha ao chamar Gemini: ${error.message}` }, 500);
+    console.error("gemini-proxy: falha ao chamar Gemini", error);
+    return json({ error: "Falha temporaria no servico de IA." }, 500);
   }
 });

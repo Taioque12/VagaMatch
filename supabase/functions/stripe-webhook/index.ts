@@ -122,6 +122,6 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ received: true }), { status: 200 });
   } catch (error: any) {
     console.error(`Erro ao processar webhook: ${error.message}`);
-    return new Response(`Erro ao processar: ${error.message}`, { status: 500 });
+    return new Response("Erro interno ao processar webhook.", { status: 500 });
   }
 });

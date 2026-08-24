@@ -1,0 +1,7 @@
+.vscode
+docs/ai
+supabase/.branches
+.git
+node_modules
+dist
+coverage

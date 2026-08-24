@@ -19,3 +19,8 @@ entrypoint = "./functions/mp-webhook/index.ts"
 enabled = true
 verify_jwt = false
 entrypoint = "./functions/stripe-webhook/index.ts"
+
+[functions.lgpd-rights]
+enabled = true
+verify_jwt = true
+entrypoint = "./functions/lgpd-rights/index.ts"

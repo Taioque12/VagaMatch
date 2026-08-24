@@ -171,7 +171,7 @@ Não retorne nada além do JSON puro, sem blocos de código markdown (\`\`\`).`;
       validarSchemaCurriculo(dados);
       return dados;
     } catch (parseError) {
-      console.error("JSON parse/schema erro:", parseError.message, "Resposta:", cleaned.slice(0, 200));
+      console.error("JSON parse/schema erro:", parseError.message);
       throw new Error("Falha ao processar resposta da IA (JSON inválido ou campos ausentes).");
     }
   } catch (error) {

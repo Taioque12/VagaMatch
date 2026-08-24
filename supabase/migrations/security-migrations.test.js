@@ -13,6 +13,10 @@ const hardening = readFileSync(
   new URL("./024_payment_telegram_hardening.sql", import.meta.url),
   "utf8",
 );
+const functionAclHardening = readFileSync(
+  new URL("./20260821150149_function_acl_hardening.sql", import.meta.url),
+  "utf8",
+);
 const curriculoEmbedding = readFileSync(
   new URL("../functions/curriculo-embedding/index.ts", import.meta.url),
   "utf8",
@@ -39,6 +43,14 @@ const stripeWebhook = readFileSync(
 );
 const mpWebhook = readFileSync(
   new URL("../functions/mp-webhook/index.ts", import.meta.url),
+  "utf8",
+);
+const geminiClient = readFileSync(
+  new URL("../../src/lib/gemini.js", import.meta.url),
+  "utf8",
+);
+const stripeCheckout = readFileSync(
+  new URL("../functions/stripe-checkout/index.ts", import.meta.url),
   "utf8",
 );
 
@@ -117,6 +129,12 @@ describe("migration 024 hardening contracts", () => {
     expect(telegramWebhook).toContain('msg.chat?.type !== "private"');
   });
 
+  it("usa a URL configurada para links do site no Telegram", () => {
+    expect(telegramWebhook).toContain('Deno.env.get("SITE_URL")');
+    expect(telegramWebhook).toContain('url: `${SITE_URL}/onboarding`');
+    expect(telegramWebhook).not.toContain("vaga-match-coral.vercel.app");
+  });
+
   it("processa crédito Stripe por RPC atômico", () => {
     expect(hardening).toContain("credit_referral_after_paid_subscription");
     expect(stripeWebhook).toContain("credit_referral_after_paid_subscription");
@@ -137,5 +155,36 @@ describe("migration 024 hardening contracts", () => {
   it("não reativa Stripe quando a assinatura atual não está ativa", () => {
     expect(stripeWebhook).toContain("assinaturaAtiva(subscription.status)");
     expect(stripeWebhook).toContain("invoice.payment_failed")
+  });
+});
+
+describe("migration 025 function ACL contracts", () => {
+  it("remove RPC anonimo das funcoes SECURITY DEFINER internas", () => {
+    expect(functionAclHardening).toContain(
+      "revoke all on function public.handle_new_user() from public, anon, authenticated",
+    );
+    expect(functionAclHardening).toContain(
+      "revoke all on function public.protect_profile_privileged_columns() from public, anon, authenticated",
+    );
+  });
+
+  it("mantem somente os RPCs de usuario explicitamente autenticados", () => {
+    expect(functionAclHardening).toContain(
+      "grant execute on function public.is_admin() to authenticated",
+    );
+    expect(functionAclHardening).toContain(
+      "grant execute on function public.registrar_indicacao(text) to authenticated",
+    );
+  });
+});
+
+describe("privacy-safe logging contracts", () => {
+  it("não registra trechos da resposta de currículo da IA", () => {
+    expect(geminiClient).not.toContain('"Resposta:", cleaned.slice');
+  });
+
+  it("não registra objetos completos de provedores externos", () => {
+    expect(telegramWebhook).not.toContain("error:`, data)");
+    expect(stripeCheckout).not.toContain('"stripe-checkout: falha ao criar sessao", error)');
   });
 });

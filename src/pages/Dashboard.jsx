@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
+import { Check, ExternalLink, FileText, House, LogOut, Pause, Play, X } from "lucide-react";
 import { Link } from "react-router-dom";
 import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
+import { AuthenticatedNav } from "../components/AuthenticatedNav.jsx";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
+import {
+  CANDIDATURA_LABEL,
+  criarPatchStatusVaga,
+  estadoInicialFiltros,
+  obterRotuloStatus,
+  temFiltrosAtivos,
+} from "../lib/dashboardUx.js";
 import "../dashboard-premium-v2.css";
-
-const STATUS_LABEL = {
-  descoberta: "Descoberta",
-  notificada: "Notificada",
-  candidatado: "Candidatado",
-  descartada: "Descartada",
-  erro: "Erro",
-};
 
 // V3 grava os sub-scores dentro do motivo_ia:
 // "⚙️ Técnico (85): ... 🤝 Fit (70): ...". Sem colunas dedicadas (ainda) —
@@ -139,7 +140,6 @@ export function Dashboard() {
     const porScoreDesc = (a, b) => (b.score ?? 0) - (a.score ?? 0);
     return [...vagasFiltradas].sort((a, b) => {
       if (ordenacao === "recentes") return porDataDesc(a, b);
-      if (ordenacao === "score") return porScoreDesc(a, b) || porDataDesc(a, b);
       return porScoreDesc(a, b) || porDataDesc(a, b);
     });
   }, [vagasFiltradas, ordenacao]);
@@ -170,9 +170,7 @@ export function Dashboard() {
   async function mudarStatus(vaga, novoStatus) {
     // feedback_em alimenta a memória vetorial da V3 (Fase C) — carimbo só nos
     // status que são feedback real do usuário, igual ao webhook do Telegram.
-    const patch = ["candidatado", "descartada"].includes(novoStatus)
-      ? { status: novoStatus, feedback_em: new Date().toISOString() }
-      : { status: novoStatus };
+    const patch = criarPatchStatusVaga(novoStatus);
     const { error } = await supabase
       .from("vagas_vistas")
       .update(patch)
@@ -203,28 +201,27 @@ export function Dashboard() {
     await supabase.auth.signOut();
   }
 
+  function limparFiltros() {
+    const estadoInicial = estadoInicialFiltros();
+    setFiltro(estadoInicial.filtro);
+    setSoHomeOffice(estadoInicial.soHomeOffice);
+    setPeriodo(estadoInicial.periodo);
+  }
+
+  const existemFiltrosAtivos = temFiltrosAtivos({ filtro, soHomeOffice, periodo });
+
   return (
     <div className="dbv2-page">
-      <nav className="lp-nav">
-        <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
-          <span className="lp-logo-marca" />
-          VagaMatch
-        </Link>
-        <details className="dbv2-user-menu">
-          <summary aria-label="Abrir menu da conta">Menu</summary>
-          <div className="dbv2-user-menu-conteudo">
-          {/* Avatar com iniciais — e-mail sai do header (fica no title/tooltip) */}
-          <span className="dbv2-avatar" title={session?.user?.email || ""}>
-            {(session?.user?.email || "?").slice(0, 2).toUpperCase()}
-          </span>
-          <Link to="/onboarding" className="dbv2-btn-ghost">Meu perfil</Link>
-          {ehAdmin && <Link to="/admin" className="dbv2-btn-ghost">Painel admin</Link>}
-          <button className="dbv2-btn-ghost" onClick={sair}>Sair</button>
-          </div>
-        </details>
-      </nav>
+      <AuthenticatedNav
+        activePath="/dashboard"
+        email={session?.user?.email}
+        isAdmin={ehAdmin}
+        accountActionLabel="Sair"
+        accountActionIcon={<LogOut size={16} />}
+        onAccountAction={sair}
+      />
 
-      <main className="dbv2-coluna" style={{ marginTop: 36 }}>
+      <main className="dbv2-coluna">
         <header className="dbv2-page-header">
           <p className="dbv2-page-kicker">Painel de oportunidades</p>
           <h1>Suas melhores vagas, em um só lugar</h1>
@@ -234,13 +231,8 @@ export function Dashboard() {
           <div className="dbv2-metrics">
             <div className="dbv2-metric dbv2-metric-hero dbv2-metric-destaque">
               <div className="dbv2-hero-topo">
-                <div className="dbv2-hero-chip">
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <polyline points="3 17 9 11 13 15 21 7" />
-                    <polyline points="15 7 21 7 21 13" />
-                  </svg>
-                </div>
-                <span className="dbv2-metric-label">Taxa de Sucesso IA</span>
+              <div className="dbv2-hero-chip"><Check size={20} /></div>
+                <span className="dbv2-metric-label">Candidaturas entre vagas avaliadas</span>
               </div>
               <div className="dbv2-hero-valor">
                 {stats.taxaSucesso === null ? "—" : <>{stats.taxaSucesso}<span className="unidade">%</span></>}
@@ -277,7 +269,7 @@ export function Dashboard() {
             onClick={alternarBusca}
             disabled={salvandoAtivo || buscaAtiva === null}
           >
-            {buscaAtiva === null ? "Carregando…" : buscaAtiva ? "Pausar busca" : "Retomar busca"}
+            {buscaAtiva === null ? "Carregando…" : buscaAtiva ? <><Pause size={16} /> Pausar busca</> : <><Play size={16} /> Retomar busca</>}
           </button>
           <span style={{ flex: 1 }} />
           {FILTROS.map((f) => (
@@ -296,14 +288,13 @@ export function Dashboard() {
             title="Mostra só vagas com menção a remoto/home office no título ou descrição"
             aria-pressed={soHomeOffice}
           >
-            🏠 Home Office
+            <House size={16} /> Home office
           </button>
           <label className="dbv2-ordenacao">
             <span>Ordenar</span>
             <select value={ordenacao} onChange={(event) => setOrdenacao(event.target.value)}>
               <option value="relevancia">Mais relevantes</option>
               <option value="recentes">Mais recentes</option>
-              <option value="score">Maior match</option>
             </select>
           </label>
         </div>
@@ -385,15 +376,15 @@ export function Dashboard() {
           {vagasOrdenadas?.length === 0 && (
             <div className="dbv2-card" style={{ alignItems: "center", textAlign: "center", padding: "48px 32px" }}>
               <p style={{ margin: 0, fontWeight: 700 }}>
-                {filtro !== "todas" || soHomeOffice ? "Nenhuma vaga corresponde aos filtros." : "Nenhuma vaga aqui ainda."}
+                {existemFiltrosAtivos ? "Nenhuma vaga corresponde aos filtros." : "Nenhuma vaga aqui ainda."}
               </p>
               <span className="dbv2-metric-sub">
-                {filtro !== "todas" || soHomeOffice
-                  ? "Tente outro status ou mostre também as vagas presenciais."
+                {existemFiltrosAtivos
+                  ? "Tente outro status, período ou mostre também as vagas presenciais."
                   : "A busca automática está procurando oportunidades alinhadas ao seu perfil."}
               </span>
-              {filtro !== "todas" || soHomeOffice ? (
-                <button className="dbv2-btn-primario" style={{ marginTop: 8 }} onClick={() => { setFiltro("todas"); setSoHomeOffice(false); }}>
+              {existemFiltrosAtivos ? (
+                <button className="dbv2-btn-primario" style={{ marginTop: 8 }} onClick={limparFiltros}>
                   Limpar filtros
                 </button>
               ) : (
@@ -462,24 +453,28 @@ export function Dashboard() {
                 )}
 
                 <div className="dbv2-card-rodape">
-                  <span className="dbv2-pill-status">{STATUS_LABEL[v.status] ?? v.status}</span>
+                  <span className="dbv2-pill-status">{obterRotuloStatus(v.status)}</span>
                   {v.url && (
                     <a href={v.url} target="_blank" rel="noreferrer" className="dbv2-link">
-                      Ver original ↗
+                      Ver original <ExternalLink size={15} />
                     </a>
                   )}
                   <span style={{ flex: 1 }} />
                   <Link to={`/gerador/${v.id}`} className="dbv2-btn-ghost">
-                    Gerar documentos
+                    <FileText size={16} /> Gerar documentos
                   </Link>
                   {v.status !== "descartada" && (
                     <button className="dbv2-btn-ghost" onClick={() => mudarStatus(v, "descartada")}>
-                      Descartar
+                      <X size={16} /> Descartar
                     </button>
                   )}
                   {v.status !== "candidatado" && (
-                    <button className="dbv2-btn-primario" onClick={() => mudarStatus(v, "candidatado")}>
-                      Candidatar
+                    <button
+                      className="dbv2-btn-primario"
+                      onClick={() => mudarStatus(v, "candidatado")}
+                      title="Registra no VagaMatch que você se candidatou; não envia candidatura à empresa."
+                    >
+                      <Check size={16} /> {CANDIDATURA_LABEL}
                     </button>
                   )}
                 </div>
