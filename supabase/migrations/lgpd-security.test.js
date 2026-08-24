@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
 const lgpdMigration = readFileSync(new URL("./026_lgpd_requests_and_least_privilege.sql", import.meta.url), "utf8");
-const vectorMigration = readFileSync(new URL("./027_move_vector_to_extensions.sql", import.meta.url), "utf8");
-const vectorRollback = readFileSync(new URL("./rollback/027_move_vector_to_public.sql", import.meta.url), "utf8");
+const vectorMigration = readFileSync(new URL("./027_move_vector_to_extensions.sql", import.meta.url), "utf8").replace(/\r\n/g, "\n");
+const vectorRollback = readFileSync(new URL("./rollback/027_move_vector_to_public.sql", import.meta.url), "utf8").replace(/\r\n/g, "\n");
 const rightsFunction = readFileSync(new URL("../functions/lgpd-rights/index.ts", import.meta.url), "utf8");
 const supabaseConfig = readFileSync(new URL("../config.toml", import.meta.url), "utf8");
 const loginPage = readFileSync(new URL("../../src/pages/Login.jsx", import.meta.url), "utf8");
