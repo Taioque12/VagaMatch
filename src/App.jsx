@@ -16,6 +16,8 @@ const Gerador = lazy(() => import("./pages/Gerador.jsx").then((m) => ({ default:
 const Sucesso = lazy(() => import("./pages/Sucesso.jsx").then((m) => ({ default: m.Sucesso })));
 const Cancelado = lazy(() => import("./pages/Cancelado.jsx").then((m) => ({ default: m.Cancelado })));
 const Upgrade = lazy(() => import("./pages/Upgrade.jsx").then((m) => ({ default: m.Upgrade })));
+const Privacidade = lazy(() => import("./pages/Privacidade.jsx").then((m) => ({ default: m.Privacidade })));
+const MeusDados = lazy(() => import("./pages/MeusDados.jsx").then((m) => ({ default: m.MeusDados })));
 
 function FallbackCarregando() {
   return (
@@ -58,6 +60,8 @@ export function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/cadastro" element={<Cadastro />} />
+            <Route path="/privacidade" element={<Privacidade />} />
+            <Route path="/meus-dados" element={<RotaProtegida><MeusDados /></RotaProtegida>} />
             <Route path="/sucesso" element={<RotaProtegida><Sucesso /></RotaProtegida>} />
             <Route path="/cancelado" element={<RotaProtegida><Cancelado /></RotaProtegida>} />
             <Route path="/upgrade" element={<RotaProtegida><Upgrade /></RotaProtegida>} />

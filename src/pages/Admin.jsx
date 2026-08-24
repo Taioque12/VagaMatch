@@ -1,39 +1,20 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { BriefcaseBusiness, ShieldCheck, UserRound } from "lucide-react";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
 import "../dashboard-premium-v2.css";
 
 export function Admin() {
   const { session } = useAuth();
-  const navigate = useNavigate();
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState(null);
   const [metricas, setMetricas] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (!session) {
-      navigate("/login");
-      return;
-    }
+    if (!session) return;
 
     async function carregar() {
-      // Verifica se usuário é admin
-      const { data: perfil, error: erroRoleCheck } = await supabase
-        .from("profiles")
-        .select("role")
-        .eq("id", session.user.id)
-        .maybeSingle();
-
-      if (erroRoleCheck || perfil?.role !== "admin") {
-        setErro("Acesso negado. Você não é admin.");
-        setTimeout(() => navigate("/dashboard"), 1500);
-        setCarregando(false);
-        return;
-      }
-      setIsAdmin(true);
-
       setCarregando(true);
       setErro(null);
       try {
@@ -97,9 +78,9 @@ export function Admin() {
       }
     }
     carregar();
-  }, [session, navigate]);
+  }, [session]);
 
-  if (!session || !isAdmin) return null; // Aguarda validação
+  if (!session) return null;
   if (carregando) {
     return (
       <div className="dbv2-page" style={{ justifyContent: "center" }}>
@@ -117,38 +98,39 @@ export function Admin() {
 
   const m = metricas;
 
-  const linhaLista = {
-    padding: "10px 0",
-    borderBottom: "1px solid rgba(255, 255, 255, 0.08)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "12px",
-  };
-
   return (
-    <div className="dbv2-page">
-      <nav className="lp-nav" style={{ width: "100%", justifyContent: "space-between" }}>
+    <div className="dbv2-page app-page app-page-admin">
+      <nav className="lp-nav" aria-label="Navegação principal">
         <Link to="/dashboard" className="lp-logo" style={{ textDecoration: "none" }}>
-          <span className="lp-logo-marca" />
-          VagaMatch (Admin)
+          <span className="lp-logo-marca">V</span>
+          VagaMatch
         </Link>
-        <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-          <Link to="/dashboard" className="dbv2-btn-ghost">Voltar ao dashboard</Link>
+        <div className="dbv2-primary-nav">
+          <span className="dbv2-nav-label">Área do candidato</span>
+          <Link to="/dashboard" className="dbv2-nav-link"><BriefcaseBusiness size={18} /> Oportunidades</Link>
+          <Link to="/onboarding" className="dbv2-nav-link"><UserRound size={18} /> Meu perfil</Link>
+          <Link to="/admin" className="dbv2-nav-link ativo"><ShieldCheck size={18} /> Administração</Link>
         </div>
+        <details className="dbv2-user-menu">
+          <summary aria-label="Abrir menu da conta">Menu</summary>
+          <div className="dbv2-user-menu-conteudo">
+            <span className="dbv2-avatar">{(session?.user?.email || "?").slice(0, 2).toUpperCase()}</span>
+            <span className="dbv2-account-email">{session?.user?.email}</span>
+            <Link to="/dashboard" className="dbv2-btn-ghost"><BriefcaseBusiness size={16} /> Voltar para vagas</Link>
+          </div>
+        </details>
       </nav>
 
-      <div className="dbv2-coluna" style={{ marginTop: 36 }}>
-        <div>
-          <h1 style={{ margin: "0 0 8px", fontFamily: "'Outfit', sans-serif", fontWeight: 800, letterSpacing: "-0.02em", fontSize: "clamp(26px, 6vw, 36px)", color: "#f8fafc" }}>
-            Painel do Administrador
-          </h1>
-          <p className="dbv2-metric-sub" style={{ margin: 0, fontSize: 15 }}>
+      <main className="dbv2-coluna app-content admin-content">
+        <header className="dbv2-page-header app-page-heading">
+          <p className="dbv2-page-kicker">Operação VagaMatch</p>
+          <h1>Administração</h1>
+          <p className="app-page-description">
             Saúde geral do VagaMatch — dados em tempo real via Supabase.
           </p>
-        </div>
+        </header>
 
-        <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "24px" }}>
+        <section className="admin-metrics">
           <div className="dbv2-metric">
             <span className="dbv2-metric-label">Usuários Cadastrados</span>
             <span className="dbv2-metric-valor" style={{ fontSize: "clamp(36px, 4vw, 48px)" }}>{m.totalUsuarios}</span>
@@ -167,13 +149,13 @@ export function Admin() {
           </div>
         </section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "24px" }}>
+        <div className="admin-summary-grid">
           <section className="dbv2-card">
-            <h2 className="dbv2-card-titulo" style={{ margin: 0, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "14px" }}>Assinaturas</h2>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            <h2 className="dbv2-card-titulo admin-section-title">Assinaturas</h2>
+            <ul className="admin-list">
               {Object.entries(m.porAssinatura).map(([status, qtd]) => (
-                <li key={status} style={linhaLista}>
-                  <strong style={{ color: "#10b981" }}>{status || "Grátis"}</strong>
+                <li key={status}>
+                  <strong>{!status || status === "null" ? "Grátis" : status}</strong>
                   <span className="dbv2-metric-sub" style={{ fontVariantNumeric: "tabular-nums" }}>{qtd} usuário(s)</span>
                 </li>
               ))}
@@ -181,11 +163,11 @@ export function Admin() {
           </section>
 
           <section className="dbv2-card">
-            <h2 className="dbv2-card-titulo" style={{ margin: 0, borderBottom: "1px solid rgba(255, 255, 255, 0.08)", paddingBottom: "14px" }}>Recorrência</h2>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            <h2 className="dbv2-card-titulo admin-section-title">Recorrência</h2>
+            <ul className="admin-list">
               {Object.entries(m.porRecorrencia).map(([tipo, qtd]) => (
-                <li key={tipo} style={linhaLista}>
-                  <strong style={{ color: "#f8fafc" }}>{tipo === "sem_recorrencia" ? "Sem Assinatura" : tipo}</strong>
+                <li key={tipo}>
+                  <strong>{tipo === "sem_recorrencia" ? "Sem assinatura" : tipo}</strong>
                   <span className="dbv2-metric-sub" style={{ fontVariantNumeric: "tabular-nums" }}>{qtd} usuário(s)</span>
                 </li>
               ))}
@@ -193,11 +175,11 @@ export function Admin() {
           </section>
         </div>
 
-        <section className="dbv2-card" style={{ marginTop: "24px", overflowX: "auto" }}>
-          <h2 className="dbv2-card-titulo" style={{ margin: "0 0 16px" }}>Gestão de Usuários</h2>
-          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "14px" }}>
+        <section className="dbv2-card admin-users-card">
+          <h2 className="dbv2-card-titulo">Gestão de usuários</h2>
+          <div className="admin-table-wrap"><table className="admin-table">
             <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.1)", color: "#94a3b8" }}>
+              <tr>
                 <th style={{ padding: "12px 8px" }}>Nome</th>
                 <th style={{ padding: "12px 8px" }}>Status Assinatura</th>
                 <th style={{ padding: "12px 8px" }}>Busca Ativa</th>
@@ -207,31 +189,26 @@ export function Admin() {
             </thead>
             <tbody>
               {m.listaUsuarios.map(u => (
-                <tr key={u.id} style={{ borderBottom: "1px solid rgba(255, 255, 255, 0.05)" }}>
-                  <td style={{ padding: "12px 8px", color: "#f8fafc" }}>{u.nome_completo || "Sem Nome"}</td>
+                <tr key={u.id}>
+                  <td>{u.nome_completo || "Sem nome"}</td>
                   <td style={{ padding: "12px 8px" }}>
-                    <span style={{ 
-                      padding: "4px 8px", 
-                      borderRadius: "4px", 
-                      background: u.assinatura_status === "ativa" ? "rgba(16, 185, 129, 0.1)" : "rgba(255, 255, 255, 0.05)",
-                      color: u.assinatura_status === "ativa" ? "#10b981" : "#94a3b8"
-                    }}>
+                    <span className={u.assinatura_status === "ativa" ? "admin-status ativo" : "admin-status"}>
                       {u.assinatura_status === "ativa" ? "Pago" : "Grátis"}
                     </span>
                   </td>
                   <td style={{ padding: "12px 8px" }}>
-                    <span style={{ color: u.busca_ativa ? "#10b981" : "#ef4444" }}>
+                    <span className={u.busca_ativa ? "admin-search-status ativo" : "admin-search-status"}>
                       {u.busca_ativa ? "Sim" : "Não"}
                     </span>
                   </td>
-                  <td style={{ padding: "12px 8px", color: "#94a3b8", fontFamily: "monospace" }}>{u.telegram_chat_id || "Não vinculado"}</td>
-                  <td style={{ padding: "12px 8px", color: "#64748b" }}>{new Date(u.created_at).toLocaleDateString("pt-BR")}</td>
+                  <td className="admin-telegram-id">{u.telegram_chat_id || "Não vinculado"}</td>
+                  <td>{new Date(u.created_at).toLocaleDateString("pt-BR")}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </table></div>
         </section>
-      </div>
+      </main>
     </div>
   );
 }

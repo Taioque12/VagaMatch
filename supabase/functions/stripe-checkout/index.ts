@@ -108,6 +108,7 @@ Deno.serve(async (req) => {
 
     return json({ url: session.url });
   } catch (error: any) {
-    return json({ error: `Falha ao criar sessão do Stripe: ${error.message}` }, 500);
+    console.error("stripe-checkout: falha ao criar sessao", error?.message ?? "erro desconhecido");
+    return json({ error: "Falha interna ao iniciar o pagamento." }, 500);
   }
 });

@@ -8,6 +8,7 @@ const TELEGRAM_BOT_TOKEN = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || "";
+const SITE_URL = (Deno.env.get("SITE_URL") || "").replace(/\/$/, "");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -21,7 +22,7 @@ async function chamarApi(metodo: string, body: any) {
   });
   const data = await res.json();
   if (!res.ok || data.ok === false) {
-    console.error(`Telegram ${metodo} error:`, data);
+    console.error(`Telegram ${metodo} error:`, data?.error_code ?? res.status, data?.description ?? "erro sem descrição");
   }
   return data;
 }
@@ -195,7 +196,7 @@ async function enviarDocumento(chatId: string | number, pdfBytes: Uint8Array, fi
   });
   const data = await res.json();
   if (!res.ok || data.ok === false) {
-    console.error(`Telegram sendDocument error:`, data);
+    console.error(`Telegram sendDocument error:`, data?.error_code ?? res.status, data?.description ?? "erro sem descrição");
   }
   return data;
 }
@@ -213,7 +214,7 @@ async function enviarMenu(chatId: string | number) {
         [{ text: "📍 Configurar região", callback_data: "menu:regiao" }],
         [{ text: "🏠 Modalidade de trabalho", callback_data: "menu:modalidade" }],
         [{ text: "💰 Salário mínimo", callback_data: "menu:salario" }],
-        [{ text: "🔄 Atualizar Perfil (Site)", url: "https://vaga-match-coral.vercel.app/onboarding" }],
+        [{ text: "🔄 Atualizar Perfil (Site)", url: `${SITE_URL}/onboarding` }],
         [{ text: "❓ Ajuda", callback_data: "ajuda" }],
       ],
     },
@@ -684,7 +685,7 @@ async function tratarMensagem(msg: any) {
       text: "Para atualizar suas preferências, enviar um novo currículo ou editar os cargos que a IA deduziu, acesse nosso site:",
       reply_markup: {
         inline_keyboard: [
-          [{ text: "🔄 Atualizar Perfil no Site", url: "https://vaga-match-coral.vercel.app/onboarding" }]
+          [{ text: "🔄 Atualizar Perfil no Site", url: `${SITE_URL}/onboarding` }]
         ]
       }
     });

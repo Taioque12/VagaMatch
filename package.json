@@ -11,8 +11,7 @@
     "worker:test": "node worker/index.js --limit 2",
     "embeddings:backfill": "node scripts/reprocessar-embeddings-curriculos.mjs",
     "test": "vitest run",
-    "setup:ia": "node scripts/setup-dev.mjs",
-    "postinstall": "npx skills add ./.claude/skills -y"
+    "setup:ia": "node scripts/setup-dev.mjs"
   },
   "dependencies": {
     "@google/genai": "2.16.0",
@@ -20,6 +19,7 @@
     "dompurify": "3.4.13",
     "dotenv": "^16.4.0",
     "jspdf": "^4.2.1",
+    "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "7.18.2",
