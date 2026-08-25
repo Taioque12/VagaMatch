@@ -2,8 +2,12 @@
 // (env server-side), nunca no bundle do frontend. Só aceita chamadas de usuários
 // autenticados (valida o JWT via GoTrue antes de gastar cota).
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { fallbackReason, isTimeout, textContents, type FallbackReason } from "./provider-utils.ts";
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+const GROQ_API_KEY = Deno.env.get("GROQ_API_KEY");
+const GROQ_FALLBACK_ENABLED = Deno.env.get("GROQ_FALLBACK_ENABLED") === "true";
+const GROQ_FALLBACK_MODEL = Deno.env.get("GROQ_FALLBACK_MODEL") ?? "openai/gpt-oss-20b";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
@@ -16,7 +20,37 @@ const CORS_HEADERS = {
 
 // Rate limit: 10 requisições por minuto por usuário
 const RATE_LIMIT_PER_MINUTE = 10;
-function json(body, status = 200) {
+const UPSTREAM_TIMEOUT_MS = 20_000;
+
+async function callGroq(contents: unknown) {
+  const prompt = textContents(contents);
+  if (!GROQ_FALLBACK_ENABLED || !GROQ_API_KEY || !prompt) return null;
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${GROQ_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: GROQ_FALLBACK_MODEL,
+      messages: [{ role: "user", content: prompt }],
+      temperature: 0.2,
+      stream: false,
+    }),
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+  if (!response.ok) {
+    await response.body?.cancel();
+    console.error(`gemini-proxy: groq fallback upstream ${response.status}`);
+    return null;
+  }
+  const data = await response.json();
+  const text = data?.choices?.[0]?.message?.content?.trim() ?? "";
+  return text || null;
+}
+
+function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
@@ -96,8 +130,8 @@ Deno.serve(async (req) => {
         },
       );
       if (!res.ok) {
-        const corpo = (await res.text()).slice(0, 300);
-        console.error(`gemini-proxy: embedding upstream ${res.status}: ${corpo}`);
+        await res.body?.cancel();
+        console.error(`gemini-proxy: embedding upstream ${res.status}`);
         return json({ error: "Falha temporaria no servico de IA." }, 502);
       }
       const data = await res.json();
@@ -125,25 +159,45 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: Array.isArray(contents)
-            ? [{ parts: contents.map((c) => (typeof c === "string" ? { text: c } : c)) }]
-            : [{ parts: [{ text: contents }] }],
-          ...(config?.responseMimeType
-            ? { generationConfig: { responseMimeType: config.responseMimeType } }
-            : {}),
-        }),
-      },
-    );
+    let fallback: FallbackReason | null = null;
+    let res: Response | null = null;
+    try {
+      res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: Array.isArray(contents)
+              ? [{ parts: contents.map((c) => (typeof c === "string" ? { text: c } : c)) }]
+              : [{ parts: [{ text: contents }] }],
+            ...(config?.responseMimeType
+              ? { generationConfig: { responseMimeType: config.responseMimeType } }
+              : {}),
+          }),
+          signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        },
+      );
+      fallback = fallbackReason(res.status);
+    } catch (error) {
+      if (!isTimeout(error)) throw error;
+      fallback = "timeout";
+    }
 
-    if (!res.ok) {
-      const corpo = (await res.text()).slice(0, 300);
-      console.error(`gemini-proxy: generation upstream ${res.status}: ${corpo}`);
+    // O fallback inicial aceita somente texto. PDFs/base64 e embeddings nunca
+    // saem do Gemini nesta fase para evitar ampliar o tratamento de dados.
+    if (fallback) {
+      await res?.body?.cancel();
+      const groqText = await callGroq(contents);
+      if (groqText) {
+        console.info(`gemini-proxy: fallback provider=groq reason=${fallback}`);
+        return json({ text: groqText, provider: "groq" });
+      }
+    }
+
+    if (!res?.ok) {
+      await res?.body?.cancel();
+      console.error(`gemini-proxy: generation upstream ${res?.status ?? "timeout"}`);
       return json({ error: "Falha temporaria no servico de IA." }, 502);
     }
 
@@ -159,7 +213,8 @@ Deno.serve(async (req) => {
     }
     return json({ text });
   } catch (error) {
-    console.error("gemini-proxy: falha ao chamar Gemini", error);
+    const errorName = error instanceof Error ? error.name : "unknown";
+    console.error(`gemini-proxy: falha na geração (${errorName})`);
     return json({ error: "Falha temporaria no servico de IA." }, 500);
   }
 });
