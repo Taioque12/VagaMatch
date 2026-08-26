@@ -87,6 +87,22 @@ p {
 .privacy-action > div:first-child > svg { color: #087f5b; margin-bottom: 12px; }
 .privacy-action p, .profile-privacy-link p { margin: 0; color: #68756f; line-height: 1.6; }
 .privacy-action--danger > div:first-child > svg { color: #b42318; }
+.privacy-center, .mfa-page { --auth-ink: #18211d; --auth-muted: #5f6c65; --auth-green: #147a55; --auth-border: #d6ddd8; }
+.mfa-page { min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #f7f8f6; color: #202724; }
+.mfa-panel { width: min(440px, 100%); padding: 32px; border: 1px solid #dfe5e1; border-radius: 8px; background: #fff; }
+.mfa-panel h1 { margin: 6px 0 10px; font-size: 1.7rem; letter-spacing: 0; }
+.mfa-panel > p:not(.auth-kicker):not(.erro) { color: #68756f; line-height: 1.6; }
+.mfa-panel form { display: grid; gap: 12px; margin-top: 22px; }
+.mfa-panel label, .mfa-enrollment label { color: #39443f; font: 700 .82rem/1.3 "Manrope", sans-serif; }
+.mfa-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px; background: #e5f3ed; color: #087f5b; }
+.mfa-notice { margin: 0 0 24px; padding: 14px 16px; border-left: 3px solid #b7791f; background: #fff8e8; color: #664d18; }
+.mfa-security-action > div:first-child > svg { color: #087f5b; }
+.mfa-enrollment { margin-top: 24px; padding: 24px; border: 1px solid #dfe5e1; border-radius: 8px; background: #fff; display: grid; grid-template-columns: 1fr 180px; gap: 24px; align-items: start; }
+.mfa-enrollment h2 { margin: 4px 0 8px; font-size: 1.2rem; letter-spacing: 0; }
+.mfa-enrollment p { color: #68756f; line-height: 1.6; }
+.mfa-enrollment img { width: 180px; height: 180px; border: 8px solid #fff; outline: 1px solid #dfe5e1; }
+.mfa-enrollment form { grid-column: 1 / -1; display: grid; gap: 12px; max-width: 420px; }
+.mfa-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .privacy-danger-button { border: 1px solid #d92d20; background: transparent; color: #b42318; padding: 10px 14px; font-weight: 750; border-radius: 6px; cursor: pointer; }
 .privacy-request { min-width: 180px; }
 .privacy-request p { margin-bottom: 12px; }
@@ -99,6 +115,9 @@ p {
   .legal-title { gap: 10px; }
   .legal-title h1 { font-size: 1.75rem; overflow-wrap: anywhere; }
   .privacy-action { grid-template-columns: 1fr; }
+  .mfa-panel { padding: 24px 20px; }
+  .mfa-enrollment { grid-template-columns: 1fr; padding: 20px; }
+  .mfa-enrollment img { width: min(180px, 100%); height: auto; aspect-ratio: 1; }
   .profile-privacy-link { align-items: flex-start; flex-direction: column; }
 }
 

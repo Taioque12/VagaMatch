@@ -1,10 +1,11 @@
-import { BriefcaseBusiness, ShieldCheck, UserRound } from "lucide-react";
+import { BriefcaseBusiness, KeyRound, ShieldCheck, UserRound } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Oportunidades", Icon: BriefcaseBusiness },
   { to: "/onboarding", label: "Meu perfil", Icon: UserRound },
   { to: "/meus-dados", label: "Privacidade e dados", Icon: ShieldCheck },
+  { to: "/seguranca", label: "Segurança", Icon: KeyRound },
 ];
 
 export function AuthenticatedNav({

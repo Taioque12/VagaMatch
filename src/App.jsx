@@ -18,6 +18,8 @@ const Cancelado = lazy(() => import("./pages/Cancelado.jsx").then((m) => ({ defa
 const Upgrade = lazy(() => import("./pages/Upgrade.jsx").then((m) => ({ default: m.Upgrade })));
 const Privacidade = lazy(() => import("./pages/Privacidade.jsx").then((m) => ({ default: m.Privacidade })));
 const MeusDados = lazy(() => import("./pages/MeusDados.jsx").then((m) => ({ default: m.MeusDados })));
+const Seguranca = lazy(() => import("./pages/Seguranca.jsx").then((m) => ({ default: m.Seguranca })));
+const MfaChallenge = lazy(() => import("./pages/MfaChallenge.jsx").then((m) => ({ default: m.MfaChallenge })));
 
 function FallbackCarregando() {
   return (
@@ -62,6 +64,8 @@ export function App() {
             <Route path="/cadastro" element={<Cadastro />} />
             <Route path="/privacidade" element={<Privacidade />} />
             <Route path="/meus-dados" element={<RotaProtegida><MeusDados /></RotaProtegida>} />
+            <Route path="/seguranca" element={<RotaProtegida><Seguranca /></RotaProtegida>} />
+            <Route path="/mfa" element={<RotaProtegida><MfaChallenge /></RotaProtegida>} />
             <Route path="/sucesso" element={<RotaProtegida><Sucesso /></RotaProtegida>} />
             <Route path="/cancelado" element={<RotaProtegida><Cancelado /></RotaProtegida>} />
             <Route path="/upgrade" element={<RotaProtegida><Upgrade /></RotaProtegida>} />

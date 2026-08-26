@@ -40,7 +40,7 @@ describe("correções de UX da Fase 1", () => {
     expect(criarPreferenciasParaSalvar("user-2", {}, undefined).ativo).toBe(true);
   });
 
-  it.each(["/dashboard", "/meus-dados", "/admin"])(
+  it.each(["/dashboard", "/meus-dados", "/seguranca", "/admin"])(
     "confirma saída para %s quando o perfil está alterado",
     (destino) => {
       expect(deveConfirmarSaida(true, destino)).toBe(true);
@@ -71,7 +71,7 @@ describe("correções de UX da Fase 1", () => {
 
     const links = coletarElementos(menusMoveis[0], (node) => typeof node.props?.to === "string");
     expect(new Set(links.map((link) => link.props.to))).toEqual(
-      new Set(["/dashboard", "/onboarding", "/meus-dados", "/admin"])
+      new Set(["/dashboard", "/onboarding", "/meus-dados", "/seguranca", "/admin"])
     );
 
     const linkPrivacidade = links.find((link) => link.props.to === "/meus-dados");
