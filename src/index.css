@@ -103,6 +103,13 @@ p {
 .mfa-enrollment img { width: 180px; height: 180px; border: 8px solid #fff; outline: 1px solid #dfe5e1; }
 .mfa-enrollment form { grid-column: 1 / -1; display: grid; gap: 12px; max-width: 420px; }
 .mfa-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.mfa-primary-button, .mfa-secondary-button { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 10px 16px; border: 1px solid #147a55; border-radius: 6px; box-shadow: none; font: 700 .85rem/1.2 "Manrope", sans-serif; }
+.mfa-primary-button { background: #147a55; color: #fff; }
+.mfa-primary-button:hover { background: #0f6245; transform: none; box-shadow: none; }
+.mfa-secondary-button { background: #fff; color: #28513f; }
+.mfa-secondary-button:hover { background: #eef5f1; transform: none; box-shadow: none; }
+.mfa-manual-key { grid-column: 1 / -1; margin: 0; color: #4b5952; }
+.mfa-manual-key code { display: inline-block; max-width: 100%; margin-top: 6px; padding: 8px 10px; border: 1px solid #d6ddd8; border-radius: 4px; background: #f3f6f4; color: #18211d; font: 700 .82rem/1.4 ui-monospace, monospace; overflow-wrap: anywhere; user-select: all; }
 .privacy-danger-button { border: 1px solid #d92d20; background: transparent; color: #b42318; padding: 10px 14px; font-weight: 750; border-radius: 6px; cursor: pointer; }
 .privacy-request { min-width: 180px; }
 .privacy-request p { margin-bottom: 12px; }
