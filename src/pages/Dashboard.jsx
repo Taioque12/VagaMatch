@@ -5,6 +5,7 @@ import { RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "r
 import { AuthenticatedNav } from "../components/AuthenticatedNav.jsx";
 import { supabase } from "../lib/supabase.js";
 import { useAuth } from "../lib/AuthContext.jsx";
+import { executarComRetryJwtFuturo, mensagemErroCarregamento } from "../lib/supabaseRetry.js";
 import {
   CANDIDATURA_LABEL,
   criarPatchStatusVaga,
@@ -60,15 +61,19 @@ export function Dashboard() {
   useEffect(() => {
     if (!session) return;
     const userId = session.user.id;
+    let ativo = true;
 
-    supabase
-      .from("vagas_vistas")
-      .select("*")
-      .eq("user_id", userId)
-      .order("data_encontrada", { ascending: false })
-      .limit(200)
+    executarComRetryJwtFuturo(() => (
+      supabase
+        .from("vagas_vistas")
+        .select("*")
+        .eq("user_id", userId)
+        .order("data_encontrada", { ascending: false })
+        .limit(200)
+    ))
       .then(({ data, error }) => {
-        if (error) setErro(error.message);
+        if (!ativo) return;
+        if (error) setErro(mensagemErroCarregamento(error));
         else setVagas(data);
       });
 
@@ -85,6 +90,8 @@ export function Dashboard() {
       .eq("id", userId)
       .maybeSingle()
       .then(({ data }) => setEhAdmin(data?.role === "admin"));
+
+    return () => { ativo = false; };
   }, [session]);
 
   const stats = useMemo(() => {
