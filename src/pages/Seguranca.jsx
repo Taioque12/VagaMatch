@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, KeyRound, ShieldCheck, Smartphone } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
+import { normalizarEnrollmentMfa } from "../lib/mfa.js";
 import { supabase } from "../lib/supabase.js";
 
 export function Seguranca() {
@@ -48,7 +49,7 @@ export function Seguranca() {
         friendlyName: "Microsoft Authenticator",
       });
       if (error) throw error;
-      setEnrollment({ factorId: data.id, qrCode: data.totp.qr_code });
+      setEnrollment(normalizarEnrollmentMfa(data));
     } catch {
       setErro("Não foi possível iniciar o cadastro do autenticador.");
     } finally { setStatus("ready"); }
@@ -96,17 +97,18 @@ export function Seguranca() {
         {status === "loading" ? <p role="status">Carregando configurações...</p> : (
           <section className="privacy-action mfa-security-action">
             <div><ShieldCheck size={22} /><h2>{factor ? "Proteção ativa" : "Microsoft Authenticator"}</h2><p>{factor ? `Fator ${factor.friendly_name || "TOTP"} cadastrado. ${aal?.currentLevel === "aal2" ? "Esta sessão está verificada." : "Confirme o código no próximo acesso administrativo."}` : "Escaneie um QR Code e confirme um código de seis dígitos para ativar."}</p></div>
-            {!factor && !enrollment && <button className="dbv2-btn-primario" type="button" onClick={iniciarCadastro} disabled={status === "submitting"}><Smartphone size={17} /> Ativar autenticador</button>}
+            {!factor && !enrollment && <button className="mfa-primary-button" type="button" onClick={iniciarCadastro} disabled={status === "submitting"}><Smartphone size={17} /> {status === "submitting" ? "Gerando QR Code..." : "Ativar autenticador"}</button>}
           </section>
         )}
         {enrollment && (
           <section className="mfa-enrollment" aria-labelledby="mfa-enrollment-title">
             <div><p className="auth-kicker">Etapa 1</p><h2 id="mfa-enrollment-title">Escaneie o QR Code</h2><p>No Microsoft Authenticator, toque em <strong>+</strong>, escolha <strong>Outra conta</strong> e escaneie este código.</p></div>
-            <img src={enrollment.qrCode} alt="QR Code temporário para cadastrar o Microsoft Authenticator" />
+            {enrollment.qrCode && <img src={enrollment.qrCode} alt="QR Code temporário para cadastrar o Microsoft Authenticator" />}
+            {enrollment.secret && <p className="mfa-manual-key">Não consegue escanear? Digite esta chave no aplicativo: <code>{enrollment.secret}</code></p>}
             <form onSubmit={confirmarCadastro} aria-busy={status === "submitting"}>
               <label htmlFor="enrollment-code">Código gerado no aplicativo</label>
               <span className="auth-input"><KeyRound size={18} /><input id="enrollment-code" inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength="6" value={codigo} onChange={(event) => setCodigo(event.target.value.replace(/\D/g, "").slice(0, 6))} required /></span>
-              <div className="mfa-actions"><button className="dbv2-btn-primario" type="submit" disabled={status === "submitting"}>{status === "submitting" ? "Confirmando..." : "Confirmar ativação"}</button><button className="dbv2-btn-ghost" type="button" onClick={cancelarCadastro} disabled={status === "submitting"}>Cancelar</button></div>
+              <div className="mfa-actions"><button className="mfa-primary-button" type="submit" disabled={status === "submitting"}>{status === "submitting" ? "Confirmando..." : "Confirmar ativação"}</button><button className="mfa-secondary-button" type="button" onClick={cancelarCadastro} disabled={status === "submitting"}>Cancelar</button></div>
             </form>
           </section>
         )}

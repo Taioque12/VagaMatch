@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { obterDestinoMfaSeguro, possuiMfaVerificado, precisaDesafioMfa } from "./mfa.js";
+import { normalizarEnrollmentMfa, obterDestinoMfaSeguro, possuiMfaVerificado, precisaDesafioMfa } from "./mfa.js";
 
 describe("política de MFA", () => {
   it("exige desafio somente ao promover uma sessão aal1 para aal2", () => {
@@ -19,5 +19,16 @@ describe("política de MFA", () => {
     expect(obterDestinoMfaSeguro("https://malicioso.example")).toBe("/dashboard");
     expect(obterDestinoMfaSeguro("//malicioso.example")).toBe("/dashboard");
     expect(obterDestinoMfaSeguro("/mfa")).toBe("/dashboard");
+  });
+
+  it("normaliza QR Code e chave manual retornados pelo enrollment", () => {
+    expect(normalizarEnrollmentMfa({
+      id: "factor-1",
+      totp: { qr_code: "data:image/svg+xml;base64,abc", secret: "ABC123" },
+    })).toEqual({ factorId: "factor-1", qrCode: "data:image/svg+xml;base64,abc", secret: "ABC123" });
+  });
+
+  it("rejeita enrollment sem QR Code nem chave manual", () => {
+    expect(() => normalizarEnrollmentMfa({ id: "factor-1", totp: {} })).toThrow("Resposta de cadastro MFA incompleta.");
   });
 });

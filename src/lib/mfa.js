@@ -28,3 +28,15 @@ export function precisaDesafioMfa(aal) {
 export function possuiMfaVerificado(factors) {
   return Array.isArray(factors?.totp) && factors.totp.some((factor) => factor.status === "verified");
 }
+
+export function normalizarEnrollmentMfa(data) {
+  const factorId = typeof data?.id === "string" ? data.id : "";
+  const qrCode = typeof data?.totp?.qr_code === "string" ? data.totp.qr_code : "";
+  const secret = typeof data?.totp?.secret === "string" ? data.totp.secret : "";
+
+  if (!factorId || (!qrCode && !secret)) {
+    throw new Error("Resposta de cadastro MFA incompleta.");
+  }
+
+  return { factorId, qrCode, secret };
+}
