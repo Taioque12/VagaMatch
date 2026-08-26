@@ -17,6 +17,14 @@ const functionAclHardening = readFileSync(
   new URL("./20260821150149_function_acl_hardening.sql", import.meta.url),
   "utf8",
 );
+const adminMfa = readFileSync(
+  new URL("./20260826101209_admin_mfa_aal2.sql", import.meta.url),
+  "utf8",
+);
+const adminMfaRollback = readFileSync(
+  new URL("./rollback/20260826101209_admin_mfa_aal2.sql", import.meta.url),
+  "utf8",
+);
 const curriculoEmbedding = readFileSync(
   new URL("../functions/curriculo-embedding/index.ts", import.meta.url),
   "utf8",
@@ -186,5 +194,31 @@ describe("privacy-safe logging contracts", () => {
   it("não registra objetos completos de provedores externos", () => {
     expect(telegramWebhook).not.toContain("error:`, data)");
     expect(stripeCheckout).not.toContain('"stripe-checkout: falha ao criar sessao", error)');
+  });
+});
+
+describe("admin MFA AAL2 contracts", () => {
+  it("mantém cadastro e verificação TOTP habilitados no ambiente local", () => {
+    expect(supabaseConfig).toMatch(
+      /\[auth\.mfa\.totp\][\s\S]*enroll_enabled = true[\s\S]*verify_enabled = true/,
+    );
+  });
+
+  it("combina role admin, identidade do JWT e segundo fator", () => {
+    expect(adminMfa).toContain("auth.jwt() ->> 'aal'");
+    expect(adminMfa).toContain("= 'aal2'");
+    expect(adminMfa).toContain("id = auth.uid()");
+    expect(adminMfa).toContain("role = 'admin'");
+  });
+
+  it("mantém a função restrita a usuários autenticados", () => {
+    expect(adminMfa).toContain("revoke all on function public.is_admin() from public, anon, authenticated");
+    expect(adminMfa).toContain("grant execute on function public.is_admin() to authenticated");
+  });
+
+  it("fornece rollback explícito sem remover a validação de role", () => {
+    expect(adminMfaRollback).not.toContain("auth.jwt() ->> 'aal'");
+    expect(adminMfaRollback).toContain("id = auth.uid()");
+    expect(adminMfaRollback).toContain("role = 'admin'");
   });
 });

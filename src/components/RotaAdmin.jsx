@@ -27,6 +27,16 @@ export function RotaAdmin({ children }) {
 
     async function verificarAcesso() {
       try {
+        const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (aalError) throw aalError;
+        if (!ativo) return;
+        if (aal.currentLevel !== "aal2") {
+          setVerificacao({
+            userId,
+            status: aal.nextLevel === "aal2" ? "mfa_required" : "mfa_enrollment_required",
+          });
+          return;
+        }
         const { data, error } = await supabase.rpc("is_admin");
         if (error) throw error;
         if (!ativo) return;
@@ -70,6 +80,12 @@ export function RotaAdmin({ children }) {
         </button>
       </main>
     );
+  }
+  if (verificacaoAtual === "mfa_required") {
+    return <Navigate to="/mfa" replace state={{ from: location }} />;
+  }
+  if (verificacaoAtual === "mfa_enrollment_required") {
+    return <Navigate to="/seguranca" replace state={{ mfaRequired: true }} />;
   }
   if (verificacaoAtual === "denied") {
     return (

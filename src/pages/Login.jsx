@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle2, KeyRound, LogIn, Mail } from "lucide-react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../lib/supabase.js";
+import { precisaDesafioMfa } from "../lib/mfa.js";
 
 function obterDestinoSeguro(from) {
   const fallback = "/dashboard";
@@ -53,7 +54,17 @@ export function Login() {
     const { error } = await supabase.auth.signInWithPassword({ email, password: senha });
     setCarregando(false);
     if (error) { setErro("E-mail ou senha incorretos."); return; }
-    navigate(obterDestinoSeguro(location.state?.from), { replace: true });
+    const destino = obterDestinoSeguro(location.state?.from);
+    const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aalError) {
+      setErro("Login concluído, mas não foi possível verificar a proteção da conta.");
+      return;
+    }
+    if (precisaDesafioMfa(aal)) {
+      navigate("/mfa", { replace: true, state: { from: destino } });
+      return;
+    }
+    navigate(destino, { replace: true });
   }
 
   async function handleRecuperarSenha() {
