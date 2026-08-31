@@ -1,0 +1,123 @@
+:root {
+  --ops-bg: #070914;
+  --ops-surface: #0d1020;
+  --ops-surface-2: #12162a;
+  --ops-surface-3: #191e36;
+  --ops-border: rgba(255,255,255,.08);
+  --ops-border-strong: rgba(255,255,255,.15);
+  --ops-text: #f4f6ff;
+  --ops-muted: #929ab5;
+  --ops-accent: #7c5cff;
+  --ops-accent-2: #4f8cff;
+  --ops-info: #5ba7ff;
+  --ops-shadow: 0 20px 65px rgba(0,0,0,.38);
+}
+
+body { background: var(--ops-bg) !important; }
+
+.ops-shell {
+  background:
+    radial-gradient(circle at 76% -8%, rgba(79,140,255,.16), transparent 30%),
+    radial-gradient(circle at 14% 18%, rgba(124,92,255,.10), transparent 25%),
+    var(--ops-bg) !important;
+}
+
+.ops-sidebar {
+  background: rgba(7,9,20,.86) !important;
+}
+
+.ops-brand-mark {
+  background: linear-gradient(135deg, rgba(124,92,255,.24), rgba(79,140,255,.10)) !important;
+  border-color: rgba(124,92,255,.30) !important;
+  color: var(--ops-accent) !important;
+  box-shadow: inset 0 0 20px rgba(124,92,255,.08), 0 0 28px rgba(79,140,255,.05) !important;
+}
+
+.ops-nav { color: #a2abc8 !important; }
+.ops-nav.active {
+  background: linear-gradient(90deg, rgba(124,92,255,.15), rgba(79,140,255,.06)) !important;
+  color: #b9aaff !important;
+  box-shadow: inset 0 0 0 1px rgba(124,92,255,.18) !important;
+}
+.ops-nav.active em {
+  background: rgba(124,92,255,.15) !important;
+  color: #c5b9ff !important;
+}
+
+.ops-system-status > span {
+  background: #6f8cff !important;
+  box-shadow: 0 0 14px rgba(111,140,255,.78) !important;
+}
+
+.ops-eyebrow,
+.ops-hero-kicker { color: #8fa7ff !important; }
+
+.ops-primary {
+  background: linear-gradient(135deg, #7c5cff, #4f8cff) !important;
+  color: #fff !important;
+  box-shadow: 0 10px 30px rgba(79,140,255,.20) !important;
+}
+.ops-primary:hover {
+  background: linear-gradient(135deg, #896cff, #66a0ff) !important;
+}
+
+.ops-hero {
+  background:
+    linear-gradient(110deg, rgba(124,92,255,.17), transparent 56%),
+    radial-gradient(circle at 86% 16%, rgba(79,140,255,.20), transparent 31%),
+    #0d1020 !important;
+  border-color: rgba(124,92,255,.20) !important;
+}
+.ops-hero::after {
+  border-color: rgba(124,92,255,.12) !important;
+  box-shadow: 0 0 0 30px rgba(124,92,255,.035), 0 0 0 60px rgba(79,140,255,.022) !important;
+}
+.ops-hero-button {
+  background: rgba(124,92,255,.13) !important;
+  border-color: rgba(124,92,255,.24) !important;
+  color: #bbaeff !important;
+}
+.ops-hero-button:hover { background: rgba(124,92,255,.20) !important; }
+
+.ops-stat::after { background: rgba(124,92,255,.045) !important; }
+.ops-stat-icon {
+  color: #91a9ff !important;
+  background: rgba(124,92,255,.11) !important;
+}
+
+.ops-task-check.done {
+  background: linear-gradient(135deg, #7c5cff, #4f8cff) !important;
+  border-color: #7c5cff !important;
+  color: #fff !important;
+}
+
+.ops-dot.review,
+.ops-dot.approved,
+.ops-dot.queued { background: #7c5cff !important; }
+
+.ops-progress span {
+  background: linear-gradient(90deg, #7c5cff, #4f8cff) !important;
+  box-shadow: 0 0 13px rgba(79,140,255,.24) !important;
+}
+
+.ops-mode.auto,
+.ops-mode.assisted,
+.ops-pill.active,
+.ops-pill.assessment,
+.ops-pill.preparing {
+  border-color: rgba(124,92,255,.18) !important;
+}
+
+.ops-showcase-ideas > div > span {
+  background: rgba(124,92,255,.10) !important;
+  color: #9eaaff !important;
+}
+.ops-showcase-ideas svg { color: #707a9e !important; }
+
+.ops-panel,
+.ops-stat,
+.ops-attention {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.015);
+}
+
+::selection { background: rgba(124,92,255,.35); color: #fff; }
