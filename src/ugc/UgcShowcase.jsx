@@ -1,11 +1,14 @@
 import {
+  Activity,
   AlertTriangle,
   BarChart3,
   Bot,
+  BrainCircuit,
   CalendarDays,
   CheckCircle2,
   CircleDollarSign,
   Clapperboard,
+  Clock3,
   FileText,
   FileVideo2,
   LayoutDashboard,
@@ -18,6 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import "./ugc-v2.css";
+import "./ugc-intelligence.css";
 
 const ideas = [
   ["01", "200 receitas salvas e nunca encontro", "Dor real + demonstração"],
@@ -25,6 +29,14 @@ const ideas = [
   ["03", "Você manda receita pra você mesmo?", "Identificação"],
   ["04", "Minha esposa manda e eu perco", "Storytelling cotidiano"],
   ["05", "O melhor jeito que encontrei", "Resultado primeiro"],
+];
+
+const dna = [
+  ["Dor real", "Hook + demo", "Retenção / identificação"],
+  ["Curiosidade", "Comment bait", "Comentários"],
+  ["Identificação", "Relatable demo", "Shares / comentários"],
+  ["Storytelling", "Story + demo", "Retenção"],
+  ["Resultado primeiro", "Result demo", "Saves / shares"],
 ];
 
 function SideItem({ icon: Icon, label, active, badge }) {
@@ -49,7 +61,7 @@ export function UgcShowcase() {
         <SideItem icon={CalendarDays} label="Agenda" />
         <SideItem icon={CircleDollarSign} label="Financeiro" />
       </nav>
-      <div className="ops-sidebar-footer"><div className="ops-system-status"><span /><div><strong>Preview V2</strong><small>Banco e deployment ativos</small></div></div></div>
+      <div className="ops-sidebar-footer"><div className="ops-system-status"><span /><div><strong>Intelligence Layer ativa</strong><small>Supabase + Vercel operacionais</small></div></div></div>
     </aside>
 
     <main className="ops-main">
@@ -60,14 +72,14 @@ export function UgcShowcase() {
 
       <div className="ops-stack">
         <section className="ops-hero">
-          <div><span className="ops-hero-kicker"><Rocket size={16} /> UGC Command Center</span><h2>Do contrato ao vídeo publicado, sem perder regra, prazo ou dinheiro.</h2><p>O painel foi desenhado para permitir vários contratos simultâneos e separar automaticamente o que pode ser automatizado do que exige publicação manual.</p></div>
+          <div><span className="ops-hero-kicker"><Rocket size={16} /> UGC Command Center</span><h2>Do contrato ao vídeo publicado — e agora aprendendo o que performa melhor.</h2><p>Além de organizar contratos, conteúdo e publicação, o UGC Ops já possui uma camada de inteligência para comparar hooks, formatos, CTAs, engajamento e risco operacional por campanha.</p></div>
           <a className="ops-hero-button ops-showcase-link" href="?live=1">Abrir operação <Zap size={18} /></a>
         </section>
 
         <section className="ops-stat-grid">
           <PreviewStat icon={FileText} label="Contratos organizados" value="2" hint="Howbout + ReciBites" />
           <PreviewStat icon={Target} label="Assessments no radar" value="2" hint="prioridade definida" />
-          <PreviewStat icon={FileVideo2} label="Blueprint de conteúdo" value="5" hint="ReciBites preparado" />
+          <PreviewStat icon={BrainCircuit} label="Content DNA" value="5 sinais" hint="hook + formato + CTA" />
           <PreviewStat icon={BarChart3} label="Analytics" value="Pronto" hint="sem inventar métricas" />
         </section>
 
@@ -75,6 +87,29 @@ export function UgcShowcase() {
           <article className="ops-attention p1"><div className="ops-attention-icon"><Zap size={20} /></div><div><span>FOCO</span><strong>Howbout primeiro</strong><p>A trial já está em andamento; o Copiloto mantém a prioridade operacional nela.</p></div></article>
           <article className="ops-attention p1"><div className="ops-attention-icon"><ShieldCheck size={20} /></div><div><span>REGRA PROTEGIDA</span><strong>ReciBites = MANUAL_ONLY</strong><p>O assessment proíbe agendadores. A automação prepara, mas não aperta “publicar”.</p></div></article>
           <article className="ops-attention p2"><div className="ops-attention-icon"><AlertTriangle size={20} /></div><div><span>CONTRATO</span><strong>Valor ainda precisa ser validado</strong><p>O financeiro não transforma US$400–700 / até US$600 em receita confirmada sem contrato.</p></div></article>
+        </section>
+
+        <section className="ops-intel-grid">
+          <section className="ops-panel">
+            <header className="ops-panel-head"><div><p className="ops-eyebrow">HEALTH ENGINE</p><h2>Saúde das campanhas</h2></div><Activity size={20} /></header>
+            <div className="ops-health-stack">
+              <div className="ops-health-card">
+                <div className="ops-health-ring" style={{"--score":45}}><strong>45</strong></div>
+                <div><h3>Howbout Ambassador — Trial Week</h3><p>Prioridade P1 aberta. O score sobe conforme prazo, produção pendente e tarefas críticas se acumulam.</p></div>
+                <span className="attention">atenção</span>
+              </div>
+              <div className="ops-health-card">
+                <div className="ops-health-ring" style={{"--score":30}}><strong>30</strong></div>
+                <div><h3>ReciBites — Creator Assessment</h3><p>Ainda em preparação. O sistema reconhece `MANUAL_ONLY` como complexidade operacional, não como permissão de autopost.</p></div>
+                <span className="protected">protegido</span>
+              </div>
+            </div>
+          </section>
+
+          <section className="ops-panel">
+            <header className="ops-panel-head"><div><p className="ops-eyebrow">CONTENT DNA</p><h2>O que vamos aprender</h2></div><BrainCircuit size={20} /></header>
+            <div className="ops-dna-list">{dna.map(([hook,format,goal],index)=><div className="ops-dna-item" key={hook}><div className="ops-dna-icon"><span>{String(index+1).padStart(2,"0")}</span></div><div><strong>{hook} · {format}</strong><p>Hipótese: {goal}</p></div><small>aguardando dados</small></div>)}</div>
+          </section>
         </section>
 
         <section className="ops-grid-2">
@@ -99,6 +134,28 @@ export function UgcShowcase() {
         <section className="ops-panel">
           <header className="ops-panel-head"><div><p className="ops-eyebrow">RECIBITES</p><h2>Blueprint dos 5 vídeos</h2></div><Clapperboard size={20} /></header>
           <div className="ops-showcase-ideas">{ideas.map(([number,title,concept]) => <div key={number}><span>{number}</span><div><strong>{title}</strong><p>{concept}</p></div><CheckCircle2 size={17} /></div>)}</div>
+        </section>
+
+        <section className="ops-panel">
+          <header className="ops-panel-head"><div><p className="ops-eyebrow">LEARNING LOOP</p><h2>Como o agente melhora o próximo vídeo</h2></div><TrendingUp size={20} /></header>
+          <div className="ops-engine-flow">
+            <div><span>01 · PUBLICA</span><strong>Post entra no monitoramento</strong><p>TikTok, Instagram ou YouTube; manual ou automático conforme o contrato.</p></div>
+            <div><span>02 · MEDE</span><strong>Views + engajamento + retenção</strong><p>Última captura por post vira uma leitura comparável e auditável.</p></div>
+            <div><span>03 · APRENDE</span><strong>Hook, formato, CTA e ângulo</strong><p>O Content DNA permite descobrir padrões em vez de olhar só para um vídeo isolado.</p></div>
+            <div><span>04 · RECOMENDA</span><strong>Próxima melhor aposta</strong><p>O Copiloto prioriza o que repetir, testar ou abandonar com base em dados reais.</p></div>
+          </div>
+        </section>
+
+        <section className="ops-panel">
+          <header className="ops-panel-head"><div><p className="ops-eyebrow">BASE DE INTELIGÊNCIA</p><h2>Estrutura já preparada no banco</h2></div><Clock3 size={20} /></header>
+          <div className="ops-table-wrap">
+            <table className="ops-learning-table"><thead><tr><th>Camada</th><th>O que mede</th><th>Uso do agente</th><th>Status</th></tr></thead><tbody>
+              <tr><td><strong>Post Performance</strong></td><td>views, likes, comments, saves, shares, retenção</td><td>ranking por publicação</td><td><em>ativa</em></td></tr>
+              <tr><td><strong>Content Performance</strong></td><td>resultado consolidado do mesmo vídeo em várias redes</td><td>comparar conceitos</td><td><em>ativa</em></td></tr>
+              <tr><td><strong>Campaign Health</strong></td><td>prazo, progresso, P1 e complexidade de postagem</td><td>alerta preventivo</td><td><em>ativa</em></td></tr>
+              <tr><td><strong>Content DNA</strong></td><td>hook, formato, CTA, ângulo e hipótese</td><td>aprender o que viraliza melhor</td><td><em>ativa</em></td></tr>
+            </tbody></table>
+          </div>
         </section>
 
         <section className="ops-rule-grid">
