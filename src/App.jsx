@@ -1,5 +1,5 @@
-import { UgcApp } from "./ugc/UgcApp.jsx";
+import { UgcAppV2 } from "./ugc/UgcAppV2.jsx";
 
 export function App() {
-  return <UgcApp />;
+  return <UgcAppV2 />;
 }
